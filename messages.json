@@ -1,3 +1,4 @@
+
 {
     "Messages": [
         {
@@ -180,5 +181,19 @@
         "Daily Sponsor 1": "G:\\Misc\\Sponsorships\\daily sponsor 1.m3u8",
         "ace restoration": "G:\\Misc\\Dev\\CombinedRDSApp\\ace restoration with staion id.m3u8",
         "Sponsor  and dedicate ad": "G:\\Misc\\Sponsorships\\sponsor and dedicate.m3u8"
+    },
+    "settings": {
+        "rds": {
+            "ip": "50.208.125.83",
+            "port": 10001,
+            "now_playing_xml": "G:\\To_RDS\\nowplaying.xml",
+            "default_message": "732.901.7777 to SUPPORT and hear this program!"
+        },
+        "intro_loader": {
+            "now_playing_xml": "G:\\To_RDS\\nowplaying.xml",
+            "mp3_directory": "G:\\Shiurim\\introsCleanedUp",
+            "missing_artists_log": "G:\\Misc\\Dev\\CombinedRDSApp\\missing_artists.log",
+            "schedule_url": "http://192.168.3.11:9000/?pass=bmas220&action=schedule&type=run&id=TBACFNBGJKOMETDYSQYR"
+        }
     }
 }

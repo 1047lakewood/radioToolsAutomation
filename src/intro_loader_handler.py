@@ -67,19 +67,19 @@ except ImportError:
 
 
 # --- Constants (Keep external paths as per user confirmation) ---
-XML_FILE_PATH = r"G:\To_RDS\nowplaying.xml"
-MP3_DIRECTORY = r"G:\Shiurim\introsCleanedUp"
-# Place log in the *original* location as per the script, can be changed later
-LOG_DIRECTORY = r"G:\Misc\Dev\CombinedRDSApp"
-MISSING_ARTIST_LOG = os.path.join(LOG_DIRECTORY, "missing_artists.log")
+# XML_FILE_PATH = r"G:\To_RDS\nowplaying.xml"
+# MP3_DIRECTORY = r"G:\Shiurim\introsCleanedUp"
+# # Place log in the *original* location as per the script, can be changed later
+# LOG_DIRECTORY = r"G:\Misc\Dev\CombinedRDSApp"
+# MISSING_ARTIST_LOG = os.path.join(LOG_DIRECTORY, "missing_artists.log")
 
 # Files within MP3_DIRECTORY
-CURRENT_ARTIST_FILE = os.path.join(MP3_DIRECTORY, "currentArtist.mp3")
-ACTUAL_CURRENT_ARTIST_FILE = os.path.join(MP3_DIRECTORY, "actualCurrentArtist.mp3")
-BLANK_MP3_FILE = os.path.join(MP3_DIRECTORY, "blank.mp3")
-SILENT_MP3_FILE = os.path.join(MP3_DIRECTORY, "near_silent.mp3") # Renamed from near_silent
+# CURRENT_ARTIST_FILE = os.path.join(MP3_DIRECTORY, "currentArtist.mp3")
+# ACTUAL_CURRENT_ARTIST_FILE = os.path.join(MP3_DIRECTORY, "actualCurrentArtist.mp3")
+# BLANK_MP3_FILE = os.path.join(MP3_DIRECTORY, "blank.mp3")
+# SILENT_MP3_FILE = os.path.join(MP3_DIRECTORY, "near_silent.mp3") # Renamed from near_silent
 
-SCHEDULE_URL = "http://192.168.3.11:9000/?pass=bmas220&action=schedule&type=run&id=TBACFNBGJKOMETDYSQYR"
+# SCHEDULE_URL = "http://192.168.3.11:9000/?pass=bmas220&action=schedule&type=run&id=TBACFNBGJKOMETDYSQYR"
 SCHEDULE_DELAY_MINUTES = 15
 SCHEDULE_TIMEOUT = 10 # Seconds for URL request
 MONITOR_LOOP_SLEEP = 2 # Seconds between XML checks
@@ -90,13 +90,24 @@ MAX_LOG_LINES = 500 # Maximum number of lines to keep in the missing artists log
 
 class IntroLoaderHandler:
     # Accept log_queue in init, though not directly used here (logger config handles it)
-    def __init__(self, log_queue):
+    def __init__(self, config_manager, log_queue):
+        self.config_manager = config_manager
         self.running = False
         self.thread = None
         self.next_schedule_run = None
         self.last_modified_time = 0
         self.last_known_current_artist = None
         self.last_known_next_artist = None
+
+        # Load configurable settings from config
+        self.now_playing_xml = self.config_manager.get_setting("settings.intro_loader.now_playing_xml", r"G:\To_RDS\nowplaying.xml")
+        self.mp3_directory = self.config_manager.get_setting("settings.intro_loader.mp3_directory", r"G:\Shiurim\introsCleanedUp")
+        self.missing_artist_log = self.config_manager.get_setting("settings.intro_loader.missing_artists_log", r"G:\Misc\Dev\CombinedRDSApp\missing_artists.log")
+        self.schedule_url = self.config_manager.get_setting("settings.intro_loader.schedule_url", "http://192.168.3.11:9000/?pass=bmas220&action=schedule&type=run&id=TBACFNBGJKOMETDYSQYR")
+        self.current_artist_file = os.path.join(self.mp3_directory, "currentArtist.mp3")
+        self.actual_current_artist_file = os.path.join(self.mp3_directory, "actualCurrentArtist.mp3")
+        self.blank_mp3_file = os.path.join(self.mp3_directory, "blank.mp3")
+        self.silent_mp3_file = os.path.join(self.mp3_directory, "near_silent.mp3")
 
         # Configure pydub to hide subprocess windows on Windows
         _configure_pydub_for_windows()
@@ -110,17 +121,17 @@ class IntroLoaderHandler:
     def _check_required_files(self):
         """Logs warnings if essential files are missing."""
         logger.debug("Checking required files...")
-        if not os.path.exists(MP3_DIRECTORY):
-             logger.critical(f"MP3 directory does not exist: {MP3_DIRECTORY}. Intro Loader cannot function.")
-        if not os.path.exists(BLANK_MP3_FILE):
-            logger.warning(f"Blank MP3 file not found: {BLANK_MP3_FILE}. Fallback for missing intros may fail.")
-        if not os.path.exists(SILENT_MP3_FILE):
-            logger.warning(f"Silent MP3 file not found: {SILENT_MP3_FILE}. Concatenation with silence will fail.")
+        if not os.path.exists(self.mp3_directory):
+             logger.critical(f"MP3 directory does not exist: {self.mp3_directory}. Intro Loader cannot function.")
+        if not os.path.exists(self.blank_mp3_file):
+            logger.warning(f"Blank MP3 file not found: {self.blank_mp3_file}. Fallback for missing intros may fail.")
+        if not os.path.exists(self.silent_mp3_file):
+            logger.warning(f"Silent MP3 file not found: {self.silent_mp3_file}. Concatenation with silence will fail.")
         try:
-            os.makedirs(LOG_DIRECTORY, exist_ok=True)
-            logger.debug(f"Log directory ensured: {LOG_DIRECTORY}")
+            os.makedirs(os.path.dirname(self.missing_artist_log), exist_ok=True)
+            logger.debug(f"Log directory ensured: {os.path.dirname(self.missing_artist_log)}")
         except Exception as e:
-            logger.error(f"Failed to create log directory {LOG_DIRECTORY}: {e}")
+            logger.error(f"Failed to create log directory {os.path.dirname(self.missing_artist_log)}: {e}")
 
 
     def _log_missing_artist(self, artist_name, filename, is_current=True):
@@ -133,35 +144,35 @@ class IntroLoaderHandler:
             return
 
         try:
-            os.makedirs(LOG_DIRECTORY, exist_ok=True) # Ensure again just in case
-            with open(MISSING_ARTIST_LOG, 'a', encoding='utf-8') as f:
+            os.makedirs(os.path.dirname(self.missing_artist_log), exist_ok=True) # Ensure again just in case
+            with open(self.missing_artist_log, 'a', encoding='utf-8') as f:
                 timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 log_entry = f"{timestamp} - Current Artist MP3 not found: '{artist_name}', Source FILENAME: '{filename}'\n"
                 f.write(log_entry)
-                logger.info(f"Logged missing artist to {MISSING_ARTIST_LOG}: {artist_name}")
+                logger.info(f"Logged missing artist to {self.missing_artist_log}: {artist_name}")
 
             # --- Log Truncation ---
             # Read all lines after appending
-            with open(MISSING_ARTIST_LOG, 'r', encoding='utf-8') as f_read:
+            with open(self.missing_artist_log, 'r', encoding='utf-8') as f_read:
                 lines = f_read.readlines()
 
             # If log exceeds max lines, truncate and rewrite
             if len(lines) > MAX_LOG_LINES:
                 logger.info(f"Missing artists log exceeds {MAX_LOG_LINES} lines. Truncating...")
                 lines_to_keep = lines[-MAX_LOG_LINES:]
-                with open(MISSING_ARTIST_LOG, 'w', encoding='utf-8') as f_write:
+                with open(self.missing_artist_log, 'w', encoding='utf-8') as f_write:
                     f_write.writelines(lines_to_keep)
                 logger.info(f"Missing artists log truncated to the latest {MAX_LOG_LINES} lines.")
 
         except Exception as e:
-            logger.error(f"Error writing to or truncating missing artist log ({MISSING_ARTIST_LOG}): {e}")
+            logger.error(f"Error writing to or truncating missing artist log ({self.missing_artist_log}): {e}")
 
     def _get_artists_from_xml(self):
         """Extract current/next artists and filenames from XML."""
-        logger.debug(f"Attempting to parse XML: {XML_FILE_PATH}")
+        logger.debug(f"Attempting to parse XML: {self.now_playing_xml}")
         try:
             time.sleep(XML_READ_DELAY) # Small delay before parsing
-            tree = ET.parse(XML_FILE_PATH)
+            tree = ET.parse(self.now_playing_xml)
             root = tree.getroot()
             logger.debug("XML parsed successfully.")
 
@@ -186,10 +197,10 @@ class IntroLoaderHandler:
 
             return (current_artist, current_filename), (next_artist, next_filename)
         except FileNotFoundError:
-            logger.warning(f"XML file not found during parsing: {XML_FILE_PATH}")
+            logger.warning(f"XML file not found during parsing: {self.now_playing_xml}")
             return (None, None), (None, None)
         except ET.ParseError as e:
-            logger.error(f"Error parsing XML ({XML_FILE_PATH}): {e}. Check file.")
+            logger.error(f"Error parsing XML ({self.now_playing_xml}): {e}. Check file.")
             return (None, None), (None, None)
         except Exception as e:
             logger.exception(f"Error reading/parsing XML: {e}")
@@ -241,22 +252,22 @@ class IntroLoaderHandler:
         logger.debug("Processing actualCurrentArtist.mp3...")
         actual_success = False
         if current_artist:
-            logger.debug(f"Searching for intro files starting with: '{current_artist}' in {MP3_DIRECTORY}")
+            logger.debug(f"Searching for intro files starting with: '{current_artist}' in {self.mp3_directory}")
             try:
-                matching_files = [f for f in os.listdir(MP3_DIRECTORY)
+                matching_files = [f for f in os.listdir(self.mp3_directory)
                                   if f.lower().startswith(current_artist.lower()) and f.lower().endswith(".mp3")]
                 logger.debug(f"Found {len(matching_files)} matching files: {matching_files}")
             except Exception as e:
-                 logger.error(f"Error listing MP3 directory {MP3_DIRECTORY}: {e}")
+                 logger.error(f"Error listing MP3 directory {self.mp3_directory}: {e}")
                  matching_files = []
 
             if matching_files:
                 chosen_file = random.choice(matching_files)
-                current_artist_file_path = os.path.join(MP3_DIRECTORY, chosen_file)
+                current_artist_file_path = os.path.join(self.mp3_directory, chosen_file)
                 logger.info(f"{context}: Found current artist intro: {chosen_file}")
                 try:
-                    logger.debug(f"Copying '{current_artist_file_path}' to '{ACTUAL_CURRENT_ARTIST_FILE}'")
-                    shutil.copy2(current_artist_file_path, ACTUAL_CURRENT_ARTIST_FILE)
+                    logger.debug(f"Copying '{current_artist_file_path}' to '{self.actual_current_artist_file}'")
+                    shutil.copy2(current_artist_file_path, self.actual_current_artist_file)
                     logger.info(f"{context}: Copied {chosen_file} to actualCurrentArtist.mp3")
                     actual_success = True
                 except Exception as e:
@@ -266,63 +277,63 @@ class IntroLoaderHandler:
                 logger.info(f"{context}: Didn't find {current_artist}.mp3")
                 self._log_missing_artist(current_artist, current_filename, is_current=True)
                 # Pass no_next_artist=False (default)
-                actual_success = self._copy_blank_to_target(ACTUAL_CURRENT_ARTIST_FILE, context, "actualCurrentArtist.mp3")
+                actual_success = self._copy_blank_to_target(self.actual_current_artist_file, context, "actualCurrentArtist.mp3")
         else:
             logger.info(f"{context}: No current artist specified in XML.")
             if current_filename: self._log_missing_artist(current_artist, current_filename, is_current=True)
             # Pass no_next_artist=False (default)
-            actual_success = self._copy_blank_to_target(ACTUAL_CURRENT_ARTIST_FILE, context, "actualCurrentArtist.mp3")
+            actual_success = self._copy_blank_to_target(self.actual_current_artist_file, context, "actualCurrentArtist.mp3")
         logger.debug(f"actualCurrentArtist.mp3 update success: {actual_success}")
 
         # --- Handle currentArtist.mp3 (based on NEXT artist + silence) ---
         logger.debug("Processing currentArtist.mp3...")
         next_success = False
         if next_artist:
-            logger.debug(f"Searching for intro files starting with: '{next_artist}' in {MP3_DIRECTORY}")
+            logger.debug(f"Searching for intro files starting with: '{next_artist}' in {self.mp3_directory}")
             try:
-                matching_files = [f for f in os.listdir(MP3_DIRECTORY)
+                matching_files = [f for f in os.listdir(self.mp3_directory)
                                   if f.lower().startswith(next_artist.lower()) and f.lower().endswith(".mp3")]
                 logger.debug(f"Found {len(matching_files)} matching files: {matching_files}")
             except Exception as e:
-                 logger.error(f"Error listing MP3 directory {MP3_DIRECTORY}: {e}")
+                 logger.error(f"Error listing MP3 directory {self.mp3_directory}: {e}")
                  matching_files = []
 
             if matching_files:
                 chosen_file = random.choice(matching_files)
-                next_artist_file_path = os.path.join(MP3_DIRECTORY, chosen_file)
+                next_artist_file_path = os.path.join(self.mp3_directory, chosen_file)
                 logger.info(f"{context}: Found next artist intro: {chosen_file}")
 
-                if os.path.exists(SILENT_MP3_FILE):
-                    logger.debug(f"Silent file found: {SILENT_MP3_FILE}. Attempting concatenation.")
-                    concat_files = [SILENT_MP3_FILE, next_artist_file_path, SILENT_MP3_FILE]
-                    concat_success = self._concatenate_mp3_files(concat_files, CURRENT_ARTIST_FILE)
+                if os.path.exists(self.silent_mp3_file):
+                    logger.debug(f"Silent file found: {self.silent_mp3_file}. Attempting concatenation.")
+                    concat_files = [self.silent_mp3_file, next_artist_file_path, self.silent_mp3_file]
+                    concat_success = self._concatenate_mp3_files(concat_files, self.current_artist_file)
                     if concat_success:
                         logger.info(f"{context}: Copied SILENCE + {chosen_file} + SILENCE to currentArtist.mp3")
                         next_success = True
                     else:
                         logger.error(f"{context}: Concatenation failed for {chosen_file}, attempting blank copy.")
                         # Pass no_next_artist=False (default)
-                        next_success = self._copy_blank_to_target(CURRENT_ARTIST_FILE, context, "currentArtist.mp3 (concat fallback)")
+                        next_success = self._copy_blank_to_target(self.current_artist_file, context, "currentArtist.mp3 (concat fallback)")
                 else:
-                    logger.warning(f"{context}: Silent MP3 missing ({SILENT_MP3_FILE}), copying next artist directly.")
+                    logger.warning(f"{context}: Silent MP3 missing ({self.silent_mp3_file}), copying next artist directly.")
                     try:
-                        logger.debug(f"Copying '{next_artist_file_path}' directly to '{CURRENT_ARTIST_FILE}'")
-                        shutil.copy2(next_artist_file_path, CURRENT_ARTIST_FILE)
+                        logger.debug(f"Copying '{next_artist_file_path}' directly to '{self.current_artist_file}'")
+                        shutil.copy2(next_artist_file_path, self.current_artist_file)
                         logger.info(f"{context}: Copied {chosen_file} directly to currentArtist.mp3")
                         next_success = True
                     except Exception as e:
                         logger.error(f"Error copying next artist file directly: {e}")
                         # Pass no_next_artist=False (default)
-                        next_success = self._copy_blank_to_target(CURRENT_ARTIST_FILE, context, "currentArtist.mp3 (direct copy fallback)")
+                        next_success = self._copy_blank_to_target(self.current_artist_file, context, "currentArtist.mp3 (direct copy fallback)")
             else:
                 # Updated log format (though this specific message isn't in the target log, the action is)
                 logger.info(f"{context}: Didn't find {next_artist}.mp3")
                 # Pass no_next_artist=False (default)
-                next_success = self._copy_blank_to_target(CURRENT_ARTIST_FILE, context, "currentArtist.mp3")
+                next_success = self._copy_blank_to_target(self.current_artist_file, context, "currentArtist.mp3")
         else:
             logger.info(f"{context}: No next artist specified in XML.")
             # Pass no_next_artist=True
-            next_success = self._copy_blank_to_target(CURRENT_ARTIST_FILE, context, "currentArtist.mp3", no_next_artist=True)
+            next_success = self._copy_blank_to_target(self.current_artist_file, context, "currentArtist.mp3", no_next_artist=True)
         logger.debug(f"currentArtist.mp3 update success: {next_success}")
 
         overall_success = actual_success and next_success
@@ -333,18 +344,18 @@ class IntroLoaderHandler:
     def _copy_blank_to_target(self, target_path, context, target_name_for_log, no_next_artist=False):
         """Copies the blank MP3 to the target path, logging appropriately."""
         logger.debug(f"Attempting to copy blank MP3 to {target_name_for_log}")
-        if os.path.exists(BLANK_MP3_FILE):
+        if os.path.exists(self.blank_mp3_file):
             try:
-                shutil.copy2(BLANK_MP3_FILE, target_path)
+                shutil.copy2(self.blank_mp3_file, target_path)
                 # Modify log message based on no_next_artist flag
                 log_suffix = " (no next artist)" if no_next_artist and target_name_for_log == "currentArtist.mp3" else ""
-                logger.info(f"{context}: Copying {os.path.basename(BLANK_MP3_FILE)} to {target_name_for_log}{log_suffix}")
+                logger.info(f"{context}: Copying {os.path.basename(self.blank_mp3_file)} to {target_name_for_log}{log_suffix}")
                 return True
             except Exception as e:
                 logger.error(f"Error copying blank MP3 to {target_name_for_log}: {e}")
                 return False
         else:
-            logger.error(f"Cannot copy blank MP3 to {target_name_for_log}: Source file {BLANK_MP3_FILE} not found.")
+            logger.error(f"Cannot copy blank MP3 to {target_name_for_log}: Source file {self.blank_mp3_file} not found.")
             try:
                 logger.warning(f"Attempting to create empty file at {target_name_for_log} as fallback.")
                 open(target_path, 'wb').close()
@@ -357,9 +368,9 @@ class IntroLoaderHandler:
     def _run_schedule(self):
         """Run the schedule URL."""
         # Updated log format
-        logger.info(f"Running schedule URL: {SCHEDULE_URL}")
+        logger.info(f"Running schedule URL: {self.schedule_url}")
         try:
-            with urllib.request.urlopen(SCHEDULE_URL, timeout=SCHEDULE_TIMEOUT) as response:
+            with urllib.request.urlopen(self.schedule_url, timeout=SCHEDULE_TIMEOUT) as response:
                 status = response.status
                 logger.info(f"Schedule response status: {status}")
             return True
@@ -370,12 +381,12 @@ class IntroLoaderHandler:
     def _perform_initial_check(self):
         """Runs the check and update logic once at startup."""
         logger.info("Performing initial check of XML file...")
-        if not os.path.exists(XML_FILE_PATH):
-            logger.warning(f"Initial check: XML file not found at {XML_FILE_PATH}")
+        if not os.path.exists(self.now_playing_xml):
+            logger.warning(f"Initial check: XML file not found at {self.now_playing_xml}")
             return
 
         current_artist_info, next_artist_info = self._get_artists_from_xml()
-        if current_artist_info == (None, None) and next_artist_info == (None, None) and not os.path.exists(XML_FILE_PATH):
+        if current_artist_info == (None, None) and next_artist_info == (None, None) and not os.path.exists(self.now_playing_xml):
              # Avoid logging error if file genuinely doesn't exist yet
              logger.info("Initial check: XML file not found and parsing yielded no data.")
              return
@@ -399,20 +410,20 @@ class IntroLoaderHandler:
         """Monitors the XML file for changes and updates artist files."""
         self.running = True
         logger.info("--- Intro Loader Handler Started ---")
-        logger.info(f"Monitoring XML: {XML_FILE_PATH}")
-        logger.info(f"Using MP3 Dir: {MP3_DIRECTORY}")
-        logger.info(f"Missing log: {MISSING_ARTIST_LOG}")
+        logger.info(f"Monitoring XML: {self.now_playing_xml}")
+        logger.info(f"Using MP3 Dir: {self.mp3_directory}")
+        logger.info(f"Missing log: {self.missing_artist_log}")
 
         # Initialize last modified time
         try:
-            if os.path.exists(XML_FILE_PATH):
-                self.last_modified_time = os.path.getmtime(XML_FILE_PATH)
+            if os.path.exists(self.now_playing_xml):
+                self.last_modified_time = os.path.getmtime(self.now_playing_xml)
                 logger.info(f"Initial XML mod time: {datetime.fromtimestamp(self.last_modified_time).strftime('%Y-%m-%d %H:%M:%S')} ({self.last_modified_time})")
             else:
-                logger.warning(f"XML file {XML_FILE_PATH} does not exist at start.")
+                logger.warning(f"XML file {self.now_playing_xml} does not exist at start.")
                 self.last_modified_time = 0 # Treat as non-existent
         except Exception as e:
-             logger.error(f"Error getting initial mod time for {XML_FILE_PATH}: {e}")
+             logger.error(f"Error getting initial mod time for {self.now_playing_xml}: {e}")
              self.last_modified_time = 0
 
         # Perform initial check/update outside the loop (already logs inside)
@@ -428,22 +439,22 @@ class IntroLoaderHandler:
                 logger.debug(f"Current time: {current_time_dt.strftime('%H:%M:%S')}")
 
                 # --- Check XML Existence ---
-                logger.debug(f"Checking existence of: {XML_FILE_PATH}")
-                xml_exists = os.path.exists(XML_FILE_PATH)
+                logger.debug(f"Checking existence of: {self.now_playing_xml}")
+                xml_exists = os.path.exists(self.now_playing_xml)
                 if not xml_exists:
                     if not xml_was_missing:
-                        logger.warning(f"XML file {XML_FILE_PATH} not found. Waiting...")
+                        logger.warning(f"XML file {self.now_playing_xml} not found. Waiting...")
                         xml_was_missing = True
                     self.last_modified_time = 0 # Reset mod time while missing
                     logger.debug(f"XML missing, sleeping {MONITOR_LOOP_SLEEP * 2}s...")
                     time.sleep(MONITOR_LOOP_SLEEP * 2) # Wait longer if file is missing
                     continue
                 elif xml_was_missing:
-                    logger.info(f"XML file {XML_FILE_PATH} found again. Resuming normal checks.")
+                    logger.info(f"XML file {self.now_playing_xml} found again. Resuming normal checks.")
                     xml_was_missing = False
                     # Get the new mod time immediately
                     try:
-                        self.last_modified_time = os.path.getmtime(XML_FILE_PATH)
+                        self.last_modified_time = os.path.getmtime(self.now_playing_xml)
                         logger.info(f"XML reappeared, new mod time: {datetime.fromtimestamp(self.last_modified_time).strftime('%H:%M:%S')} ({self.last_modified_time})")
                     except Exception as e:
                          logger.error(f"Error getting mod time after file reappeared: {e}")
@@ -451,21 +462,21 @@ class IntroLoaderHandler:
                     continue # Skip to next iteration to process normally
 
                 # --- Check XML Modification Time ---
-                logger.debug(f"Checking mod time for {XML_FILE_PATH}. Last known: {self.last_modified_time}")
+                logger.debug(f"Checking mod time for {self.now_playing_xml}. Last known: {self.last_modified_time}")
                 try:
-                    current_modified_time = os.path.getmtime(XML_FILE_PATH)
+                    current_modified_time = os.path.getmtime(self.now_playing_xml)
                     logger.debug(f"Current mod time: {current_modified_time}")
                 except FileNotFoundError:
                     # File disappeared between exists check and getmtime
                     if not xml_was_missing: # Log only once
-                        logger.warning(f"XML file {XML_FILE_PATH} disappeared during getmtime check. Waiting...")
+                        logger.warning(f"XML file {self.now_playing_xml} disappeared during getmtime check. Waiting...")
                         xml_was_missing = True
                     self.last_modified_time = 0 # Reset mod time
                     logger.debug(f"XML disappeared (getmtime), sleeping {MONITOR_LOOP_SLEEP}s...")
                     time.sleep(MONITOR_LOOP_SLEEP)
                     continue
                 except Exception as e:
-                     logger.error(f"Error getting current mod time for {XML_FILE_PATH}: {e}")
+                     logger.error(f"Error getting current mod time for {self.now_playing_xml}: {e}")
                      logger.debug(f"Error getting mod time, sleeping {MONITOR_LOOP_SLEEP}s...")
                      time.sleep(MONITOR_LOOP_SLEEP) # Wait before retrying
                      continue
@@ -485,7 +496,7 @@ class IntroLoaderHandler:
                     next_artist = next_artist_info[0]
                     # Check if parsing yielded *any* data, even if one artist is None
                     parsing_ok = current_artist is not None or next_artist is not None or \
-                                     current_artist_info[1] is not None or next_artist_info[1] is not None
+                                 current_artist_info[1] is not None or next_artist_info[1] is not None
                     data_changed = (current_artist != self.last_known_current_artist or
                                     next_artist != self.last_known_next_artist)
                     logger.debug(f"Parsing OK: {parsing_ok}, Data Changed: {data_changed}")
@@ -557,8 +568,8 @@ class IntroLoaderHandler:
         """Starts the handler in a separate thread."""
         if not self.running:
             # Re-check essential files before starting thread
-            if not os.path.exists(MP3_DIRECTORY):
-                 logger.critical(f"Cannot start Intro Loader: MP3 directory {MP3_DIRECTORY} not found.")
+            if not os.path.exists(self.mp3_directory):
+                 logger.critical(f"Cannot start Intro Loader: MP3 directory {self.mp3_directory} not found.")
                  return False # Indicate start failure
 
             self.running = True
@@ -582,13 +593,13 @@ class IntroLoaderHandler:
 
     def touch_monitored_xml(self):
         """Updates the modification time of the monitored XML file to trigger a check."""
-        logger.info(f"Debug action: Attempting to touch XML file: {XML_FILE_PATH}")
-        if not os.path.exists(XML_FILE_PATH):
-            logger.error(f"Cannot touch XML file: Not found at {XML_FILE_PATH}")
+        logger.info(f"Debug action: Attempting to touch XML file: {self.now_playing_xml}")
+        if not os.path.exists(self.now_playing_xml):
+            logger.error(f"Cannot touch XML file: Not found at {self.now_playing_xml}")
             return False
         try:
-            os.utime(XML_FILE_PATH, None) # Update mod time to now
-            logger.info(f"Successfully touched XML file: {XML_FILE_PATH}")
+            os.utime(self.now_playing_xml, None) # Update mod time to now
+            logger.info(f"Successfully touched XML file: {self.now_playing_xml}")
             return True
         except Exception as e:
             logger.exception(f"Error touching XML file: {e}")
@@ -597,12 +608,12 @@ class IntroLoaderHandler:
     def get_missing_artists(self):
         """Reads and parses the missing artists log file."""
         entries = []
-        if not os.path.exists(MISSING_ARTIST_LOG):
-            logger.warning(f"Missing artists log file not found: {MISSING_ARTIST_LOG}")
+        if not os.path.exists(self.missing_artist_log):
+            logger.warning(f"Missing artists log file not found: {self.missing_artist_log}")
             return entries # Return empty list
 
         try:
-            with open(MISSING_ARTIST_LOG, 'r', encoding='utf-8') as f:
+            with open(self.missing_artist_log, 'r', encoding='utf-8') as f:
                 lines = f.readlines()
 
             for i, line in enumerate(lines):
@@ -652,12 +663,12 @@ class IntroLoaderHandler:
             raw_lines_to_delete = [raw_lines_to_delete]
             logger.warning("delete_missing_artist_entry called with a single string, converting to list.")
 
-        if not os.path.exists(MISSING_ARTIST_LOG):
+        if not os.path.exists(self.missing_artist_log):
             logger.error("Cannot delete entries: Missing artists log file not found.")
             return False
 
         try:
-            with open(MISSING_ARTIST_LOG, 'r', encoding='utf-8') as f:
+            with open(self.missing_artist_log, 'r', encoding='utf-8') as f:
                 lines = f.readlines()
 
             # Create a set of lines to delete for efficient lookup
@@ -675,7 +686,7 @@ class IntroLoaderHandler:
                 return True # Lines weren't found, but they are not in the file.
 
             # Write the modified content back
-            with open(MISSING_ARTIST_LOG, 'w', encoding='utf-8') as f:
+            with open(self.missing_artist_log, 'w', encoding='utf-8') as f:
                 f.writelines(new_lines)
 
             logger.info(f"Successfully deleted {num_deleted} entr{'y' if num_deleted == 1 else 'ies'} from missing artists log.")

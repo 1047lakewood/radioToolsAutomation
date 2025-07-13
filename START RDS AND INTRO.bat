@@ -1,2 +1,2 @@
 @echo off
-start /B pythonw "G:\Misc\Dev\CombinedRDSApp\src\main_app.py"
+start /B pythonw "G:\Misc\Dev\radioToolsAutomation - Stable\src\main_app.py"

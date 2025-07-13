@@ -14,10 +14,10 @@ logger = logging.getLogger('AutoRDS')
 # from config_manager import ConfigManager # Import will be done in main_app
 
 # --- Constants (Consider making these configurable later via ConfigManager) ---
-RDS_IP = "50.208.125.83" # From original script
-RDS_PORT = 10001         # From original script
-NOW_PLAYING_XML = r"G:\To_RDS\nowplaying.xml" # From original script
-DEFAULT_MESSAGE = "732.901.7777 to SUPPORT and hear this program!" # From original script
+# RDS_IP = "50.208.125.83" # From original script
+# RDS_PORT = 10001         # From original script
+# NOW_PLAYING_XML = r"G:\To_RDS\nowplaying.xml" # From original script
+# DEFAULT_MESSAGE = "732.901.7777 to SUPPORT and hear this program!" # From original script
 SOCKET_TIMEOUT = 10 # Seconds
 COMMAND_DELAY = 0.2 # Seconds between RDS commands
 LOOP_SLEEP = 1      # Seconds between main loop checks
@@ -41,23 +41,29 @@ class AutoRDSHandler:
         self.current_message_duration = 10 # Default duration
         self.last_sent_text = None
         
+        # Load configurable settings from config
+        self.rds_ip = self.config_manager.get_setting("settings.rds.ip", "50.208.125.83")
+        self.rds_port = self.config_manager.get_setting("settings.rds.port", 10001)
+        self.now_playing_xml = self.config_manager.get_setting("settings.rds.now_playing_xml", r"G:\To_RDS\nowplaying.xml")
+        self.default_message = self.config_manager.get_setting("settings.rds.default_message", "732.901.7777 to SUPPORT and hear this program!")
+
         # Initialize LectureDetector
         self.lecture_detector = LectureDetector(
-            xml_path=NOW_PLAYING_XML,
+            xml_path=self.now_playing_xml,
             config_manager=config_manager
         )
 
     def _load_now_playing(self):
         """Loads now playing information from the XML file."""
         try:
-            if not os.path.exists(NOW_PLAYING_XML):
+            if not os.path.exists(self.now_playing_xml):
                 # Use the named logger
                 # logger.warning(f"Now playing XML not found: {NOW_PLAYING_XML}")
                 return {"artist": "", "title": ""}
 
             # Add a small delay before parsing, might help with file write completion issues
             time.sleep(0.1)
-            tree = ET.parse(NOW_PLAYING_XML)
+            tree = ET.parse(self.now_playing_xml)
             root = tree.getroot()
             current_track = root.find("TRACK")
             if current_track is not None:
@@ -67,11 +73,11 @@ class AutoRDSHandler:
             else:
                 return {"artist": "", "title": ""}
         except ET.ParseError as e:
-            logger.error(f"Error parsing XML file ({NOW_PLAYING_XML}): {e}. Check if file is valid/complete.")
+            logger.error(f"Error parsing XML file ({self.now_playing_xml}): {e}. Check if file is valid/complete.")
             return {"artist": "", "title": ""}
         except FileNotFoundError:
              # This might happen if the file disappears between os.path.exists and ET.parse
-             logger.warning(f"Now playing XML disappeared during read: {NOW_PLAYING_XML}")
+             logger.warning(f"Now playing XML disappeared during read: {self.now_playing_xml}")
              return {"artist": "", "title": ""}
         except Exception as e:
             logger.exception(f"Error loading now playing data: {e}")
@@ -180,7 +186,7 @@ class AutoRDSHandler:
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.settimeout(SOCKET_TIMEOUT)
-                s.connect((RDS_IP, RDS_PORT))
+                s.connect((self.rds_ip, self.rds_port))
                 # Ensure CRLF line ending, UTF-8 encoded
                 s.sendall((command + '\r\n').encode('utf-8'))
 
@@ -223,7 +229,7 @@ class AutoRDSHandler:
             sanitized_text = sanitized_text[:max_len]
         elif len(sanitized_text) == 0:
             logger.warning("Message became empty after sanitization. Sending default message instead.")
-            sanitized_text = DEFAULT_MESSAGE[:max_len] # Ensure default is also truncated if needed
+            sanitized_text = self.default_message[:max_len] # Ensure default is also truncated if needed
 
         # Send the command - logging happens within _send_command
         self._send_command(f"DPSTEXT={sanitized_text}")
@@ -242,8 +248,8 @@ class AutoRDSHandler:
                  if text: # Only include if formatting doesn't result in empty string
                      formatted_list.append(text)
 
-            if not formatted_list and DEFAULT_MESSAGE:
-                 return [DEFAULT_MESSAGE] # Return default if no valid messages
+            if not formatted_list and self.default_message:
+                 return [self.default_message] # Return default if no valid messages
 
             return formatted_list
         except Exception as e:
@@ -274,8 +280,8 @@ class AutoRDSHandler:
                 if not valid_messages:
                     # No valid custom messages, check if it's time for the default
                     if current_time - self.last_message_time >= self.current_message_duration:
-                        if self.last_sent_text != DEFAULT_MESSAGE:
-                            display_text = DEFAULT_MESSAGE
+                        if self.last_sent_text != self.default_message:
+                            display_text = self.default_message
                             selected_duration = 10 # Default duration for default message
                         else:
                             # Default is already showing, just reset timer

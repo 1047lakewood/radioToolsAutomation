@@ -87,7 +87,7 @@ class MainApplication(ThemedTk): # Restore ThemedTk base class
             self.config = ConfigManager()
             # Pass the specific log queue to each handler
             self.auto_rds = AutoRDSHandler(self.config, rds_log_queue)
-            self.intro_loader = IntroLoaderHandler(loader_log_queue)
+            self.intro_loader = IntroLoaderHandler(self.config, loader_log_queue)
             self._configure_handler_logging() # Configure logging handlers *after* creating instances
             logging.info("Components initialized.")
         except Exception as e:

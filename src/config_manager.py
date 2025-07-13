@@ -10,7 +10,22 @@ CONFIG_FILE_PATH = os.path.join(CONFIG_DIR, CONFIG_FILE_NAME)
 DEFAULT_CONFIG = {
     "Messages": [],
     "Whitelist": [],
-    "Blacklist": []
+    "Blacklist": [],
+    "playlist_presets": {},
+    "settings": {
+        "rds": {
+            "ip": "50.208.125.83",
+            "port": 10001,
+            "now_playing_xml": r"G:\To_RDS\nowplaying.xml",
+            "default_message": "732.901.7777 to SUPPORT and hear this program!"
+        },
+        "intro_loader": {
+            "now_playing_xml": r"G:\To_RDS\nowplaying.xml",
+            "mp3_directory": r"G:\Shiurim\introsCleanedUp",
+            "missing_artists_log": r"G:\Misc\Dev\CombinedRDSApp\missing_artists.log",
+            "schedule_url": "http://192.168.3.11:9000/?pass=bmas220&action=schedule&type=run&id=TBACFNBGJKOMETDYSQYR"
+        }
+    }
 }
 
 class ConfigManager:
@@ -134,25 +149,46 @@ class ConfigManager:
     def get_setting(self, key, default=None):
         """
         Retrieves a setting value for the given key.
+        Supports dot-notation for nested keys (e.g., "settings.rds.ip").
 
         Args:
-            key (str): The key of the setting to retrieve.
+            key (str): The key (or dot-notation path) of the setting to retrieve.
             default: The value to return if the key is not found. Defaults to None.
 
         Returns:
             The value of the setting, or the default value if not found.
         """
-        return self.config.get(key, default)
+        if '.' in key:
+            parts = key.split('.')
+            value = self.config
+            for part in parts:
+                if isinstance(value, dict):
+                    value = value.get(part, default)
+                else:
+                    return default
+            return value
+        else:
+            return self.config.get(key, default)
 
     def update_setting(self, key, value):
         """
         Updates or adds a setting with the given key and value, then saves the config.
+        Supports dot-notation for nested keys (e.g., "settings.rds.ip").
 
         Args:
-            key (str): The key of the setting to update or add.
+            key (str): The key (or dot-notation path) of the setting to update or add.
             value: The value to set for the key.
         """
-        self.config[key] = value
+        if '.' in key:
+            parts = key.split('.')
+            d = self.config
+            for part in parts[:-1]:
+                if part not in d:
+                    d[part] = {}
+                d = d[part]
+            d[parts[-1]] = value
+        else:
+            self.config[key] = value
         logging.debug(f"Updated setting '{key}' to '{value}'. Saving config.")
         self.save_config() # Save after updating a setting
 

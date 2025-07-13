@@ -1,5 +1,6 @@
+
 import tkinter as tk
-from tkinter import ttk, messagebox, Toplevel
+from tkinter import ttk, messagebox, Toplevel, filedialog
 import logging
 
 # Placeholders for managers/handlers if needed directly (passed in constructor)
@@ -65,6 +66,67 @@ class OptionsWindow(Toplevel):
         touch_help = ttk.Label(debug_frame, text="Updates the XML file's modification time to force the Intro Loader to re-check it.", wraplength=380)
         touch_help.pack(pady=2)
 
+        # --- Settings Tab (New) ---
+        settings_frame = ttk.Frame(notebook, padding="10")
+        notebook.add(settings_frame, text="Settings")
+
+        # RDS Settings Section
+        rds_label = ttk.Label(settings_frame, text="RDS Settings", font=("Segoe UI", 10, "bold"))
+        rds_label.pack(anchor=tk.W, pady=(0,5))
+
+        rds_frame = ttk.Frame(settings_frame)
+        rds_frame.pack(fill=tk.X, pady=5)
+
+        # RDS IP
+        ttk.Label(rds_frame, text="RDS IP:").grid(row=0, column=0, sticky=tk.W, padx=5)
+        self.rds_ip_var = tk.StringVar(value=self.config_manager.get_setting("settings.rds.ip", "50.208.125.83"))
+        ttk.Entry(rds_frame, textvariable=self.rds_ip_var, width=40).grid(row=0, column=1, sticky=tk.W, padx=5)
+
+        # RDS Port
+        ttk.Label(rds_frame, text="RDS Port:").grid(row=1, column=0, sticky=tk.W, padx=5)
+        self.rds_port_var = tk.IntVar(value=self.config_manager.get_setting("settings.rds.port", 10001))
+        ttk.Entry(rds_frame, textvariable=self.rds_port_var, width=40).grid(row=1, column=1, sticky=tk.W, padx=5)
+
+        # Now Playing XML
+        ttk.Label(rds_frame, text="Now Playing XML:").grid(row=2, column=0, sticky=tk.W, padx=5)
+        self.rds_xml_var = tk.StringVar(value=self.config_manager.get_setting("settings.rds.now_playing_xml", r"G:\To_RDS\nowplaying.xml"))
+        ttk.Entry(rds_frame, textvariable=self.rds_xml_var, width=40).grid(row=2, column=1, sticky=tk.W, padx=5)
+        ttk.Button(rds_frame, text="Browse", command=lambda: self.browse_file(self.rds_xml_var)).grid(row=2, column=2, padx=5)
+
+        # Default Message
+        ttk.Label(rds_frame, text="Default Message:").grid(row=3, column=0, sticky=tk.W, padx=5)
+        self.rds_default_var = tk.StringVar(value=self.config_manager.get_setting("settings.rds.default_message", "732.901.7777 to SUPPORT and hear this program!"))
+        ttk.Entry(rds_frame, textvariable=self.rds_default_var, width=40).grid(row=3, column=1, sticky=tk.W, padx=5)
+
+        # Intro Loader Settings Section
+        loader_label = ttk.Label(settings_frame, text="Intro Loader Settings", font=("Segoe UI", 10, "bold"))
+        loader_label.pack(anchor=tk.W, pady=(10,5))
+
+        loader_frame = ttk.Frame(settings_frame)
+        loader_frame.pack(fill=tk.X, pady=5)
+
+        # Now Playing XML (shared with RDS, but allow separate if needed)
+        ttk.Label(loader_frame, text="Now Playing XML:").grid(row=0, column=0, sticky=tk.W, padx=5)
+        self.loader_xml_var = tk.StringVar(value=self.config_manager.get_setting("settings.intro_loader.now_playing_xml", r"G:\To_RDS\nowplaying.xml"))
+        ttk.Entry(loader_frame, textvariable=self.loader_xml_var, width=40).grid(row=0, column=1, sticky=tk.W, padx=5)
+        ttk.Button(loader_frame, text="Browse", command=lambda: self.browse_file(self.loader_xml_var)).grid(row=0, column=2, padx=5)
+
+        # MP3 Directory
+        ttk.Label(loader_frame, text="MP3 Directory:").grid(row=1, column=0, sticky=tk.W, padx=5)
+        self.loader_mp3_dir_var = tk.StringVar(value=self.config_manager.get_setting("settings.intro_loader.mp3_directory", r"G:\Shiurim\introsCleanedUp"))
+        ttk.Entry(loader_frame, textvariable=self.loader_mp3_dir_var, width=40).grid(row=1, column=1, sticky=tk.W, padx=5)
+        ttk.Button(loader_frame, text="Browse", command=lambda: self.browse_directory(self.loader_mp3_dir_var)).grid(row=1, column=2, padx=5)
+
+        # Missing Artists Log
+        ttk.Label(loader_frame, text="Missing Artists Log:").grid(row=2, column=0, sticky=tk.W, padx=5)
+        self.loader_log_var = tk.StringVar(value=self.config_manager.get_setting("settings.intro_loader.missing_artists_log", r"G:\Misc\Dev\CombinedRDSApp\missing_artists.log"))
+        ttk.Entry(loader_frame, textvariable=self.loader_log_var, width=40).grid(row=2, column=1, sticky=tk.W, padx=5)
+        ttk.Button(loader_frame, text="Browse", command=lambda: self.browse_file(self.loader_log_var, save=True)).grid(row=2, column=2, padx=5)
+
+        # Schedule URL
+        ttk.Label(loader_frame, text="Schedule URL:").grid(row=3, column=0, sticky=tk.W, padx=5)
+        self.loader_url_var = tk.StringVar(value=self.config_manager.get_setting("settings.intro_loader.schedule_url", "http://192.168.3.11:9000/?pass=bmas220&action=schedule&type=run&id=TBACFNBGJKOMETDYSQYR"))
+        ttk.Entry(loader_frame, textvariable=self.loader_url_var, width=40).grid(row=3, column=1, sticky=tk.W, padx=5)
 
         # --- Bottom Buttons ---
         button_frame = ttk.Frame(main_frame)
@@ -72,6 +134,20 @@ class OptionsWindow(Toplevel):
         ttk.Button(button_frame, text="Save & Close", command=self.save_and_close).pack(side=tk.RIGHT, padx=5)
         ttk.Button(button_frame, text="Cancel", command=self.on_close).pack(side=tk.RIGHT, padx=5)
 
+    def browse_file(self, var, save=False):
+        """Opens a file dialog to select a file path and sets the variable."""
+        if save:
+            path = filedialog.asksaveasfilename(title="Select File", defaultextension=".log")
+        else:
+            path = filedialog.askopenfilename(title="Select File")
+        if path:
+            var.set(path)
+
+    def browse_directory(self, var):
+        """Opens a directory dialog to select a folder path and sets the variable."""
+        path = filedialog.askdirectory(title="Select Directory")
+        if path:
+            var.set(path)
 
     def create_list_editor(self, parent_frame, list_name, initial_list):
         """Helper to create the listbox, entry, and buttons for Whitelist/Blacklist."""
@@ -160,6 +236,16 @@ class OptionsWindow(Toplevel):
                  logging.exception("Failed to save Whitelist/Blacklist.")
                  messagebox.showerror("Save Error", f"Failed to save settings:\n{e}", parent=self)
                  return # Don't close if save failed
+
+        # Save settings from the new tab
+        self.config_manager.update_setting("settings.rds.ip", self.rds_ip_var.get())
+        self.config_manager.update_setting("settings.rds.port", self.rds_port_var.get())
+        self.config_manager.update_setting("settings.rds.now_playing_xml", self.rds_xml_var.get())
+        self.config_manager.update_setting("settings.rds.default_message", self.rds_default_var.get())
+        self.config_manager.update_setting("settings.intro_loader.now_playing_xml", self.loader_xml_var.get())
+        self.config_manager.update_setting("settings.intro_loader.mp3_directory", self.loader_mp3_dir_var.get())
+        self.config_manager.update_setting("settings.intro_loader.missing_artists_log", self.loader_log_var.get())
+        self.config_manager.update_setting("settings.intro_loader.schedule_url", self.loader_url_var.get())
 
         self.destroy()
 
