@@ -46,9 +46,9 @@ class MainApp(tk.Tk):
         # Initialize handlers
         try:
             # # Ensure correct argument order: queue, config_manager
-            # self.rds_handler = AutoRDSHandler(self.rds_queue, self.config_manager)
-            # logging.info("AutoRDSHandler initialized successfully.")
-            # self.intro_loader_handler = IntroLoaderHandler(self.intro_queue, self.config_manager)
+            self.rds_handler = AutoRDSHandler(self.rds_queue, self.config_manager)
+            logging.info("AutoRDSHandler initialized successfully.")
+            self.intro_loader_handler = IntroLoaderHandler(self.intro_queue, self.config_manager)
             logging.info("IntroLoaderHandler initialized successfully.")
         except AttributeError as e:
             logging.error(f"AttributeError during handler initialization: {e}")
