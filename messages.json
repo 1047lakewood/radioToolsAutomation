@@ -174,14 +174,6 @@
         "R' Michel Twersky",
         "R. Michel Twerski"
     ],
-    "playlist_presets": {
-        "Station ID": "G:\\Misc\\Radio Info\\Station ID Playlist.m3u8",
-        "Sponsorships List": "G:\\Misc\\Sponsorships\\Sponsorships List.m3u8",
-        "Morning M-Tu-F": "G:\\Misc\\Sponsorships\\Morning M-Tu-F.m3u8",
-        "Daily Sponsor 1": "G:\\Misc\\Sponsorships\\daily sponsor 1.m3u8",
-        "ace restoration": "G:\\Misc\\Dev\\CombinedRDSApp\\ace restoration with staion id.m3u8",
-        "Sponsor  and dedicate ad": "G:\\Misc\\Sponsorships\\sponsor and dedicate.m3u8"
-    },
     "settings": {
         "rds": {
             "ip": "50.208.125.83",
