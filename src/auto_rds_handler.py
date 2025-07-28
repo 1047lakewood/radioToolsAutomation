@@ -25,7 +25,7 @@ ERROR_RETRY_DELAY = 15 # Seconds to wait after a major loop error
 
 class AutoRDSHandler:
     # Accept log_queue in init, though not directly used here (logger config handles it)
-    def __init__(self, config_manager, log_queue):
+    def __init__(self, log_queue, config_manager):
         """
         Initializes the AutoRDS handler.
 

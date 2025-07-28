@@ -90,7 +90,7 @@ MAX_LOG_LINES = 500 # Maximum number of lines to keep in the missing artists log
 
 class IntroLoaderHandler:
     # Accept log_queue in init, though not directly used here (logger config handles it)
-    def __init__(self, config_manager, log_queue):
+    def __init__(self, log_queue, config_manager):
         self.config_manager = config_manager
         self.running = False
         self.thread = None

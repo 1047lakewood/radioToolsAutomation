@@ -26,13 +26,14 @@ class MainApp(tk.Tk):
         self.minsize(700, 500)
         self.themed_style = ttkthemes.ThemedStyle(self)
         self.themed_style.set_theme("arc")  # Modern theme; options: 'arc', 'equilux', etc.
-
+        
         # Initialize logging
         logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
         # Initialize components
         try:
             self.config_manager = ConfigManager()
+            
             logging.info("ConfigManager initialized successfully.")
         except Exception as e:
             logging.error(f"Failed to initialize ConfigManager: {e}")
@@ -49,6 +50,7 @@ class MainApp(tk.Tk):
             self.rds_handler = AutoRDSHandler(self.rds_queue, self.config_manager)
             logging.info("AutoRDSHandler initialized successfully.")
             self.intro_loader_handler = IntroLoaderHandler(self.intro_queue, self.config_manager)
+            
             logging.info("IntroLoaderHandler initialized successfully.")
         except AttributeError as e:
             logging.error(f"AttributeError during handler initialization: {e}")
