@@ -14,7 +14,7 @@ class OptionsWindow(Toplevel):
         self.transient(parent)
         self.grab_set()
         self.title("Options")
-        self.geometry("600x450") # Adjust size as needed
+        self.geometry("750x550")  # Open larger so all settings are visible
 
         self.config_manager = config_manager
         self.intro_loader_handler = intro_loader_handler
