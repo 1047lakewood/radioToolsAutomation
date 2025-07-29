@@ -1,4 +1,3 @@
-
 {
     "Messages": [
         {
@@ -187,5 +186,15 @@
             "missing_artists_log": "G:\\Misc\\Dev\\CombinedRDSApp\\missing_artists.log",
             "schedule_url": "http://192.168.3.11:9000/?pass=bmas220&action=schedule&type=run&id=TBACFNBGJKOMETDYSQYR"
         }
-    }
+    },
+    "Ads": [
+        {
+            "Name": "New Adfgdfg",
+            "Enabled": true,
+            "Scheduled": false,
+            "MP3File": "",
+            "Days": [],
+            "Times": []
+        }
+    ]
 }

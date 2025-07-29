@@ -32,7 +32,8 @@ def test_lecture_detector_integration():
         log_queue = queue.Queue()
         
         # Create AutoRDSHandler (this should initialize LectureDetector)
-        rds_handler = AutoRDSHandler(config_manager, log_queue)
+        # Note: AutoRDSHandler expects log_queue as the first argument
+        rds_handler = AutoRDSHandler(log_queue, config_manager)
         
         print("✅ AutoRDSHandler initialized successfully")
         print(f"   - LectureDetector instance: {rds_handler.lecture_detector}")
