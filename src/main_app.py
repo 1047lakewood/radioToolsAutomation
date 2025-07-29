@@ -7,6 +7,21 @@ import threading
 from queue import Queue
 from datetime import datetime
 
+
+class QueueHandler(logging.Handler):
+    """Send logging records to a queue."""
+
+    def __init__(self, log_queue: Queue):
+        super().__init__()
+        self.log_queue = log_queue
+
+    def emit(self, record):
+        try:
+            msg = self.format(record)
+            self.log_queue.put(msg)
+        except Exception:
+            self.handleError(record)
+
 from config_manager import ConfigManager
 from auto_rds_handler import AutoRDSHandler
 from intro_loader_handler import IntroLoaderHandler
@@ -44,6 +59,23 @@ class MainApp(tk.Tk):
         self.rds_queue = Queue()
         self.intro_queue = Queue()
 
+        # Route handler loggers to the queues
+        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+        rds_qh = QueueHandler(self.rds_queue)
+        rds_qh.setFormatter(formatter)
+        loader_qh = QueueHandler(self.intro_queue)
+        loader_qh.setFormatter(formatter)
+
+        rds_logger = logging.getLogger('AutoRDS')
+        rds_logger.setLevel(logging.INFO)
+        rds_logger.propagate = False
+        rds_logger.addHandler(rds_qh)
+
+        loader_logger = logging.getLogger('IntroLoader')
+        loader_logger.setLevel(logging.INFO)
+        loader_logger.propagate = False
+        loader_logger.addHandler(loader_qh)
+
         # Initialize handlers
         try:
             # # Ensure correct argument order: queue, config_manager
@@ -78,8 +110,9 @@ class MainApp(tk.Tk):
             self.destroy()
             return
 
-        # Start processing queues for GUI updates
+        # Start periodic GUI updates
         self.after(100, self.process_queues)
+        self.after(5000, self.update_message_cycle)
 
     def create_widgets(self):
         main_frame = ttk.Frame(self, padding="10")
@@ -95,15 +128,37 @@ class MainApp(tk.Tk):
         ttk.Button(toolbar, text="Mini Playlist Editor", command=self.open_playlist_editor_window).pack(side=tk.LEFT, padx=5)
         ttk.Button(toolbar, text="Ad Inserter", command=self.open_ad_inserter_window).pack(side=tk.LEFT, padx=5)
 
-        # Logs Section
-        logs_frame = ttk.LabelFrame(main_frame, text="Logs", padding="5")
-        logs_frame.pack(fill=tk.BOTH, expand=True, pady=5)
+        # Logs Section with dedicated panes
+        log_pane = ttk.PanedWindow(main_frame, orient=tk.VERTICAL)
+        log_pane.pack(fill=tk.BOTH, expand=True)
 
-        self.log_text = tk.Text(logs_frame, wrap=tk.WORD, height=15, font=("Segoe UI", 9))
-        self.log_text.pack(fill=tk.BOTH, expand=True)
-        self.log_text.config(state=tk.DISABLED)  # Read-only
+        rds_log_frame = ttk.LabelFrame(log_pane, text="AutoRDS Logs")
+        self.rds_log_text = tk.Text(rds_log_frame, wrap=tk.WORD, state=tk.DISABLED, height=10, font=("Consolas", 9))
+        rds_scroll = ttk.Scrollbar(rds_log_frame, orient=tk.VERTICAL, command=self.rds_log_text.yview)
+        self.rds_log_text.config(yscrollcommand=rds_scroll.set)
+        rds_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        self.rds_log_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-        # Current RDS Message
+        loader_log_frame = ttk.LabelFrame(log_pane, text="Intro Loader Logs")
+        self.loader_log_text = tk.Text(loader_log_frame, wrap=tk.WORD, state=tk.DISABLED, height=10, font=("Consolas", 9))
+        loader_scroll = ttk.Scrollbar(loader_log_frame, orient=tk.VERTICAL, command=self.loader_log_text.yview)
+        self.loader_log_text.config(yscrollcommand=loader_scroll.set)
+        loader_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        self.loader_log_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
+
+        log_pane.add(rds_log_frame, weight=1)
+        log_pane.add(loader_log_frame, weight=1)
+
+        # Current RDS Messages Cycle
+        msg_frame = ttk.LabelFrame(main_frame, text="Current RDS Messages Cycle")
+        msg_frame.pack(fill=tk.X, pady=(10, 0))
+        self.msg_listbox = tk.Listbox(msg_frame, height=8, font=("Segoe UI", 9))
+        msg_scroll = ttk.Scrollbar(msg_frame, orient=tk.VERTICAL, command=self.msg_listbox.yview)
+        self.msg_listbox.config(yscrollcommand=msg_scroll.set)
+        msg_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        self.msg_listbox.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5, pady=5)
+
+        # Current RDS Message label
         rds_frame = ttk.LabelFrame(main_frame, text="Current RDS Message", padding="5")
         rds_frame.pack(fill=tk.X, pady=5)
 
@@ -111,8 +166,10 @@ class MainApp(tk.Tk):
         rds_label = ttk.Label(rds_frame, textvariable=self.current_rds_var, font=("Segoe UI", 10, "bold"), anchor=tk.W)
         rds_label.pack(fill=tk.X)
 
+
     def open_config_window(self):
-        ConfigWindow(self, self.config_manager, self.rds_handler)
+        """Open the message configuration window."""
+        ConfigWindow(self, self.config_manager)
 
     def open_missing_artists_window(self):
         MissingArtistsWindow(self, self.intro_loader_handler)
@@ -131,7 +188,7 @@ class MainApp(tk.Tk):
         updated = False
         while not self.rds_queue.empty():
             message = self.rds_queue.get()
-            self._log_message("RDS", message)
+            self._log_message(self.rds_log_text, message)
             if "Sent RDS message" in message:
                 try:
                     sent_msg = message.split("Sent RDS message: ")[1].strip()
@@ -142,21 +199,37 @@ class MainApp(tk.Tk):
 
         while not self.intro_queue.empty():
             message = self.intro_queue.get()
-            self._log_message("Intro", message)
+            self._log_message(self.loader_log_text, message)
             updated = True
 
         if updated:
-            self.log_text.see(tk.END)  # Auto-scroll to bottom
+            self.rds_log_text.see(tk.END)
+            self.loader_log_text.see(tk.END)
 
         self.after(100, self.process_queues)
 
-    def _log_message(self, handler, message):
-        """Inserts a formatted log message into the text widget."""
-        self.log_text.config(state=tk.NORMAL)
+    def update_message_cycle(self):
+        """Refresh the list of messages currently eligible for display."""
+        try:
+            messages = self.rds_handler.get_current_display_messages()
+            self.msg_listbox.delete(0, tk.END)
+            if messages:
+                for msg in messages:
+                    self.msg_listbox.insert(tk.END, msg)
+            else:
+                self.msg_listbox.insert(tk.END, "(No messages currently scheduled/valid)")
+        except Exception as e:
+            self.msg_listbox.delete(0, tk.END)
+            self.msg_listbox.insert(tk.END, f"(Error: {e})")
+        finally:
+            self.after(5000, self.update_message_cycle)
+
+    def _log_message(self, widget, message):
+        """Insert a timestamped message into the given text widget."""
+        widget.config(state=tk.NORMAL)
         timestamp = datetime.now().strftime('%H:%M:%S')
-        formatted = f"[{timestamp}] [{handler}] {message}\n"
-        self.log_text.insert(tk.END, formatted)
-        self.log_text.config(state=tk.DISABLED)
+        widget.insert(tk.END, f"[{timestamp}] {message}\n")
+        widget.config(state=tk.DISABLED)
 
 if __name__ == "__main__":
     app = MainApp()
