@@ -112,7 +112,8 @@ class MainApp(tk.Tk):
         rds_label.pack(fill=tk.X)
 
     def open_config_window(self):
-        ConfigWindow(self, self.config_manager, self.rds_handler)
+        """Open the message configuration window."""
+        ConfigWindow(self, self.config_manager)
 
     def open_missing_artists_window(self):
         MissingArtistsWindow(self, self.intro_loader_handler)
