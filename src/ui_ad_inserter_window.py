@@ -89,7 +89,15 @@ class AdInserterWindow(tk.Toplevel):
             row, col = divmod(h, 6)
             ttk.Checkbutton(hours_frame, text=f"{h:02d}", variable=self.hour_vars[h], width=4).grid(row=row, column=col, padx=2, pady=2)
 
-        self.schedule_widgets = [w for w in [days_frame, hours_frame] + list(days_frame.winfo_children()) + list(hours_frame.winfo_children())]
+        # Only widgets that support the ``state`` option should be toggled.
+        # Frames themselves do not have a ``state`` attribute, which caused a
+        # ``TclError`` when ``toggle_schedule`` attempted to configure them.
+        # Collect only the checkbuttons contained within the day and hour frames
+        # so they can be enabled/disabled without errors.
+        self.schedule_widgets = (
+            list(days_frame.winfo_children()) +
+            list(hours_frame.winfo_children())
+        )
         self.toggle_schedule()  # Initial state
 
         # Bottom Buttons
