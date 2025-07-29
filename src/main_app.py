@@ -259,6 +259,21 @@ class MainApplication(ThemedTk): # Restore ThemedTk base class
             logging.exception("Error opening config window.")
             messagebox.showerror("Error", f"Could not open configuration window:\n{e}")
 
+    # ------------------------------------------------------------------
+    # Compatibility method
+    # ------------------------------------------------------------------
+    def open_config_window(self):
+        """Legacy alias for :meth:`open_config`.
+
+        Earlier versions of the application used ``open_config_window`` and
+        passed an unused ``rds_handler`` argument.  The current
+        ``ConfigWindow`` only requires the parent window and a
+        ``ConfigManager`` instance, so this wrapper simply forwards the call
+        to :meth:`open_config` for backward compatibility.
+        """
+        logging.debug("open_config_window called (legacy support)")
+        self.open_config()
+
     def open_missing_artists(self):
         """Opens the missing artists log window."""
         logging.debug("Show Missing Artists button clicked.")
