@@ -46,6 +46,10 @@ class ConfigManager:
                     "mp3_directory": r"G:\Shiurim\introsCleanedUp",
                     "missing_artists_log": r"G:\Misc\Dev\CombinedRDSApp\missing_artists.log",
                     "schedule_url": "http://192.168.3.11:9000/?pass=bmas220&action=schedule&type=run&id=TBACFNBGJKOMETDYSQYR"
+                },
+                "ad_inserter": {
+                    "insertion_url": "http://localhost:8000/insert",
+                    "output_mp3": r"G:\Ads\newAd.mp3"
                 }
             }
         }
