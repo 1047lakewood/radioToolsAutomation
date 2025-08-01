@@ -378,6 +378,13 @@ class IntroLoaderHandler:
             logger.error(f"Error running schedule: {e}")
             return False
 
+    def _reset_schedule_timer(self):
+        """Set the next schedule run time relative to now."""
+        self.next_schedule_run = datetime.now() + timedelta(minutes=SCHEDULE_DELAY_MINUTES)
+        logger.info(
+            f"Schedule set to run next at: {self.next_schedule_run.strftime('%Y-%m-%d %H:%M:%S')}"
+        )
+
     def _perform_initial_check(self):
         """Runs the check and update logic once at startup."""
         logger.info("Performing initial check of XML file...")
@@ -428,6 +435,10 @@ class IntroLoaderHandler:
 
         # Perform initial check/update outside the loop (already logs inside)
         self._perform_initial_check()
+
+        # Initialize periodic schedule regardless of XML changes
+        if self.next_schedule_run is None:
+            self._reset_schedule_timer()
 
         logger.info("Starting XML monitor loop...")
         xml_was_missing = (self.last_modified_time == 0) # Track if we logged missing state
@@ -531,9 +542,8 @@ class IntroLoaderHandler:
                         else:
                             logger.debug("XML modified, but artist data unchanged. Skipping file update.")
 
-                        # Set schedule *after* processing the modification, regardless of data change, as long as parsing was ok
-                        self.next_schedule_run = datetime.now() + timedelta(minutes=SCHEDULE_DELAY_MINUTES)
-                        logger.info(f"Schedule set to run next at: {self.next_schedule_run.strftime('%Y-%m-%d %H:%M:%S')}")
+                        # Set schedule *after* processing the modification, regardless of data change
+                        self._reset_schedule_timer()
 
                     else: # parsing not ok
                         logger.warning("XML modified, but failed to read artist info. Check XML content.")
@@ -545,9 +555,10 @@ class IntroLoaderHandler:
                 if self.next_schedule_run and current_time_dt >= self.next_schedule_run:
                     logger.info("Scheduled time reached. Running schedule...")
                     self._run_schedule()
-                    self.next_schedule_run = None # Reset schedule after running
+                    # Schedule the next run
+                    self._reset_schedule_timer()
                 elif self.next_schedule_run:
-                     logger.debug(f"Schedule check: Not time yet (Next run: {self.next_schedule_run.strftime('%H:%M:%S')})")
+                    logger.debug(f"Schedule check: Not time yet (Next run: {self.next_schedule_run.strftime('%H:%M:%S')})")
 
 
                 # --- Loop Sleep ---
