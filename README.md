@@ -35,6 +35,9 @@ Rule: Artists starting with 'R' are lectures (unless whitelisted).
 Playlist Editor:
 Preset-based M3U8 editing (add/remove files).
 Browse addition; save to file.
+Ad Services:
+Combine scheduled ads into one MP3 and send to a schedule URL.
+Instant ad option for immediate playback via a separate URL.
 Debug/Testing:
 XML "touch" to force checks.
 Bug reproduction scripts; integration tests.

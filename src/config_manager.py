@@ -49,6 +49,7 @@ class ConfigManager:
                 },
                 "ad_inserter": {
                     "insertion_url": "http://localhost:8000/insert",
+                    "instant_url": "http://localhost:8000/play",
                     "output_mp3": r"G:\Ads\newAd.mp3"
                 }
             }
