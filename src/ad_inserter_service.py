@@ -20,15 +20,25 @@ class AdInserterService:
             "settings.ad_inserter.insertion_url",
             "http://localhost:8000/insert",
         )
+        self.instant_url = self.config_manager.get_setting(
+            "settings.ad_inserter.instant_url",
+            "http://localhost:8000/play",
+        )
         self.output_mp3 = self.config_manager.get_setting(
             "settings.ad_inserter.output_mp3",
             r"G:\\Ads\\newAd.mp3",
         )
 
     def run(self):
-        """Combine ads and call the ad inserter URL."""
+        """Combine ads and call the scheduled insertion URL."""
         if self._combine_ads():
-            return self._call_inserter_url()
+            return self._call_url(self.insertion_url)
+        return False
+
+    def run_instant(self):
+        """Combine ads and call the instant-play URL."""
+        if self._combine_ads():
+            return self._call_url(self.instant_url)
         return False
 
     def _combine_ads(self):
@@ -93,12 +103,12 @@ class AdInserterService:
             logger.exception(f"Error concatenating ads: {e}")
             return False
 
-    def _call_inserter_url(self):
-        logger.info(f"Calling ad inserter URL: {self.insertion_url}")
+    def _call_url(self, url):
+        logger.info(f"Calling ad service URL: {url}")
         try:
-            with urllib.request.urlopen(self.insertion_url, timeout=10) as resp:
-                logger.info(f"Ad inserter response: {resp.status}")
+            with urllib.request.urlopen(url, timeout=10) as resp:
+                logger.info(f"Ad service response: {resp.status}")
             return True
         except Exception as e:  # pragma: no cover - runtime safety
-            logger.error(f"Failed to call ad inserter URL: {e}")
+            logger.error(f"Failed to call ad service URL: {e}")
             return False

@@ -1,4 +1,4 @@
-
+ --- Ad Inserter Settings Section ---.*?ttk.Button(ad_frame, text="Browse".*?
 import tkinter as tk
 from tkinter import ttk, messagebox, Toplevel, filedialog
 import logging
@@ -82,6 +82,16 @@ class OptionsWindow(Toplevel):
         )
         ad_help.pack(pady=2)
 
+        # Button to instantly play ads via the instant URL
+        instant_button = ttk.Button(debug_frame, text="Play Ad Now", command=self.run_instant_ad_service_action)
+        instant_button.pack(pady=5)
+        instant_help = ttk.Label(
+            debug_frame,
+            text="Combine enabled ads and trigger immediate playback.",
+            wraplength=380,
+        )
+        instant_help.pack(pady=2)
+
         # --- Settings Tab (New) ---
         settings_frame = ttk.Frame(notebook, padding="10")
         notebook.add(settings_frame, text="Settings")
@@ -141,24 +151,36 @@ class OptionsWindow(Toplevel):
 
         # Schedule URL
         ttk.Label(loader_frame, text="Schedule URL:").grid(row=3, column=0, sticky=tk.W, padx=5)
-        self.loader_url_var = tk.StringVar(value=self.config_manager.get_setting("settings.intro_loader.schedule_url", "http://192.168.3.11:9000/?pass=bmas220&action=schedule&type=run&id=TBACFNBGJKOMETDYSQYR"))
+        self.loader_url_var = tk.StringVar(
+            value=self.config_manager.get_setting(
+                "settings.intro_loader.schedule_url",
+                "http://192.168.3.11:9000/?pass=bmas220&action=schedule&type=run&id=TBACFNBGJKOMETDYSQYR",
+            )
+        )
         ttk.Entry(loader_frame, textvariable=self.loader_url_var, width=40).grid(row=3, column=1, sticky=tk.W, padx=5)
 
-        # --- Ad Inserter Settings Section ---
-        ad_label = ttk.Label(settings_frame, text="Ad Inserter Settings", font=("Segoe UI", 10, "bold"))
-        ad_label.pack(anchor=tk.W, pady=(10,5))
+        # --- Ad Settings Tab ---
+        ads_tab = ttk.Frame(notebook, padding="10")
+        notebook.add(ads_tab, text="Ad Settings")
 
-        ad_frame = ttk.Frame(settings_frame)
+        ad_label = ttk.Label(ads_tab, text="Ad Inserter Settings", font=("Segoe UI", 10, "bold"))
+        ad_label.pack(anchor=tk.W, pady=(0,5))
+
+        ad_frame = ttk.Frame(ads_tab)
         ad_frame.pack(fill=tk.X, pady=5)
 
-        ttk.Label(ad_frame, text="Insertion URL:").grid(row=0, column=0, sticky=tk.W, padx=5)
+        ttk.Label(ad_frame, text="Schedule URL:").grid(row=0, column=0, sticky=tk.W, padx=5)
         self.ad_url_var = tk.StringVar(value=self.config_manager.get_setting("settings.ad_inserter.insertion_url", "http://localhost:8000/insert"))
         ttk.Entry(ad_frame, textvariable=self.ad_url_var, width=40).grid(row=0, column=1, sticky=tk.W, padx=5)
 
-        ttk.Label(ad_frame, text="New Ad MP3:").grid(row=1, column=0, sticky=tk.W, padx=5)
-        self.ad_mp3_var = tk.StringVar(value=self.config_manager.get_setting("settings.ad_inserter.output_mp3", r"G:\Ads\newAd.mp3"))
-        ttk.Entry(ad_frame, textvariable=self.ad_mp3_var, width=40).grid(row=1, column=1, sticky=tk.W, padx=5)
-        ttk.Button(ad_frame, text="Browse", command=lambda: self.browse_file(self.ad_mp3_var)).grid(row=1, column=2, padx=5)
+        ttk.Label(ad_frame, text="Instant URL:").grid(row=1, column=0, sticky=tk.W, padx=5)
+        self.ad_instant_url_var = tk.StringVar(value=self.config_manager.get_setting("settings.ad_inserter.instant_url", "http://localhost:8000/play"))
+        ttk.Entry(ad_frame, textvariable=self.ad_instant_url_var, width=40).grid(row=1, column=1, sticky=tk.W, padx=5)
+
+        ttk.Label(ad_frame, text="New Ad MP3:").grid(row=2, column=0, sticky=tk.W, padx=5)
+        self.ad_mp3_var = tk.StringVar(value=self.config_manager.get_setting("settings.ad_inserter.output_mp3", r"G:\\Ads\\newAd.mp3"))
+        ttk.Entry(ad_frame, textvariable=self.ad_mp3_var, width=40).grid(row=2, column=1, sticky=tk.W, padx=5)
+        ttk.Button(ad_frame, text="Browse", command=lambda: self.browse_file(self.ad_mp3_var)).grid(row=2, column=2, padx=5)
 
         # --- Bottom Buttons ---
         button_frame = ttk.Frame(main_frame)
@@ -262,6 +284,19 @@ class OptionsWindow(Toplevel):
         except Exception:
             logging.exception("Exception running AdInserterService.")
 
+    def run_instant_ad_service_action(self):
+        """Combine ads and trigger the instant ad URL."""
+        logging.debug("Play Ad Now button clicked.")
+        try:
+            service = AdInserterService(self.config_manager)
+            success = service.run_instant()
+            if success:
+                logging.info("Instant ad executed successfully via Options window.")
+            else:
+                logging.error("Instant ad failed via Options window. Check logs.")
+        except Exception:
+            logging.exception("Exception running AdInserterService instant.")
+
     def save_and_close(self):
         """Saves the whitelist/blacklist if changed and closes."""
         # Get current lists from listboxes
@@ -292,6 +327,7 @@ class OptionsWindow(Toplevel):
         self.config_manager.update_setting("settings.intro_loader.missing_artists_log", self.loader_log_var.get())
         self.config_manager.update_setting("settings.intro_loader.schedule_url", self.loader_url_var.get())
         self.config_manager.update_setting("settings.ad_inserter.insertion_url", self.ad_url_var.get())
+        self.config_manager.update_setting("settings.ad_inserter.instant_url", self.ad_instant_url_var.get())
         self.config_manager.update_setting("settings.ad_inserter.output_mp3", self.ad_mp3_var.get())
 
         self.destroy()
