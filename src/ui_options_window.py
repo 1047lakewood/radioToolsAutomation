@@ -14,7 +14,7 @@ class OptionsWindow(Toplevel):
         self.transient(parent)
         self.grab_set()
         self.title("Options")
-        self.geometry("600x450") # Adjust size as needed
+        self.geometry("750x550")  # Open larger so all settings are visible
 
         self.config_manager = config_manager
         self.intro_loader_handler = intro_loader_handler
@@ -127,6 +127,22 @@ class OptionsWindow(Toplevel):
         ttk.Label(loader_frame, text="Schedule URL:").grid(row=3, column=0, sticky=tk.W, padx=5)
         self.loader_url_var = tk.StringVar(value=self.config_manager.get_setting("settings.intro_loader.schedule_url", "http://192.168.3.11:9000/?pass=bmas220&action=schedule&type=run&id=TBACFNBGJKOMETDYSQYR"))
         ttk.Entry(loader_frame, textvariable=self.loader_url_var, width=40).grid(row=3, column=1, sticky=tk.W, padx=5)
+
+        # --- Ad Inserter Settings Section ---
+        ad_label = ttk.Label(settings_frame, text="Ad Inserter Settings", font=("Segoe UI", 10, "bold"))
+        ad_label.pack(anchor=tk.W, pady=(10,5))
+
+        ad_frame = ttk.Frame(settings_frame)
+        ad_frame.pack(fill=tk.X, pady=5)
+
+        ttk.Label(ad_frame, text="Insertion URL:").grid(row=0, column=0, sticky=tk.W, padx=5)
+        self.ad_url_var = tk.StringVar(value=self.config_manager.get_setting("settings.ad_inserter.insertion_url", "http://localhost:8000/insert"))
+        ttk.Entry(ad_frame, textvariable=self.ad_url_var, width=40).grid(row=0, column=1, sticky=tk.W, padx=5)
+
+        ttk.Label(ad_frame, text="New Ad MP3:").grid(row=1, column=0, sticky=tk.W, padx=5)
+        self.ad_mp3_var = tk.StringVar(value=self.config_manager.get_setting("settings.ad_inserter.output_mp3", r"G:\Ads\newAd.mp3"))
+        ttk.Entry(ad_frame, textvariable=self.ad_mp3_var, width=40).grid(row=1, column=1, sticky=tk.W, padx=5)
+        ttk.Button(ad_frame, text="Browse", command=lambda: self.browse_file(self.ad_mp3_var)).grid(row=1, column=2, padx=5)
 
         # --- Bottom Buttons ---
         button_frame = ttk.Frame(main_frame)
@@ -246,6 +262,8 @@ class OptionsWindow(Toplevel):
         self.config_manager.update_setting("settings.intro_loader.mp3_directory", self.loader_mp3_dir_var.get())
         self.config_manager.update_setting("settings.intro_loader.missing_artists_log", self.loader_log_var.get())
         self.config_manager.update_setting("settings.intro_loader.schedule_url", self.loader_url_var.get())
+        self.config_manager.update_setting("settings.ad_inserter.insertion_url", self.ad_url_var.get())
+        self.config_manager.update_setting("settings.ad_inserter.output_mp3", self.ad_mp3_var.get())
 
         self.destroy()
 
