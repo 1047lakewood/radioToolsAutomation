@@ -3,6 +3,8 @@ import tkinter as tk
 from tkinter import ttk, messagebox, Toplevel, filedialog
 import logging
 
+from ad_inserter_service import AdInserterService
+
 # Placeholders for managers/handlers if needed directly (passed in constructor)
 # from config_manager import ConfigManager
 # from intro_loader_handler import IntroLoaderHandler
@@ -63,8 +65,22 @@ class OptionsWindow(Toplevel):
         # Add button to "touch" the XML file
         touch_button = ttk.Button(debug_frame, text="Touch XML File", command=self.touch_xml_file_action)
         touch_button.pack(pady=5)
-        touch_help = ttk.Label(debug_frame, text="Updates the XML file's modification time to force the Intro Loader to re-check it.", wraplength=380)
+        touch_help = ttk.Label(
+            debug_frame,
+            text="Updates the XML file's modification time to force the Intro Loader to re-check it.",
+            wraplength=380,
+        )
         touch_help.pack(pady=2)
+
+        # Button to combine ads and trigger the ad inserter URL
+        ad_button = ttk.Button(debug_frame, text="Run Ad Service", command=self.run_ad_service_action)
+        ad_button.pack(pady=5)
+        ad_help = ttk.Label(
+            debug_frame,
+            text="Combine enabled ads into one MP3 and call the ad inserter URL.",
+            wraplength=380,
+        )
+        ad_help.pack(pady=2)
 
         # --- Settings Tab (New) ---
         settings_frame = ttk.Frame(notebook, padding="10")
@@ -232,6 +248,19 @@ class OptionsWindow(Toplevel):
         except Exception as e:
              logging.exception("Exception calling touch_monitored_xml.")
              # Avoid showing error popup as requested
+
+    def run_ad_service_action(self):
+        """Combine ads and trigger the ad inserter URL."""
+        logging.debug("Run Ad Service button clicked.")
+        try:
+            service = AdInserterService(self.config_manager)
+            success = service.run()
+            if success:
+                logging.info("Ad service executed successfully via Options window.")
+            else:
+                logging.error("Ad service failed via Options window. Check logs.")
+        except Exception:
+            logging.exception("Exception running AdInserterService.")
 
     def save_and_close(self):
         """Saves the whitelist/blacklist if changed and closes."""

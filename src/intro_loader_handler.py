@@ -85,7 +85,7 @@ SCHEDULE_TIMEOUT = 10 # Seconds for URL request
 MONITOR_LOOP_SLEEP = 2 # Seconds between XML checks
 ERROR_RETRY_DELAY = 10 # Seconds after unexpected loop error
 XML_READ_DELAY = 0.1 # Small delay before reading XML after modification detected
-POST_UPDATE_DELAY = 30 # Seconds to wait after update before next check (as per original script)
+POST_UPDATE_DELAY = 40 # Seconds to wait after update before next check (as per original script)
 MAX_LOG_LINES = 500 # Maximum number of lines to keep in the missing artists log
 
 class IntroLoaderHandler:
