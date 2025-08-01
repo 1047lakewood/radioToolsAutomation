@@ -1,4 +1,4 @@
- --- Ad Inserter Settings Section ---.*?ttk.Button(ad_frame, text="Browse".*?
+#  --- Ad Inserter Settings Section ---.*?ttk.Button(ad_frame, text="Browse".*?
 import tkinter as tk
 from tkinter import ttk, messagebox, Toplevel, filedialog
 import logging
