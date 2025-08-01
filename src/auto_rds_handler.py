@@ -292,25 +292,29 @@ class AutoRDSHandler:
                     if current_time - self.last_message_time >= self.current_message_duration:
                         # Cycle through valid messages
                         if len(valid_messages) > 0:
-                             current_valid_message = valid_messages[self.message_index % len(valid_messages)]
-                             formatted_text = self._format_message_text(current_valid_message["Text"], now_playing)
+                            current_valid_message = valid_messages[self.message_index % len(valid_messages)]
+                            formatted_text = self._format_message_text(current_valid_message["Text"], now_playing)
 
-                             if formatted_text and formatted_text != self.last_sent_text:
-                                 display_text = formatted_text
-                                 selected_duration = current_valid_message.get("Message Time", 10)
-                                 # Increment index ONLY when a new message is selected to be sent
-                                 self.message_index = (self.message_index + 1)
-                             elif not formatted_text:
-                                 # Message evaluated to empty (e.g., placeholder missing), skip it
-                                 logger.debug(f"Formatted message resulted in empty string, skipping: {current_valid_message['Text']}")
-                                 # Reset timer but use short duration to try next message quickly
-                                 self.last_message_time = current_time
-                                 self.current_message_duration = 1 # Wait briefly before trying next
-                             else:
-                                 # Text is the same as last sent, reset timer, keep duration
-                                 logger.debug(f"Message text '{formatted_text}' is same as last sent, resetting timer.")
-                                 self.last_message_time = current_time
-                                 self.current_message_duration = selected_duration # Keep last duration
+                            if formatted_text and formatted_text != self.last_sent_text:
+                                display_text = formatted_text
+                                selected_duration = current_valid_message.get("Message Time", 10)
+                                # Increment index ONLY when a new message is selected to be sent
+                                self.message_index = (self.message_index + 1)
+                            elif not formatted_text:
+                                # Message evaluated to empty (e.g., placeholder missing), skip it
+                                logger.debug(
+                                    f"Formatted message resulted in empty string, skipping: {current_valid_message['Text']}"
+                                )
+                                # Move to next message so rotation doesn't get stuck
+                                self.message_index = (self.message_index + 1)
+                                # Reset timer but use short duration to try next message quickly
+                                self.last_message_time = current_time
+                                self.current_message_duration = 1  # Wait briefly before trying next
+                            else:
+                                # Text is the same as last sent, reset timer, keep duration
+                                logger.debug(f"Message text '{formatted_text}' is same as last sent, resetting timer.")
+                                self.last_message_time = current_time
+                                self.current_message_duration = selected_duration # Keep last duration
                         else:
                              # Should not happen if valid_messages check is correct, but as fallback:
                              self.last_message_time = current_time
