@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox, Toplevel
 import re
 import logging
+import utils
 
 # Placeholder for ConfigManager if needed directly (passed in constructor)
 # from config_manager import ConfigManager
@@ -310,30 +311,9 @@ class ConfigWindow(Toplevel):
          except Exception as e: logging.exception(f"Error updating treeview item {index}: {e}")
 
     def parse_times(self):
-        time_str = self.time_entry.get().strip(); times_list = []
-        if not time_str: return times_list
-        for part in time_str.split(','):
-            part = part.strip();
-            if not part: continue
-            range_match = re.match(r'^(\d{1,2})-(\d{1,2})$', part)
-            if range_match:
-                try:
-                    start, end = int(range_match.group(1)), int(range_match.group(2))
-                    if 0 <= start <= 23 and 0 <= end <= 23 and start <= end:
-                        for hour in range(start, end + 1):
-                            time_obj = {"hour": hour}
-                            if time_obj not in times_list: times_list.append(time_obj)
-                    else: logging.warning(f"Invalid hour range: {part}")
-                except ValueError: logging.warning(f"Invalid number in range: {part}")
-            else:
-                try:
-                    hour = int(part)
-                    if 0 <= hour <= 23:
-                         time_obj = {"hour": hour}
-                         if time_obj not in times_list: times_list.append(time_obj)
-                    else: logging.warning(f"Invalid hour: {part}")
-                except ValueError: logging.warning(f"Invalid time format: {part}")
-        times_list.sort(key=lambda x: x['hour']); return times_list
+        """Parse the hours from the entry widget using ``utils.parse_time_string``."""
+        time_str = self.time_entry.get().strip()
+        return utils.parse_time_string(time_str)
 
     def on_message_select(self, event):
         selected_items = self.tree.selection()
