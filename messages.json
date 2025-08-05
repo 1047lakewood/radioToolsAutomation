@@ -180,16 +180,18 @@
             "now_playing_xml": "G:\\To_RDS\\nowplaying.xml",
             "default_message": "732.901.7777 to SUPPORT and hear this program!"
         },
+
         "intro_loader": {
             "now_playing_xml": "G:\\To_RDS\\nowplaying.xml",
             "mp3_directory": "G:\\Shiurim\\introsCleanedUp",
             "missing_artists_log": "G:\\Misc\\Dev\\CombinedRDSApp\\missing_artists.log",
             "schedule_url": "http://192.168.3.11:9000/?pass=bmas220&action=schedule&type=run&id=TBACFNBGJKOMETDYSQYR"
+
         },
         "ad_inserter": {
-            "insertion_url": "http://localhost:8000/insert",
-            "instant_url": "http://localhost:8000/play",
-            "output_mp3": "G:\\Ads\\newAd.mp3"
+            "insertion_url": "http://localhost:9000/?pass=bmas220&action=schedule&type=run&id=IZVRTKXNHAHFUHXVPCGY",
+            "instant_url": "",
+            "output_mp3": "G:/Misc/Sponsorships/autoAd.mp3"
         }
     },
     "Ads": [
@@ -197,9 +199,19 @@
             "Name": "New Adfgdfg",
             "Enabled": true,
             "Scheduled": false,
-            "MP3File": "",
+
+            "MP3File": "G:/Misc/Radio Info/1047 Station ID.mp3",
             "Days": [],
             "Times": []
+        },
+        {
+            "Name": "New Ad",
+            "Enabled": true,
+            "Scheduled": false,
+            "MP3File": "G:/Misc/Radio Info/r meilich Ba'erev Tochlu Matzos.mp3",
+            "Days": [],
+            "Times": []
+
         }
     ]
 }
