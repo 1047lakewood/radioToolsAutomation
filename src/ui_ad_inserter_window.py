@@ -112,15 +112,23 @@ class AdInserterWindow(tk.Toplevel):
             self.ad_listbox.insert(tk.END, ad.get('Name', 'Unnamed Ad'))
 
     def on_ad_select(self, event):
-        if self.current_index is not None:
-            self.save_current_ad()
         selection = self.ad_listbox.curselection()
-        if selection:
-            self.current_index = selection[0]
-            self.load_ad(self.current_index)
-        else:
+        if not selection:
+            if self.current_index is not None:
+                self.save_current_ad()
             self.current_index = None
             self.clear_fields()
+            return
+
+        new_index = selection[0]
+        if new_index == self.current_index:
+            return
+
+        if self.current_index is not None:
+            self.save_current_ad(next_index=new_index)
+
+        self.current_index = new_index
+        self.load_ad(new_index)
 
     def load_ad(self, index):
         ad = self.ads[index]
@@ -185,7 +193,7 @@ class AdInserterWindow(tk.Toplevel):
             self.clear_fields()
             self.current_index = None
 
-    def save_current_ad(self):
+    def save_current_ad(self, next_index=None):
         if self.current_index is None:
             return
         self.ads[self.current_index]['Name'] = self.name_var.get() or 'Unnamed Ad'
@@ -195,10 +203,11 @@ class AdInserterWindow(tk.Toplevel):
         self.ads[self.current_index]['Days'] = [day for day, var in self.day_vars.items() if var.get()]
         selected_hours = [h for h, var in self.hour_vars.items() if var.get()]
         self.ads[self.current_index]['Times'] = [{'hour': h} for h in sorted(selected_hours)]
-        # Update listbox display
+        # Update listbox display without overriding the user's selection
         self.ad_listbox.delete(self.current_index)
         self.ad_listbox.insert(self.current_index, self.ads[self.current_index]['Name'])
-        self.ad_listbox.select_set(self.current_index)
+        index_to_select = self.current_index if next_index is None else next_index
+        self.ad_listbox.select_set(index_to_select)
 
     def save_and_close(self):
         self.save_current_ad()
