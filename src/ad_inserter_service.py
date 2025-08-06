@@ -48,7 +48,10 @@ class AdInserterService:
         for ad in ads:
             if not ad.get("Enabled", True):
                 continue
-            if not self._is_scheduled(ad, now):
+            # Only skip an ad if it's explicitly scheduled and the schedule
+            # does not match the current time. Unscheduled-but-enabled ads
+            # should still be included.
+            if ad.get("Scheduled", False) and not self._is_scheduled(ad, now):
                 continue
             mp3 = ad.get("MP3File")
             if not mp3 or not os.path.exists(mp3):
