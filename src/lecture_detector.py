@@ -1,6 +1,7 @@
 import xml.etree.ElementTree as ET
 import logging
 import os
+from datetime import datetime, timedelta
 from config_manager import ConfigManager
 
 class LectureDetector:
@@ -198,9 +199,11 @@ class LectureDetector:
                 if current_element is None:
                     return ""
             
-            # Extract and return the duration text
-            duration = current_element.findtext("DURATION", "").strip()
-            return duration
+            # Duration may be provided as an attribute or subelement
+            duration = current_element.get("DURATION")
+            if not duration:
+                duration = current_element.findtext("DURATION", "")
+            return duration.strip()
 
         except ET.ParseError as e:
             logging.error(f"Error parsing XML file ({self.xml_path}): {e}")
@@ -208,6 +211,88 @@ class LectureDetector:
         except Exception as e:
             logging.exception(f"Error getting track duration: {e}")
             return ""
+
+    def next_lecture_starts_within_hour(self, current_time=None):
+        """Estimate if the lecture after the next track begins within the next hour.
+
+        The XML nowplaying file does not expose the start time of the upcoming
+        track directly. Instead we use the current track's ``STARTED`` timestamp
+        and both track durations to approximate when the track after the next
+        one (presumed to be a lecture) will begin. If that estimated start time
+        falls before the top of the next hour, this returns ``True``.
+
+        Args:
+            current_time (datetime, optional): Current reference time. Defaults
+                to ``datetime.now()``.
+
+        Returns:
+            bool: ``True`` if the subsequent lecture is expected within the next
+                hour.
+        """
+        if current_time is None:
+            current_time = datetime.now()
+
+        try:
+            current_start = self._get_track_started_datetime(['TRACK'])
+            if current_start is None:
+                current_start = current_time
+
+            current_duration = self._duration_to_seconds(
+                self._get_track_duration(['TRACK'])
+            )
+            next_duration = self._duration_to_seconds(
+                self._get_track_duration(['NEXTTRACK', 'TRACK'])
+            )
+
+            # Start time of the track after NEXTTRACK
+            lecture_start = current_start + timedelta(
+                seconds=current_duration + next_duration
+            )
+            next_hour = (
+                current_time.replace(minute=0, second=0, microsecond=0)
+                + timedelta(hours=1)
+            )
+            return lecture_start < next_hour
+        except Exception as e:
+            logging.exception(f"Error estimating next lecture time: {e}")
+            return True
+
+    def _get_track_started_datetime(self, xml_path):
+        """Extract ``STARTED`` timestamp as ``datetime`` from a track."""
+        try:
+            if not os.path.exists(self.xml_path):
+                return None
+
+            tree = ET.parse(self.xml_path)
+            root = tree.getroot()
+            current_element = root
+            for tag in xml_path:
+                current_element = current_element.find(tag)
+                if current_element is None:
+                    return None
+
+            started_str = current_element.get('STARTED', '').strip()
+            if not started_str:
+                return None
+
+            # RadioBOSS uses "YYYY-MM-DD HH:MM:SS" format
+            return datetime.strptime(started_str, "%Y-%m-%d %H:%M:%S")
+        except Exception as e:
+            logging.exception(f"Error parsing track start time: {e}")
+            return None
+
+    def _duration_to_seconds(self, duration):
+        """Convert a duration string ``HH:MM:SS`` or ``MM:SS`` to seconds."""
+        if not duration:
+            return 0
+        try:
+            parts = [int(p) for p in duration.split(':')]
+            seconds = 0
+            for p in parts:
+                seconds = seconds * 60 + p
+            return seconds
+        except ValueError:
+            return 0
 
 # Example usage
 if __name__ == "__main__":
