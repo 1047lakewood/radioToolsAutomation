@@ -1,6 +1,7 @@
 import xml.etree.ElementTree as ET
 import logging
 import os
+from datetime import datetime, timedelta, time as dtime
 from config_manager import ConfigManager
 
 class LectureDetector:
@@ -208,6 +209,82 @@ class LectureDetector:
         except Exception as e:
             logging.exception(f"Error getting track duration: {e}")
             return ""
+
+    def next_lecture_starts_within_hour(self, current_time=None):
+        """Estimate if the lecture following the next track begins within the next hour.
+
+        This uses the next track's scheduled start time and duration to
+        approximate when the subsequent track (presumed to be a lecture) will
+        start. If that start time is before the top of the next hour, returns
+        True.
+
+        Args:
+            current_time (datetime, optional): Current reference time. Defaults
+                to ``datetime.now()``.
+
+        Returns:
+            bool: True if the next lecture is expected within an hour.
+        """
+        if current_time is None:
+            current_time = datetime.now()
+
+        try:
+            start_time = self._get_track_start_time(['NEXTTRACK', 'TRACK'])
+            duration_str = self.get_next_track_duration()
+            duration_seconds = self._duration_to_seconds(duration_str)
+
+            if start_time is None:
+                # Without a start time, assume lecture could start within the hour
+                return True
+
+            next_track_start = datetime.combine(current_time.date(), start_time)
+            next_track_end = next_track_start + timedelta(seconds=duration_seconds)
+            next_hour = (current_time.replace(minute=0, second=0, microsecond=0)
+                         + timedelta(hours=1))
+            return next_track_end < next_hour
+        except Exception as e:
+            logging.exception(f"Error estimating next lecture time: {e}")
+            return True
+
+    def _get_track_start_time(self, xml_path):
+        """Extract start time from a track at the given XML path."""
+        try:
+            if not os.path.exists(self.xml_path):
+                return None
+
+            tree = ET.parse(self.xml_path)
+            root = tree.getroot()
+            current_element = root
+            for tag in xml_path:
+                current_element = current_element.find(tag)
+                if current_element is None:
+                    return None
+
+            start_str = (current_element.get('STARTTIME')
+                         or current_element.findtext('STARTTIME', '')).strip()
+            if not start_str:
+                return None
+
+            parts = [int(p) for p in start_str.split(':')]
+            while len(parts) < 3:
+                parts.insert(0, 0)
+            return dtime(parts[0], parts[1], parts[2])
+        except Exception as e:
+            logging.exception(f"Error getting track start time: {e}")
+            return None
+
+    def _duration_to_seconds(self, duration):
+        """Convert a duration string ``HH:MM:SS`` or ``MM:SS`` to seconds."""
+        if not duration:
+            return 0
+        try:
+            parts = [int(p) for p in duration.split(':')]
+            seconds = 0
+            for p in parts:
+                seconds = seconds * 60 + p
+            return seconds
+        except ValueError:
+            return 0
 
 # Example usage
 if __name__ == "__main__":
