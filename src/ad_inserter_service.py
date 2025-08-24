@@ -11,6 +11,15 @@ except ImportError:  # pragma: no cover - optional dependency
 
 logger = logging.getLogger('AdService')
 
+
+def _to_bool(value, default=False):
+    """Return boolean for various truthy/falsey string/int representations."""
+    if value is None:
+        return default
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "on"}
+    return bool(value)
+
 class AdInserterService:
     """Combine enabled/scheduled ads into a single MP3 and trigger insertion."""
 
@@ -46,12 +55,12 @@ class AdInserterService:
         valid_files = []
         now = datetime.now()
         for ad in ads:
-            if not ad.get("Enabled", True):
+            if not _to_bool(ad.get("Enabled"), True):
                 continue
             # Only skip an ad if it's explicitly scheduled and the schedule
             # does not match the current time. Unscheduled-but-enabled ads
             # should still be included.
-            if ad.get("Scheduled", False) and not self._is_scheduled(ad, now):
+            if _to_bool(ad.get("Scheduled"), False) and not self._is_scheduled(ad, now):
                 continue
             mp3 = ad.get("MP3File")
             if not mp3 or not os.path.exists(mp3):
@@ -67,7 +76,7 @@ class AdInserterService:
         return self._concatenate_mp3_files(valid_files, self.output_mp3)
 
     def _is_scheduled(self, ad, now):
-        if not ad.get("Scheduled", False):
+        if not _to_bool(ad.get("Scheduled"), False):
             return True
         day_name = now.strftime("%A")
         days = ad.get("Days", [])

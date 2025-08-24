@@ -2,8 +2,10 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, Toplevel, filedialog
 import logging
+from datetime import datetime
 
 from ad_inserter_service import AdInserterService
+from hourly_ad_service import HourlyAdService
 
 # Placeholders for managers/handlers if needed directly (passed in constructor)
 # from config_manager import ConfigManager
@@ -91,6 +93,20 @@ class OptionsWindow(Toplevel):
             wraplength=380,
         )
         instant_help.pack(pady=2)
+
+        # Button to simulate top-of-hour hourly ad check
+        hourly_button = ttk.Button(
+            debug_frame,
+            text="Simulate Hour Start",
+            command=self.simulate_hour_start_action,
+        )
+        hourly_button.pack(pady=5)
+        hourly_help = ttk.Label(
+            debug_frame,
+            text="Trigger hourly ad check as if a new hour began.",
+            wraplength=380,
+        )
+        hourly_help.pack(pady=2)
 
         # --- Settings Tab (New) ---
         settings_frame = ttk.Frame(notebook, padding="10")
@@ -296,6 +312,16 @@ class OptionsWindow(Toplevel):
                 logging.error("Instant ad failed via Options window. Check logs.")
         except Exception:
             logging.exception("Exception running AdInserterService instant.")
+
+    def simulate_hour_start_action(self):
+        """Simulate top-of-hour check for the hourly ad service."""
+        logging.debug("Simulate Hour Start button clicked.")
+        try:
+            service = HourlyAdService(self.config_manager)
+            service._handle_top_of_hour(datetime.now())
+            logging.info("Hourly ad check simulated via Options window.")
+        except Exception:
+            logging.exception("Exception simulating HourlyAdService top-of-hour.")
 
     def save_and_close(self):
         """Saves the whitelist/blacklist if changed and closes."""

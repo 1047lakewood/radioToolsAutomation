@@ -25,6 +25,7 @@ class QueueHandler(logging.Handler):
 from config_manager import ConfigManager
 from auto_rds_handler import AutoRDSHandler
 from intro_loader_handler import IntroLoaderHandler
+from hourly_ad_service import HourlyAdService
 from ui_config_window import ConfigWindow
 from ui_missing_artists_window import MissingArtistsWindow
 from ui_options_window import OptionsWindow
@@ -58,6 +59,7 @@ class MainApp(tk.Tk):
 
         self.rds_queue = Queue()
         self.intro_queue = Queue()
+        self.ads_queue = Queue()
 
         # Route handler loggers to the queues
         formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
@@ -65,6 +67,8 @@ class MainApp(tk.Tk):
         rds_qh.setFormatter(formatter)
         loader_qh = QueueHandler(self.intro_queue)
         loader_qh.setFormatter(formatter)
+        ads_qh = QueueHandler(self.ads_queue)
+        ads_qh.setFormatter(formatter)
 
         rds_logger = logging.getLogger('AutoRDS')
         rds_logger.setLevel(logging.INFO)
@@ -76,14 +80,21 @@ class MainApp(tk.Tk):
         loader_logger.propagate = False
         loader_logger.addHandler(loader_qh)
 
+        ads_logger = logging.getLogger('HourlyAds')
+        ads_logger.setLevel(logging.INFO)
+        ads_logger.propagate = False
+        ads_logger.addHandler(ads_qh)
+
         # Initialize handlers
         try:
             # # Ensure correct argument order: queue, config_manager
             self.rds_handler = AutoRDSHandler(self.rds_queue, self.config_manager)
             logging.info("AutoRDSHandler initialized successfully.")
             self.intro_loader_handler = IntroLoaderHandler(self.intro_queue, self.config_manager)
-            
             logging.info("IntroLoaderHandler initialized successfully.")
+
+            self.hourly_ad_service = HourlyAdService(self.config_manager)
+            logging.info("HourlyAdService initialized successfully.")
         except AttributeError as e:
             logging.error(f"AttributeError during handler initialization: {e}")
             messagebox.showerror("Initialization Error", f"Failed to initialize handlers: {e}")
@@ -101,8 +112,10 @@ class MainApp(tk.Tk):
         try:
             self.rds_thread = threading.Thread(target=self.rds_handler.run, daemon=True)
             self.intro_thread = threading.Thread(target=self.intro_loader_handler.run, daemon=True)
+            self.ads_thread = threading.Thread(target=self.hourly_ad_service.run, daemon=True)
             self.rds_thread.start()
             self.intro_thread.start()
+            self.ads_thread.start()
             logging.info("Handler threads started successfully.")
         except Exception as e:
             logging.error(f"Failed to start handler threads: {e}")
@@ -146,8 +159,16 @@ class MainApp(tk.Tk):
         loader_scroll.pack(side=tk.RIGHT, fill=tk.Y)
         self.loader_log_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
 
+        ads_log_frame = ttk.LabelFrame(log_pane, text="Hourly Ad Logs")
+        self.ads_log_text = tk.Text(ads_log_frame, wrap=tk.WORD, state=tk.DISABLED, height=10, font=("Consolas", 9))
+        ads_scroll = ttk.Scrollbar(ads_log_frame, orient=tk.VERTICAL, command=self.ads_log_text.yview)
+        self.ads_log_text.config(yscrollcommand=ads_scroll.set)
+        ads_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        self.ads_log_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
+
         log_pane.add(rds_log_frame, weight=1)
         log_pane.add(loader_log_frame, weight=1)
+        log_pane.add(ads_log_frame, weight=1)
 
         # Current RDS Messages Cycle
         msg_frame = ttk.LabelFrame(main_frame, text="Current RDS Messages Cycle")
@@ -202,9 +223,15 @@ class MainApp(tk.Tk):
             self._log_message(self.loader_log_text, message)
             updated = True
 
+        while not self.ads_queue.empty():
+            message = self.ads_queue.get()
+            self._log_message(self.ads_log_text, message)
+            updated = True
+
         if updated:
             self.rds_log_text.see(tk.END)
             self.loader_log_text.see(tk.END)
+            self.ads_log_text.see(tk.END)
 
         self.after(100, self.process_queues)
 
