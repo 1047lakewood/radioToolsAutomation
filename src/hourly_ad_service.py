@@ -58,7 +58,12 @@ class HourlyAdService:
                 )
                 self.flag_run_on_next_track = True
                 info = self.lecture_detector.get_current_track_info()
-                self.last_track_signature = (info.get('artist', ''), info.get('title', ''))
+                started = self.lecture_detector.get_current_track_started()
+                self.last_track_signature = (
+                    info.get('artist', ''),
+                    info.get('title', ''),
+                    started,
+                )
             else:
                 logger.info("No lecture within next hour - playing ads instantly")
                 self.ad_service.run_instant()
@@ -67,7 +72,8 @@ class HourlyAdService:
 
     def _check_for_track_change(self):
         info = self.lecture_detector.get_current_track_info()
-        signature = (info.get('artist', ''), info.get('title', ''))
+        started = self.lecture_detector.get_current_track_started()
+        signature = (info.get('artist', ''), info.get('title', ''), started)
         if self.last_track_signature is None:
             self.last_track_signature = signature
             return
