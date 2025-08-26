@@ -159,6 +159,38 @@ class LectureDetector:
             logging.exception(f"Error getting current track info: {e}")
             return {"artist": "", "title": ""}
 
+    def get_current_track_started(self):
+        """Returns the ``STARTED`` timestamp of the current track."""
+        try:
+            if not os.path.exists(self.xml_path):
+                return ""
+
+            tree = ET.parse(self.xml_path)
+            root = tree.getroot()
+            current_track = root.find("TRACK")
+            if current_track is not None:
+                return current_track.get("STARTED", "").strip()
+            return ""
+
+        except ET.ParseError as e:
+            logging.error(f"Error parsing XML file ({self.xml_path}): {e}")
+            return ""
+        except Exception as e:
+            logging.exception(f"Error getting current track started: {e}")
+            return ""
+
+    def get_xml_mtime(self):
+        """Return the modification time of the nowplaying XML file.
+
+        Used as a fallback "started" marker when the ``STARTED`` attribute is
+        missing. The returned value is a float timestamp (seconds since epoch)
+        or ``0`` if the file doesn't exist.
+        """
+        try:
+            return os.path.getmtime(self.xml_path)
+        except OSError:
+            return 0.0
+
     def get_current_track_duration(self):
         """Returns the duration of the current track from the XML file.
         

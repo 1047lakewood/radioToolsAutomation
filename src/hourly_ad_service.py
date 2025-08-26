@@ -44,6 +44,14 @@ class HourlyAdService:
         self.running = False
 
     # --- Internal helpers -------------------------------------------------
+    def _current_track_signature(self):
+        """Return a tuple uniquely identifying the currently playing track."""
+        info = self.lecture_detector.get_current_track_info()
+        started = self.lecture_detector.get_current_track_started()
+        if not started:
+            started = str(self.lecture_detector.get_xml_mtime())
+        return (info.get('artist', ''), info.get('title', ''), started)
+
     def _handle_top_of_hour(self, now):
         logger.info("Top-of-hour ad check")
         try:
@@ -57,8 +65,7 @@ class HourlyAdService:
                     "Next track not lecture but lecture within hour - will schedule on next track start"
                 )
                 self.flag_run_on_next_track = True
-                info = self.lecture_detector.get_current_track_info()
-                self.last_track_signature = (info.get('artist', ''), info.get('title', ''))
+                self.last_track_signature = self._current_track_signature()
             else:
                 logger.info("No lecture within next hour - playing ads instantly")
                 self.ad_service.run_instant()
@@ -66,8 +73,7 @@ class HourlyAdService:
             logger.exception(f"Hourly ad check failed: {e}")
 
     def _check_for_track_change(self):
-        info = self.lecture_detector.get_current_track_info()
-        signature = (info.get('artist', ''), info.get('title', ''))
+        signature = self._current_track_signature()
         if self.last_track_signature is None:
             self.last_track_signature = signature
             return
