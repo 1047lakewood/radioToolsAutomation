@@ -18,6 +18,7 @@ class AdInserterWindow(tk.Toplevel):
         self.ads = copy.deepcopy(self.config_manager.get_ads() or [])  # Assume get_ads() method in ConfigManager
         self.initial_ads = copy.deepcopy(self.ads)  # For detecting changes
         self.current_index = None
+        logging.info(f"Ad Inserter initialized with {len(self.ads)} existing ads")
 
         self.create_widgets()
         self.populate_ad_list()
@@ -214,7 +215,10 @@ class AdInserterWindow(tk.Toplevel):
         try:
             self.config_manager.set_ads(self.ads)  # Assume set_ads() method in ConfigManager
             self.config_manager.save_config()
-            logging.info("Ad Inserter settings saved.")
+            logging.info(f"Ad Inserter settings saved. {len(self.ads)} ads saved to config.")
+            # Debug: Show what was saved
+            saved_ads = self.config_manager.get_ads()
+            logging.info(f"Verified {len(saved_ads or [])} ads in config after save.")
             self.destroy()
         except Exception as e:
             logging.exception("Failed to save Ad Inserter settings.")

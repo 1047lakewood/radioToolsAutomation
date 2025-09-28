@@ -11,7 +11,7 @@ from ad_inserter_service import AdInserterService
 
 class OptionsWindow(Toplevel):
     """Window for application options (Whitelist, Blacklist, Debug)."""
-    def __init__(self, parent, config_manager, intro_loader_handler):
+    def __init__(self, parent, config_manager, intro_loader_handler, auto_rds_handler=None):
         super().__init__(parent)
         self.transient(parent)
         self.grab_set()
@@ -20,6 +20,7 @@ class OptionsWindow(Toplevel):
 
         self.config_manager = config_manager
         self.intro_loader_handler = intro_loader_handler
+        self.auto_rds_handler = auto_rds_handler
 
         # Store initial lists to detect changes
         self.initial_whitelist = self.config_manager.get_whitelist().copy()
@@ -329,6 +330,30 @@ class OptionsWindow(Toplevel):
         self.config_manager.update_setting("settings.ad_inserter.insertion_url", self.ad_url_var.get())
         self.config_manager.update_setting("settings.ad_inserter.instant_url", self.ad_instant_url_var.get())
         self.config_manager.update_setting("settings.ad_inserter.output_mp3", self.ad_mp3_var.get())
+
+        # Save all settings changes to file
+        try:
+            self.config_manager.save_config()
+            logging.info("Settings changes saved.")
+        except Exception as e:
+            logging.exception("Failed to save settings.")
+            messagebox.showerror("Save Error", f"Failed to save settings:\n{e}", parent=self)
+            return # Don't close if save failed
+
+        # Reload configuration in handlers to apply changes immediately
+        try:
+            self.intro_loader_handler.reload_configuration()
+            logging.info("Intro Loader configuration reloaded.")
+        except Exception as e:
+            logging.warning(f"Failed to reload Intro Loader configuration: {e}")
+
+        if self.auto_rds_handler:
+            try:
+                self.auto_rds_handler.reload_configuration()
+                self.auto_rds_handler.reload_lecture_detector()
+                logging.info("RDS Handler configuration reloaded.")
+            except Exception as e:
+                logging.warning(f"Failed to reload RDS Handler configuration: {e}")
 
         self.destroy()
 

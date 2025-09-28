@@ -176,7 +176,7 @@ class MainApp(tk.Tk):
         MissingArtistsWindow(self, self.intro_loader_handler)
 
     def open_options_window(self):
-        OptionsWindow(self, self.config_manager, self.intro_loader_handler)
+        OptionsWindow(self, self.config_manager, self.intro_loader_handler, self.rds_handler)
 
     def open_playlist_editor_window(self):
         PlaylistEditorWindow(self, self.config_manager)

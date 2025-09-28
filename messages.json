@@ -177,7 +177,7 @@
         "rds": {
             "ip": "50.208.125.83",
             "port": 10001,
-            "now_playing_xml": "G:\\To_RDS\\nowplaying.xml",
+            "now_playing_xml": "G:/To_RDS/nowplaying_test.xml",
             "default_message": "732.901.7777 to SUPPORT and hear this program!"
         },
         "intro_loader": {
@@ -197,8 +197,8 @@
             "Name": "New Adfgdfg",
             "Enabled": true,
             "Scheduled": false,
-            "PlayCount": 4,
-            "LastPlayed": "2025-09-28T12:54:54.763272",
+            "PlayCount": 7,
+            "LastPlayed": "2025-09-28T13:32:51.899387",
             "MP3File": "G:/Misc/Radio Info/1047 Station ID.mp3",
             "Days": [],
             "Times": []
@@ -207,11 +207,31 @@
             "Name": "New Ad",
             "Enabled": true,
             "Scheduled": false,
-            "PlayCount": 4,
-            "LastPlayed": "2025-09-28T12:54:54.782451",
+            "PlayCount": 7,
+            "LastPlayed": "2025-09-28T13:32:51.926893",
             "MP3File": "G:/Misc/Radio Info/r meilich Ba'erev Tochlu Matzos.mp3",
             "Days": [],
             "Times": []
+        },
+        {
+            "Name": "New Ad3",
+            "Enabled": true,
+            "Scheduled": true,
+            "MP3File": "",
+            "Days": [
+                "Monday"
+            ],
+            "Times": [
+                {
+                    "hour": 13
+                },
+                {
+                    "hour": 14
+                },
+                {
+                    "hour": 15
+                }
+            ]
         }
     ]
 }
