@@ -29,6 +29,14 @@ class AdInserterService:
             r"G:\\Ads\\newAd.mp3",
         )
 
+        # Initialize ad play logger
+        try:
+            from ad_play_logger import AdPlayLogger
+            self.ad_logger = AdPlayLogger(config_manager)
+        except ImportError:
+            logger.error("AdPlayLogger not available - ad play tracking disabled")
+            self.ad_logger = None
+
     def run(self):
         """Combine ads and call the scheduled insertion URL."""
         if self._combine_ads():
@@ -59,6 +67,11 @@ class AdInserterService:
         if not valid_files:
             logger.warning("No valid ads to combine.")
             return False
+
+        # Log the ads that will be played
+        played_ad_names = [ad.get("Name", "Unknown") for ad in ads
+                          if ad.get("Enabled", True) and self._is_scheduled(ad, now)]
+        self._log_ad_plays(played_ad_names)
 
         os.makedirs(os.path.dirname(self.output_mp3), exist_ok=True)
         return self._concatenate_mp3_files(valid_files, self.output_mp3)
@@ -112,3 +125,31 @@ class AdInserterService:
         except Exception as e:  # pragma: no cover - runtime safety
             logger.error(f"Failed to call ad service URL: {e}")
             return False
+
+    def _log_ad_plays(self, ad_names):
+        """
+        Log that the specified ads have been played.
+
+        Args:
+            ad_names: List of ad names that were played
+        """
+        if not self.ad_logger or not ad_names:
+            return
+
+        try:
+            results = self.ad_logger.record_multiple_ad_plays(ad_names)
+            successful = sum(results.values())
+            total = len(results)
+
+            if successful > 0:
+                logger.info(f"Successfully logged {successful}/{total} ad plays")
+                for ad_name, success in results.items():
+                    if success:
+                        logger.debug(f"Ad '{ad_name}' play logged successfully")
+                    else:
+                        logger.warning(f"Failed to log play for ad '{ad_name}'")
+            else:
+                logger.warning("No ad plays were successfully logged")
+
+        except Exception as e:
+            logger.error(f"Error logging ad plays: {e}")

@@ -127,6 +127,7 @@ class MainApp(tk.Tk):
         ttk.Button(toolbar, text="Options", command=self.open_options_window).pack(side=tk.LEFT, padx=5)
         ttk.Button(toolbar, text="Mini Playlist Editor", command=self.open_playlist_editor_window).pack(side=tk.LEFT, padx=5)
         ttk.Button(toolbar, text="Ad Inserter", command=self.open_ad_inserter_window).pack(side=tk.LEFT, padx=5)
+        ttk.Button(toolbar, text="Ad Statistics", command=self.open_ad_statistics_window).pack(side=tk.LEFT, padx=5)
 
         # Logs Section with dedicated panes
         log_pane = ttk.PanedWindow(main_frame, orient=tk.VERTICAL)
@@ -182,6 +183,11 @@ class MainApp(tk.Tk):
 
     def open_ad_inserter_window(self):
         AdInserterWindow(self, self.config_manager)
+
+    def open_ad_statistics_window(self):
+        """Open the ad statistics window."""
+        from ui_ad_statistics_window import AdStatisticsWindow
+        AdStatisticsWindow(self, self.config_manager)
 
     def process_queues(self):
         """Processes messages from queues to update GUI."""
