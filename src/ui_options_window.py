@@ -11,7 +11,7 @@ from ad_inserter_service import AdInserterService
 
 class OptionsWindow(Toplevel):
     """Window for application options (Whitelist, Blacklist, Debug)."""
-    def __init__(self, parent, config_manager, intro_loader_handler, auto_rds_handler=None):
+    def __init__(self, parent, config_manager, intro_loader_handler, auto_rds_handler=None, ad_scheduler_handler=None):
         super().__init__(parent)
         self.transient(parent)
         self.grab_set()
@@ -21,6 +21,7 @@ class OptionsWindow(Toplevel):
         self.config_manager = config_manager
         self.intro_loader_handler = intro_loader_handler
         self.auto_rds_handler = auto_rds_handler
+        self.ad_scheduler_handler = ad_scheduler_handler
 
         # Store initial lists to detect changes
         self.initial_whitelist = self.config_manager.get_whitelist().copy()
@@ -92,6 +93,16 @@ class OptionsWindow(Toplevel):
             wraplength=380,
         )
         instant_help.pack(pady=2)
+
+        # Button to simulate start of hour for AdScheduler testing
+        hour_button = ttk.Button(debug_frame, text="Simulate Hour Start", command=self.simulate_hour_start)
+        hour_button.pack(pady=5)
+        hour_help = ttk.Label(
+            debug_frame,
+            text="Triggers the AdScheduler's hourly check logic to test ad insertion timing.",
+            wraplength=380,
+        )
+        hour_help.pack(pady=2)
 
         # --- Settings Tab (New) ---
         settings_frame = ttk.Frame(notebook, padding="10")
@@ -297,6 +308,21 @@ class OptionsWindow(Toplevel):
                 logging.error("Instant ad failed via Options window. Check logs.")
         except Exception:
             logging.exception("Exception running AdInserterService instant.")
+
+    def simulate_hour_start(self):
+        """Simulate the start of an hour for AdScheduler testing."""
+        logging.debug("Simulate Hour Start button clicked.")
+        try:
+            if self.ad_scheduler_handler:
+                # Trigger the hourly check logic
+                self.ad_scheduler_handler._perform_hourly_check()
+                logging.info("AdScheduler hourly check triggered successfully.")
+            else:
+                logging.error("AdScheduler handler not available.")
+                messagebox.showerror("Error", "AdScheduler handler not available.", parent=self)
+        except Exception as e:
+            logging.exception("Exception triggering AdScheduler hourly check.")
+            messagebox.showerror("Error", f"Failed to trigger AdScheduler check:\n{e}", parent=self)
 
     def save_and_close(self):
         """Saves the whitelist/blacklist if changed and closes."""

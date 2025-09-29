@@ -25,6 +25,7 @@ class QueueHandler(logging.Handler):
 from config_manager import ConfigManager
 from auto_rds_handler import AutoRDSHandler
 from intro_loader_handler import IntroLoaderHandler
+from ad_scheduler_handler import AdSchedulerHandler
 from ui_config_window import ConfigWindow
 from ui_missing_artists_window import MissingArtistsWindow
 from ui_options_window import OptionsWindow
@@ -58,6 +59,7 @@ class MainApp(tk.Tk):
 
         self.rds_queue = Queue()
         self.intro_queue = Queue()
+        self.ad_scheduler_queue = Queue()
 
         # Route handler loggers to the queues
         formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
@@ -65,6 +67,8 @@ class MainApp(tk.Tk):
         rds_qh.setFormatter(formatter)
         loader_qh = QueueHandler(self.intro_queue)
         loader_qh.setFormatter(formatter)
+        ad_scheduler_qh = QueueHandler(self.ad_scheduler_queue)
+        ad_scheduler_qh.setFormatter(formatter)
 
         rds_logger = logging.getLogger('AutoRDS')
         rds_logger.setLevel(logging.INFO)
@@ -76,14 +80,21 @@ class MainApp(tk.Tk):
         loader_logger.propagate = False
         loader_logger.addHandler(loader_qh)
 
+        ad_scheduler_logger = logging.getLogger('AdScheduler')
+        ad_scheduler_logger.setLevel(logging.DEBUG)
+        ad_scheduler_logger.propagate = False
+        ad_scheduler_logger.addHandler(ad_scheduler_qh)
+
         # Initialize handlers
         try:
             # # Ensure correct argument order: queue, config_manager
             self.rds_handler = AutoRDSHandler(self.rds_queue, self.config_manager)
             logging.info("AutoRDSHandler initialized successfully.")
             self.intro_loader_handler = IntroLoaderHandler(self.intro_queue, self.config_manager)
-            
+
             logging.info("IntroLoaderHandler initialized successfully.")
+            self.ad_scheduler_handler = AdSchedulerHandler(self.ad_scheduler_queue, self.config_manager)
+            logging.info("AdSchedulerHandler initialized successfully.")
         except AttributeError as e:
             logging.error(f"AttributeError during handler initialization: {e}")
             messagebox.showerror("Initialization Error", f"Failed to initialize handlers: {e}")
@@ -101,8 +112,10 @@ class MainApp(tk.Tk):
         try:
             self.rds_thread = threading.Thread(target=self.rds_handler.run, daemon=True)
             self.intro_thread = threading.Thread(target=self.intro_loader_handler.run, daemon=True)
+            self.ad_scheduler_thread = threading.Thread(target=self.ad_scheduler_handler.run, daemon=True)
             self.rds_thread.start()
             self.intro_thread.start()
+            self.ad_scheduler_thread.start()
             logging.info("Handler threads started successfully.")
         except Exception as e:
             logging.error(f"Failed to start handler threads: {e}")
@@ -113,6 +126,30 @@ class MainApp(tk.Tk):
         # Start periodic GUI updates
         self.after(100, self.process_queues)
         self.after(5000, self.update_message_cycle)
+
+    def on_close(self):
+        """Handle window close event."""
+        try:
+            # Stop all handlers
+            if hasattr(self, 'rds_handler') and self.rds_handler:
+                self.rds_handler.stop()
+            if hasattr(self, 'intro_loader_handler') and self.intro_loader_handler:
+                self.intro_loader_handler.stop()
+            if hasattr(self, 'ad_scheduler_handler') and self.ad_scheduler_handler:
+                self.ad_scheduler_handler.stop()
+
+            # Stop threads
+            if hasattr(self, 'rds_thread') and self.rds_thread and self.rds_thread.is_alive():
+                self.rds_thread.join(timeout=2)
+            if hasattr(self, 'intro_thread') and self.intro_thread and self.intro_thread.is_alive():
+                self.intro_thread.join(timeout=2)
+            if hasattr(self, 'ad_scheduler_thread') and self.ad_scheduler_thread and self.ad_scheduler_thread.is_alive():
+                self.ad_scheduler_thread.join(timeout=2)
+
+        except Exception as e:
+            logging.error(f"Error stopping handlers: {e}")
+        finally:
+            self.destroy()
 
     def create_widgets(self):
         main_frame = ttk.Frame(self, padding="10")
@@ -133,22 +170,38 @@ class MainApp(tk.Tk):
         log_pane = ttk.PanedWindow(main_frame, orient=tk.VERTICAL)
         log_pane.pack(fill=tk.BOTH, expand=True)
 
-        rds_log_frame = ttk.LabelFrame(log_pane, text="AutoRDS Logs")
+        # Create tabbed notebook for logs
+        log_notebook = ttk.Notebook(log_pane)
+
+        # AutoRDS Logs Tab
+        rds_log_frame = ttk.Frame(log_notebook)
+        log_notebook.add(rds_log_frame, text="AutoRDS")
         self.rds_log_text = tk.Text(rds_log_frame, wrap=tk.WORD, state=tk.DISABLED, height=10, font=("Consolas", 9))
         rds_scroll = ttk.Scrollbar(rds_log_frame, orient=tk.VERTICAL, command=self.rds_log_text.yview)
         self.rds_log_text.config(yscrollcommand=rds_scroll.set)
         rds_scroll.pack(side=tk.RIGHT, fill=tk.Y)
         self.rds_log_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-        loader_log_frame = ttk.LabelFrame(log_pane, text="Intro Loader Logs")
+        # Intro Loader Logs Tab
+        loader_log_frame = ttk.Frame(log_notebook)
+        log_notebook.add(loader_log_frame, text="Intro Loader")
         self.loader_log_text = tk.Text(loader_log_frame, wrap=tk.WORD, state=tk.DISABLED, height=10, font=("Consolas", 9))
         loader_scroll = ttk.Scrollbar(loader_log_frame, orient=tk.VERTICAL, command=self.loader_log_text.yview)
         self.loader_log_text.config(yscrollcommand=loader_scroll.set)
         loader_scroll.pack(side=tk.RIGHT, fill=tk.Y)
         self.loader_log_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-        log_pane.add(rds_log_frame, weight=1)
-        log_pane.add(loader_log_frame, weight=1)
+        # Ad Scheduler Logs Tab
+        ad_scheduler_log_frame = ttk.Frame(log_notebook)
+        log_notebook.add(ad_scheduler_log_frame, text="Ad Scheduler")
+        self.ad_scheduler_log_text = tk.Text(ad_scheduler_log_frame, wrap=tk.WORD, state=tk.DISABLED, height=10, font=("Consolas", 9))
+        ad_scheduler_scroll = ttk.Scrollbar(ad_scheduler_log_frame, orient=tk.VERTICAL, command=self.ad_scheduler_log_text.yview)
+        self.ad_scheduler_log_text.config(yscrollcommand=ad_scheduler_scroll.set)
+        ad_scheduler_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        self.ad_scheduler_log_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
+
+        # Add the notebook to the paned window
+        log_pane.add(log_notebook, weight=1)
 
         # Current RDS Messages Cycle
         msg_frame = ttk.LabelFrame(main_frame, text="Current RDS Messages Cycle")
@@ -176,7 +229,7 @@ class MainApp(tk.Tk):
         MissingArtistsWindow(self, self.intro_loader_handler)
 
     def open_options_window(self):
-        OptionsWindow(self, self.config_manager, self.intro_loader_handler, self.rds_handler)
+        OptionsWindow(self, self.config_manager, self.intro_loader_handler, self.rds_handler, self.ad_scheduler_handler)
 
     def open_playlist_editor_window(self):
         PlaylistEditorWindow(self, self.config_manager)
@@ -208,9 +261,15 @@ class MainApp(tk.Tk):
             self._log_message(self.loader_log_text, message)
             updated = True
 
+        while not self.ad_scheduler_queue.empty():
+            message = self.ad_scheduler_queue.get()
+            self._log_message(self.ad_scheduler_log_text, message)
+            updated = True
+
         if updated:
             self.rds_log_text.see(tk.END)
             self.loader_log_text.see(tk.END)
+            self.ad_scheduler_log_text.see(tk.END)
 
         self.after(100, self.process_queues)
 

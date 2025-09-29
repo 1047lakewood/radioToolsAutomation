@@ -67,7 +67,7 @@
             "default_message": "732.901.7777 to SUPPORT and hear this program!"
         },
         "intro_loader": {
-            "now_playing_xml": "G:\\To_RDS\\nowplaying.xml",
+            "now_playing_xml": "G:\\Misc\\Dev\\radioToolsAutomation\\nowplayingsample.xml",
             "mp3_directory": "G:\\Shiurim\\introsCleanedUp",
             "missing_artists_log": "G:\\Misc\\Dev\\CombinedRDSApp\\missing_artists.log",
             "schedule_url": "http://192.168.3.11:9000/?pass=bmas220&action=schedule&type=run&id=TBACFNBGJKOMETDYSQYR"
