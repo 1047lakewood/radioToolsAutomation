@@ -55,7 +55,7 @@ class ConfigManager:
             }
         }
 
-    def save_config(self, make_backup=True):
+    def save_config(self, make_backup=False):
         """Saves the current configuration to JSON, optionally creating a backup."""
         if make_backup:
             self._backup_config()
