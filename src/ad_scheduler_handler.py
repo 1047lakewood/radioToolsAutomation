@@ -13,6 +13,7 @@ logger = logging.getLogger('AdScheduler')
 # Constants
 LOOP_SLEEP = 60  # Check every minute
 HOUR_CHECK_INTERVAL = 3600  # Check for hour boundaries every hour
+TRACK_CHANGE_CHECK_INTERVAL = 5  # Check for track changes every 5 seconds
 ERROR_RETRY_DELAY = 300  # 5 minutes after errors
 
 class AdSchedulerHandler:
@@ -31,6 +32,9 @@ class AdSchedulerHandler:
         self.running = False
         self.thread = None
         self.last_hour_check = time.time()  # Initialize to current time
+        self.last_track_check = time.time()  # Initialize to current time
+        self.last_file_modification = 0  # Track file modification time
+        self.last_seen_track = None  # Track the last seen track for change detection
         self.waiting_for_track_boundary = False
         self.pending_lecture_check = False
         logger.debug(f"AdSchedulerHandler initialized with running={self.running}")
@@ -111,6 +115,20 @@ class AdSchedulerHandler:
                             logger.error(f"Error in hourly check: {e}")
                             # Reset last_hour_check to avoid immediate retry
                             self.last_hour_check = current_time
+
+                    # Check for track changes (if we have components and are waiting for track boundary)
+                    time_since_track_check = current_time - self.last_track_check
+                    if (time_since_track_check >= TRACK_CHANGE_CHECK_INTERVAL and
+                        self.lecture_detector and self.ad_service and
+                        (self.waiting_for_track_boundary or self.pending_lecture_check)):
+                        logger.debug(f"Track change check triggered after {time_since_track_check:.1f}s")
+                        try:
+                            self._check_for_track_change()
+                            self.last_track_check = current_time
+                        except Exception as e:
+                            logger.error(f"Error in track change check: {e}")
+                            # Reset last_track_check to avoid immediate retry
+                            self.last_track_check = current_time
                     else:
                         logger.debug(f"Not time for hourly check yet. Sleeping for {LOOP_SLEEP}s")
 
@@ -130,21 +148,65 @@ class AdSchedulerHandler:
         finally:
             logger.info(f"AdScheduler handler stopped after {iteration_count} iterations.")
 
-    def _perform_hourly_check(self):
-        """Perform the hourly ad scheduling check."""
+    def _check_for_track_change(self):
+        """Check if the current track has changed and perform lecture detection if needed."""
         try:
-            logger.debug("Performing hourly ad scheduling check.")
+            if not self.lecture_detector:
+                logger.warning("Lecture detector not available - skipping track change check.")
+                return
+
+            # Check file modification time first
+            current_modification = os.path.getmtime(self.lecture_detector.xml_path) if os.path.exists(self.lecture_detector.xml_path) else 0
+            file_changed = current_modification != self.last_file_modification
+
+            logger.debug(f"File modification time: {current_modification}, last: {self.last_file_modification}, changed: {file_changed}")
+
+            if file_changed:
+                self.last_file_modification = current_modification
+                logger.debug("XML file has been modified - forcing refresh and recheck.")
+
+            # Force refresh the XML file to avoid caching issues
+            self.lecture_detector.force_refresh()
+
+            # Get current track info
+            current_track_info = self.lecture_detector.get_current_track_info()
+            current_track_id = f"{current_track_info.get('artist', '')} - {current_track_info.get('title', '')}"
+
+            logger.debug(f"Current track ID: '{current_track_id}'")
+            logger.debug(f"Last seen track ID: '{self.last_seen_track}'")
+
+            # Check if track has changed (either file changed or track content changed)
+            track_content_changed = current_track_id != self.last_seen_track
+            if file_changed or track_content_changed:
+                logger.info(f"Track changed from '{self.last_seen_track}' to '{current_track_id}'")
+                self.last_seen_track = current_track_id
+
+                # If we were waiting for a track boundary, check if the new track is a lecture
+                if self.waiting_for_track_boundary or self.pending_lecture_check:
+                    logger.info("Track boundary detected - performing lecture check.")
+                    # Reset the waiting flag before checking since we've detected the change
+                    self.waiting_for_track_boundary = False
+                    self._perform_lecture_check()
+            else:
+                logger.debug("Track has not changed.")
+
+        except Exception as e:
+            logger.error(f"Error in track change check: {e}")
+            logger.error(f"Error type: {type(e).__name__}")
+
+    def _perform_lecture_check(self):
+        """Perform lecture detection and scheduling logic."""
+        try:
+            logger.debug("Performing lecture check.")
 
             # Check if components are available
             if not self.lecture_detector:
-                logger.warning("Lecture detector not available - skipping hourly check.")
+                logger.warning("Lecture detector not available - skipping lecture check.")
                 return
 
             if not self.ad_service:
-                logger.warning("Ad service not available - skipping hourly check.")
+                logger.warning("Ad service not available - skipping lecture check.")
                 return
-
-            logger.debug("Both components available - proceeding with lecture detection.")
 
             # Check if next track is a lecture
             try:
@@ -168,14 +230,36 @@ class AdSchedulerHandler:
                 if will_start_within_hour:
                     logger.info("Next lecture will start within current hour - running schedule service.")
                     self._run_schedule_service()
+                    # Reset waiting flags after successful schedule
+                    self.waiting_for_track_boundary = False
+                    self.pending_lecture_check = False
                 else:
                     logger.info("Next lecture will not start within current hour - running instant service.")
                     self._run_instant_service()
+                    # Reset waiting flags after instant service
+                    self.waiting_for_track_boundary = False
+                    self.pending_lecture_check = False
             else:
                 logger.debug("Next track is not a lecture - waiting for track boundary.")
                 self.waiting_for_track_boundary = True
                 self.pending_lecture_check = True
 
+        except Exception as e:
+            logger.error(f"Error in lecture check: {e}")
+            logger.error(f"Error details: {type(e).__name__}: {str(e)}")
+            # Fallback to instant service on errors
+            try:
+                self._run_instant_service()
+                self.waiting_for_track_boundary = False
+                self.pending_lecture_check = False
+            except Exception as e2:
+                logger.error(f"Failed to run fallback instant service: {e2}")
+
+    def _perform_hourly_check(self):
+        """Perform the hourly ad scheduling check."""
+        try:
+            logger.debug("Performing hourly ad scheduling check.")
+            self._perform_lecture_check()
         except Exception as e:
             logger.error(f"Error in hourly check: {e}")
             logger.error(f"Error details: {type(e).__name__}: {str(e)}")

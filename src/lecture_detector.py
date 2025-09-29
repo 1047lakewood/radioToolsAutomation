@@ -55,10 +55,10 @@ class LectureDetector:
 
     def _is_track_lecture(self, xml_path):
         """Internal method to check if a track at the given XML path is a lecture.
-        
+
         Args:
             xml_path (list): List of XML tags to navigate to the track
-            
+
         Returns:
             bool: True if track is a lecture, False otherwise
         """
@@ -67,8 +67,20 @@ class LectureDetector:
                 logging.warning(f"XML file not found: {self.xml_path}")
                 return False
 
-            tree = ET.parse(self.xml_path)
-            root = tree.getroot()
+            # Force file system refresh - try multiple approaches
+            try:
+                # Approach 1: Touch the file to update modification time
+                current_time = os.path.getmtime(self.xml_path)
+                os.utime(self.xml_path, (current_time, current_time))
+            except:
+                pass
+
+            # Parse with explicit encoding to avoid caching issues
+            with open(self.xml_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+
+            # Parse the content directly instead of using ET.parse() which might cache
+            root = ET.fromstring(content)
             artist = self._get_track_artist(root, xml_path)
             return self._is_artist_lecture(artist)
 
@@ -135,6 +147,17 @@ class LectureDetector:
             self.blacklist = set(x.lower() for x in self.config_manager.get_blacklist())
             self.whitelist = set(x.lower() for x in self.config_manager.get_whitelist())
 
+    def force_refresh(self):
+        """Force refresh the XML file reading to avoid caching issues."""
+        try:
+            # Force file system to update
+            if os.path.exists(self.xml_path):
+                current_time = os.path.getmtime(self.xml_path)
+                os.utime(self.xml_path, (current_time, current_time))
+                logging.debug(f"Forced refresh of XML file: {self.xml_path}")
+        except Exception as e:
+            logging.warning(f"Could not force refresh XML file: {e}")
+
     def get_current_track_info(self):
         """Returns the current track information from the XML file."""
         try:
@@ -198,8 +221,8 @@ class LectureDetector:
                 if current_element is None:
                     return ""
             
-            # Extract and return the duration text
-            duration = current_element.findtext("DURATION", "").strip()
+            # Extract and return the duration attribute
+            duration = current_element.get("DURATION", "").strip()
             return duration
 
         except ET.ParseError as e:
