@@ -18,8 +18,8 @@ class PlaylistEditorWindow(tk.Toplevel):
         self.parent = parent
         self.config_manager = config_manager
         self.title("Playlist Editor")
-        self.geometry("700x600")
-        self.minsize(500, 400)
+        self.geometry("900x600")
+        self.minsize(700, 400)
 
         # Make window modal
         self.grab_set()
@@ -79,6 +79,9 @@ class PlaylistEditorWindow(tk.Toplevel):
 
         new_preset_button = ttk.Button(preset_frame, text="New...", command=self.new_preset, width=6)
         new_preset_button.pack(side=tk.LEFT, padx=(0, 2))
+
+        rename_preset_button = ttk.Button(preset_frame, text="Rename...", command=self.rename_preset, width=8)
+        rename_preset_button.pack(side=tk.LEFT, padx=(0, 2))
 
         edit_preset_button = ttk.Button(preset_frame, text="Edit Path...", command=self.edit_preset_path, width=8)
         edit_preset_button.pack(side=tk.LEFT, padx=(0, 2))
@@ -372,6 +375,44 @@ class PlaylistEditorWindow(tk.Toplevel):
         self._populate_presets_dropdown()
         self.selected_preset_name_var.set(preset_name)
         self.load_selected_playlist()
+
+    def rename_preset(self):
+        """Rename the selected playlist preset."""
+        selected_preset_name = self.selected_preset_name_var.get()
+        if not selected_preset_name:
+            messagebox.showwarning("No Selection", "Select a preset to rename.")
+            return
+
+        # Prompt for new name
+        new_name = tk.simpledialog.askstring("Rename Preset", f"Enter new name for '{selected_preset_name}':", parent=self)
+        if not new_name:
+            return
+
+        # Check if new name is the same as current name
+        if new_name == selected_preset_name:
+            return
+
+        # Check if new name already exists
+        if new_name in self.playlist_presets:
+            messagebox.showerror("Error", f"Preset '{new_name}' already exists.")
+            return
+
+        # Update the presets dictionary
+        playlist_path = self.playlist_presets[selected_preset_name]
+        self.playlist_presets[new_name] = playlist_path
+        del self.playlist_presets[selected_preset_name]
+
+        # Save configuration
+        self._save_presets()
+
+        # Update UI
+        self._populate_presets_dropdown()
+        self.selected_preset_name_var.set(new_name)
+
+        # Update window title
+        self.title(f"Playlist Editor - {new_name} ({os.path.basename(playlist_path)})")
+
+        messagebox.showinfo("Renamed", f"Preset '{selected_preset_name}' renamed to '{new_name}'.")
 
     def edit_preset_path(self):
         """Edit the file path of the selected preset."""

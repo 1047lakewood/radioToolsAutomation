@@ -38,8 +38,8 @@ class MainApp(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("radioToolsAutomation")
-        self.geometry("800x600")
-        self.minsize(700, 500)
+        self.geometry("850x600")
+        self.minsize(800, 500)
         self.themed_style = ttkthemes.ThemedStyle(self)
         self.themed_style.set_theme("arc")  # Modern theme; options: 'arc', 'equilux', etc.
         
