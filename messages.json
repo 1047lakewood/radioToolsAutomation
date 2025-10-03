@@ -188,40 +188,922 @@
         },
         "ad_inserter": {
             "insertion_url": "http://localhost:9000/?pass=bmas220&action=schedule&type=run&id=IZVRTKXNHAHFUHXVPCGY",
-            "instant_url": "",
+            "instant_url": "http://localhost:9000/?pass=bmas220&action=schedule&type=run&id=NDCKWHGTOQWWGYPRVEKT",
             "output_mp3": "G:/Misc/Sponsorships/autoAd.mp3"
+        },
+        "mairlist": {
+            "server": "localhost:9000",
+            "password": "bmas220"
+        },
+        "debug": {
+            "enable_debug_logs": true
         }
     },
     "Ads": [
         {
-            "Name": "New Adfgdfg",
+            "Name": "TEST_AlwaysOn_1",
             "Enabled": true,
             "Scheduled": false,
-            "PlayCount": 18,
-            "LastPlayed": "2025-09-29T14:22:57.613568",
-            "MP3File": "G:/Misc/Radio Info/1047 Station ID.mp3",
+            "MP3File": "G:/Misc/Sponsorships/Audio Files/final ace restoration.mp3",
             "Days": [],
-            "Times": []
+            "Times": [],
+            "PlayCount": 8,
+            "LastPlayed": "2025-10-03T06:00:49.842238"
         },
         {
-            "Name": "New Ad",
+            "Name": "TEST_AlwaysOn_2",
             "Enabled": true,
             "Scheduled": false,
-            "PlayCount": 18,
-            "LastPlayed": "2025-09-29T14:22:57.656495",
-            "MP3File": "G:/Misc/Radio Info/r meilich Ba'erev Tochlu Matzos.mp3",
+            "MP3File": "G:/Misc/Sponsorships/Audio Files/Judaica Plaza.mp3",
             "Days": [],
-            "Times": []
+            "Times": [],
+            "PlayCount": 8,
+            "LastPlayed": "2025-10-03T06:00:49.893922"
         },
         {
-            "Name": "New Ad3",
-            "Enabled": false,
+            "Name": "TEST_Morning_6to9",
+            "Enabled": true,
             "Scheduled": true,
-            "MP3File": "",
+            "MP3File": "G:/Misc/Sponsorships/Audio Files/asifa.mp3",
             "Days": [
-                "Monday"
+                "Sunday",
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday"
             ],
             "Times": [
+                {
+                    "hour": 6
+                },
+                {
+                    "hour": 7
+                },
+                {
+                    "hour": 8
+                },
+                {
+                    "hour": 9
+                }
+            ],
+            "PlayCount": 1,
+            "LastPlayed": "2025-10-03T06:00:49.912181"
+        },
+        {
+            "Name": "TEST_Midday_12to13",
+            "Enabled": true,
+            "Scheduled": true,
+            "MP3File": "G:/Misc/Radio Info/1047 Station ID.mp3",
+            "Days": [
+                "Sunday",
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday"
+            ],
+            "Times": [
+                {
+                    "hour": 12
+                },
+                {
+                    "hour": 13
+                }
+            ],
+            "PlayCount": 0,
+            "LastPlayed": null
+        },
+        {
+            "Name": "TEST_Afternoon_15to17",
+            "Enabled": true,
+            "Scheduled": true,
+            "MP3File": "G:/Misc/Radio Info/r meilich Ba'erev Tochlu Matzos.mp3",
+            "Days": [
+                "Sunday",
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday"
+            ],
+            "Times": [
+                {
+                    "hour": 15
+                },
+                {
+                    "hour": 16
+                },
+                {
+                    "hour": 17
+                }
+            ],
+            "PlayCount": 0,
+            "LastPlayed": null
+        },
+        {
+            "Name": "TEST_Evening_19to21",
+            "Enabled": true,
+            "Scheduled": true,
+            "MP3File": "G:/Misc/Radio Info/1047 Station ID.mp3",
+            "Days": [
+                "Sunday",
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday"
+            ],
+            "Times": [
+                {
+                    "hour": 19
+                },
+                {
+                    "hour": 20
+                },
+                {
+                    "hour": 21
+                }
+            ],
+            "PlayCount": 0,
+            "LastPlayed": null
+        },
+        {
+            "Name": "TEST_Night_22to23",
+            "Enabled": true,
+            "Scheduled": true,
+            "MP3File": "G:/Misc/Radio Info/r meilich Ba'erev Tochlu Matzos.mp3",
+            "Days": [
+                "Sunday",
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday"
+            ],
+            "Times": [
+                {
+                    "hour": 22
+                },
+                {
+                    "hour": 23
+                }
+            ],
+            "PlayCount": 0,
+            "LastPlayed": null
+        },
+        {
+            "Name": "TEST_Weekdays_Only",
+            "Enabled": true,
+            "Scheduled": true,
+            "MP3File": "G:/Misc/Radio Info/1047 Station ID.mp3",
+            "Days": [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday"
+            ],
+            "Times": [],
+            "PlayCount": 8,
+            "LastPlayed": "2025-10-03T06:00:49.930246"
+        },
+        {
+            "Name": "TEST_Weekend_Only",
+            "Enabled": true,
+            "Scheduled": true,
+            "MP3File": "G:/Misc/Radio Info/1047 Station ID.mp3",
+            "Days": [
+                "Saturday",
+                "Sunday"
+            ],
+            "Times": [],
+            "PlayCount": 0,
+            "LastPlayed": null
+        },
+        {
+            "Name": "TEST_Friday_Only",
+            "Enabled": true,
+            "Scheduled": true,
+            "MP3File": "G:/Misc/Radio Info/1047 Station ID.mp3",
+            "Days": [
+                "Friday"
+            ],
+            "Times": [],
+            "PlayCount": 8,
+            "LastPlayed": "2025-10-03T06:00:49.948682"
+        },
+        {
+            "Name": "TEST_Weekday_Morning_Commute",
+            "Enabled": true,
+            "Scheduled": true,
+            "MP3File": "G:/Misc/Radio Info/r meilich Ba'erev Tochlu Matzos.mp3",
+            "Days": [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday"
+            ],
+            "Times": [
+                {
+                    "hour": 7
+                },
+                {
+                    "hour": 8
+                }
+            ],
+            "PlayCount": 0,
+            "LastPlayed": null
+        },
+        {
+            "Name": "TEST_Weekday_Evening_Commute",
+            "Enabled": true,
+            "Scheduled": true,
+            "MP3File": "G:/Misc/Radio Info/r meilich Ba'erev Tochlu Matzos.mp3",
+            "Days": [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday"
+            ],
+            "Times": [
+                {
+                    "hour": 17
+                },
+                {
+                    "hour": 18
+                }
+            ],
+            "PlayCount": 0,
+            "LastPlayed": null
+        },
+        {
+            "Name": "TEST_Weekend_Brunch",
+            "Enabled": true,
+            "Scheduled": true,
+            "MP3File": "G:/Misc/Radio Info/r meilich Ba'erev Tochlu Matzos.mp3",
+            "Days": [
+                "Saturday",
+                "Sunday"
+            ],
+            "Times": [
+                {
+                    "hour": 10
+                },
+                {
+                    "hour": 11
+                }
+            ],
+            "PlayCount": 0,
+            "LastPlayed": null
+        },
+        {
+            "Name": "TEST_Hour_02_VerifySoon",
+            "Enabled": true,
+            "Scheduled": true,
+            "MP3File": "G:/Misc/Radio Info/1047 Station ID.mp3",
+            "Days": [
+                "Friday"
+            ],
+            "Times": [
+                {
+                    "hour": 2
+                }
+            ],
+            "PlayCount": 0,
+            "LastPlayed": null
+        },
+        {
+            "Name": "TEST_Hour_03_VerifySoon",
+            "Enabled": true,
+            "Scheduled": true,
+            "MP3File": "G:/Misc/Radio Info/r meilich Ba'erev Tochlu Matzos.mp3",
+            "Days": [
+                "Friday"
+            ],
+            "Times": [
+                {
+                    "hour": 3
+                }
+            ],
+            "PlayCount": 6,
+            "LastPlayed": "2025-10-03T03:39:49.671051"
+        },
+        {
+            "Name": "TEST_Hour_04_VerifySoon",
+            "Enabled": true,
+            "Scheduled": true,
+            "MP3File": "G:/Misc/Radio Info/1047 Station ID.mp3",
+            "Days": [
+                "Friday"
+            ],
+            "Times": [
+                {
+                    "hour": 4
+                }
+            ],
+            "PlayCount": 0,
+            "LastPlayed": null
+        },
+        {
+            "Name": "TEST_Every_Hour_0000",
+            "Enabled": true,
+            "Scheduled": true,
+            "MP3File": "G:/Misc/Radio Info/r meilich Ba'erev Tochlu Matzos.mp3",
+            "Days": [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday"
+            ],
+            "Times": [
+                {
+                    "hour": 0
+                }
+            ],
+            "PlayCount": 0,
+            "LastPlayed": null
+        },
+        {
+            "Name": "TEST_Every_Hour_0100",
+            "Enabled": true,
+            "Scheduled": true,
+            "MP3File": "G:/Misc/Radio Info/1047 Station ID.mp3",
+            "Days": [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday"
+            ],
+            "Times": [
+                {
+                    "hour": 1
+                }
+            ],
+            "PlayCount": 0,
+            "LastPlayed": null
+        },
+        {
+            "Name": "TEST_Every_Hour_0200",
+            "Enabled": true,
+            "Scheduled": true,
+            "MP3File": "G:/Misc/Radio Info/r meilich Ba'erev Tochlu Matzos.mp3",
+            "Days": [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday"
+            ],
+            "Times": [
+                {
+                    "hour": 2
+                }
+            ],
+            "PlayCount": 0,
+            "LastPlayed": null
+        },
+        {
+            "Name": "TEST_Every_Hour_0300",
+            "Enabled": true,
+            "Scheduled": true,
+            "MP3File": "G:/Misc/Radio Info/1047 Station ID.mp3",
+            "Days": [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday"
+            ],
+            "Times": [
+                {
+                    "hour": 3
+                }
+            ],
+            "PlayCount": 6,
+            "LastPlayed": "2025-10-03T03:39:49.690610"
+        },
+        {
+            "Name": "TEST_Every_Hour_0400",
+            "Enabled": true,
+            "Scheduled": true,
+            "MP3File": "G:/Misc/Radio Info/r meilich Ba'erev Tochlu Matzos.mp3",
+            "Days": [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday"
+            ],
+            "Times": [
+                {
+                    "hour": 4
+                }
+            ],
+            "PlayCount": 0,
+            "LastPlayed": null
+        },
+        {
+            "Name": "TEST_Every_Hour_0500",
+            "Enabled": true,
+            "Scheduled": true,
+            "MP3File": "G:/Misc/Radio Info/1047 Station ID.mp3",
+            "Days": [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday"
+            ],
+            "Times": [
+                {
+                    "hour": 5
+                }
+            ],
+            "PlayCount": 1,
+            "LastPlayed": "2025-10-03T05:02:46.866668"
+        },
+        {
+            "Name": "TEST_Every_Hour_0600",
+            "Enabled": true,
+            "Scheduled": true,
+            "MP3File": "G:/Misc/Radio Info/r meilich Ba'erev Tochlu Matzos.mp3",
+            "Days": [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday"
+            ],
+            "Times": [
+                {
+                    "hour": 6
+                }
+            ],
+            "PlayCount": 1,
+            "LastPlayed": "2025-10-03T06:00:49.969890"
+        },
+        {
+            "Name": "TEST_Every_Hour_0700",
+            "Enabled": true,
+            "Scheduled": true,
+            "MP3File": "G:/Misc/Radio Info/1047 Station ID.mp3",
+            "Days": [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday"
+            ],
+            "Times": [
+                {
+                    "hour": 7
+                }
+            ],
+            "PlayCount": 0,
+            "LastPlayed": null
+        },
+        {
+            "Name": "TEST_Every_Hour_0800",
+            "Enabled": true,
+            "Scheduled": true,
+            "MP3File": "G:/Misc/Radio Info/r meilich Ba'erev Tochlu Matzos.mp3",
+            "Days": [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday"
+            ],
+            "Times": [
+                {
+                    "hour": 8
+                }
+            ],
+            "PlayCount": 0,
+            "LastPlayed": null
+        },
+        {
+            "Name": "TEST_Every_Hour_0900",
+            "Enabled": true,
+            "Scheduled": true,
+            "MP3File": "G:/Misc/Radio Info/1047 Station ID.mp3",
+            "Days": [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday"
+            ],
+            "Times": [
+                {
+                    "hour": 9
+                }
+            ],
+            "PlayCount": 0,
+            "LastPlayed": null
+        },
+        {
+            "Name": "TEST_Every_Hour_1000",
+            "Enabled": true,
+            "Scheduled": true,
+            "MP3File": "G:/Misc/Radio Info/r meilich Ba'erev Tochlu Matzos.mp3",
+            "Days": [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday"
+            ],
+            "Times": [
+                {
+                    "hour": 10
+                }
+            ],
+            "PlayCount": 0,
+            "LastPlayed": null
+        },
+        {
+            "Name": "TEST_Every_Hour_1100",
+            "Enabled": true,
+            "Scheduled": true,
+            "MP3File": "G:/Misc/Radio Info/1047 Station ID.mp3",
+            "Days": [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday"
+            ],
+            "Times": [
+                {
+                    "hour": 11
+                }
+            ],
+            "PlayCount": 0,
+            "LastPlayed": null
+        },
+        {
+            "Name": "TEST_Every_Hour_1200",
+            "Enabled": true,
+            "Scheduled": true,
+            "MP3File": "G:/Misc/Radio Info/r meilich Ba'erev Tochlu Matzos.mp3",
+            "Days": [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday"
+            ],
+            "Times": [
+                {
+                    "hour": 12
+                }
+            ],
+            "PlayCount": 0,
+            "LastPlayed": null
+        },
+        {
+            "Name": "TEST_Every_Hour_1300",
+            "Enabled": true,
+            "Scheduled": true,
+            "MP3File": "G:/Misc/Radio Info/1047 Station ID.mp3",
+            "Days": [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday"
+            ],
+            "Times": [
+                {
+                    "hour": 13
+                }
+            ],
+            "PlayCount": 0,
+            "LastPlayed": null
+        },
+        {
+            "Name": "TEST_Every_Hour_1400",
+            "Enabled": true,
+            "Scheduled": true,
+            "MP3File": "G:/Misc/Radio Info/r meilich Ba'erev Tochlu Matzos.mp3",
+            "Days": [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday"
+            ],
+            "Times": [
+                {
+                    "hour": 14
+                }
+            ],
+            "PlayCount": 0,
+            "LastPlayed": null
+        },
+        {
+            "Name": "TEST_Every_Hour_1500",
+            "Enabled": true,
+            "Scheduled": true,
+            "MP3File": "G:/Misc/Radio Info/1047 Station ID.mp3",
+            "Days": [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday"
+            ],
+            "Times": [
+                {
+                    "hour": 15
+                }
+            ],
+            "PlayCount": 0,
+            "LastPlayed": null
+        },
+        {
+            "Name": "TEST_Every_Hour_1600",
+            "Enabled": true,
+            "Scheduled": true,
+            "MP3File": "G:/Misc/Radio Info/r meilich Ba'erev Tochlu Matzos.mp3",
+            "Days": [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday"
+            ],
+            "Times": [
+                {
+                    "hour": 16
+                }
+            ],
+            "PlayCount": 0,
+            "LastPlayed": null
+        },
+        {
+            "Name": "TEST_Every_Hour_1700",
+            "Enabled": true,
+            "Scheduled": true,
+            "MP3File": "G:/Misc/Radio Info/1047 Station ID.mp3",
+            "Days": [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday"
+            ],
+            "Times": [
+                {
+                    "hour": 17
+                }
+            ],
+            "PlayCount": 0,
+            "LastPlayed": null
+        },
+        {
+            "Name": "TEST_Every_Hour_1800",
+            "Enabled": true,
+            "Scheduled": true,
+            "MP3File": "G:/Misc/Radio Info/r meilich Ba'erev Tochlu Matzos.mp3",
+            "Days": [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday"
+            ],
+            "Times": [
+                {
+                    "hour": 18
+                }
+            ],
+            "PlayCount": 0,
+            "LastPlayed": null
+        },
+        {
+            "Name": "TEST_Every_Hour_1900",
+            "Enabled": true,
+            "Scheduled": true,
+            "MP3File": "G:/Misc/Radio Info/1047 Station ID.mp3",
+            "Days": [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday"
+            ],
+            "Times": [
+                {
+                    "hour": 19
+                }
+            ],
+            "PlayCount": 0,
+            "LastPlayed": null
+        },
+        {
+            "Name": "TEST_Every_Hour_2000",
+            "Enabled": true,
+            "Scheduled": true,
+            "MP3File": "G:/Misc/Radio Info/r meilich Ba'erev Tochlu Matzos.mp3",
+            "Days": [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday"
+            ],
+            "Times": [
+                {
+                    "hour": 20
+                }
+            ],
+            "PlayCount": 0,
+            "LastPlayed": null
+        },
+        {
+            "Name": "TEST_Every_Hour_2100",
+            "Enabled": true,
+            "Scheduled": true,
+            "MP3File": "G:/Misc/Radio Info/1047 Station ID.mp3",
+            "Days": [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday"
+            ],
+            "Times": [
+                {
+                    "hour": 21
+                }
+            ],
+            "PlayCount": 0,
+            "LastPlayed": null
+        },
+        {
+            "Name": "TEST_Every_Hour_2200",
+            "Enabled": true,
+            "Scheduled": true,
+            "MP3File": "G:/Misc/Radio Info/r meilich Ba'erev Tochlu Matzos.mp3",
+            "Days": [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday"
+            ],
+            "Times": [
+                {
+                    "hour": 22
+                }
+            ],
+            "PlayCount": 0,
+            "LastPlayed": null
+        },
+        {
+            "Name": "TEST_Every_Hour_2300",
+            "Enabled": true,
+            "Scheduled": true,
+            "MP3File": "G:/Misc/Radio Info/1047 Station ID.mp3",
+            "Days": [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday"
+            ],
+            "Times": [
+                {
+                    "hour": 23
+                }
+            ],
+            "PlayCount": 0,
+            "LastPlayed": null
+        },
+        {
+            "Name": "TEST_DISABLED_Never_Play_1",
+            "Enabled": false,
+            "Scheduled": false,
+            "MP3File": "G:/Misc/Radio Info/r meilich Ba'erev Tochlu Matzos.mp3",
+            "Days": [],
+            "Times": [],
+            "PlayCount": 0,
+            "LastPlayed": null
+        },
+        {
+            "Name": "TEST_DISABLED_Never_Play_2",
+            "Enabled": false,
+            "Scheduled": true,
+            "MP3File": "G:/Misc/Radio Info/r meilich Ba'erev Tochlu Matzos.mp3",
+            "Days": [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday"
+            ],
+            "Times": [
+                {
+                    "hour": 0
+                },
+                {
+                    "hour": 1
+                },
+                {
+                    "hour": 2
+                },
+                {
+                    "hour": 3
+                },
+                {
+                    "hour": 4
+                },
+                {
+                    "hour": 5
+                },
+                {
+                    "hour": 6
+                },
+                {
+                    "hour": 7
+                },
+                {
+                    "hour": 8
+                },
+                {
+                    "hour": 9
+                },
+                {
+                    "hour": 10
+                },
+                {
+                    "hour": 11
+                },
+                {
+                    "hour": 12
+                },
                 {
                     "hour": 13
                 },
@@ -230,8 +1112,37 @@
                 },
                 {
                     "hour": 15
+                },
+                {
+                    "hour": 16
+                },
+                {
+                    "hour": 17
+                },
+                {
+                    "hour": 18
+                },
+                {
+                    "hour": 19
+                },
+                {
+                    "hour": 20
+                },
+                {
+                    "hour": 21
+                },
+                {
+                    "hour": 22
+                },
+                {
+                    "hour": 23
                 }
-            ]
+            ],
+            "PlayCount": 0,
+            "LastPlayed": null
         }
-    ]
+    ],
+    "playlist_presets": {
+        "Station ID": "G:\\Misc\\Radio Info\\Station ID Playlist.m3u8"
+    }
 }

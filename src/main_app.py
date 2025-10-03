@@ -50,6 +50,12 @@ class MainApp(tk.Tk):
         try:
             self.config_manager = ConfigManager()
             
+            # Apply debug logging setting from config
+            enable_debug = self.config_manager.get_setting("settings.debug.enable_debug_logs", False)
+            if enable_debug:
+                logging.getLogger().setLevel(logging.DEBUG)
+                logging.info("Debug logging enabled from config")
+            
             logging.info("ConfigManager initialized successfully.")
         except Exception as e:
             logging.error(f"Failed to initialize ConfigManager: {e}")
@@ -70,18 +76,22 @@ class MainApp(tk.Tk):
         ad_scheduler_qh = QueueHandler(self.ad_scheduler_queue)
         ad_scheduler_qh.setFormatter(formatter)
 
+        # Get debug setting to determine log level
+        enable_debug = self.config_manager.get_setting("settings.debug.enable_debug_logs", False)
+        log_level = logging.DEBUG if enable_debug else logging.INFO
+
         rds_logger = logging.getLogger('AutoRDS')
-        rds_logger.setLevel(logging.INFO)
+        rds_logger.setLevel(log_level)
         rds_logger.propagate = False
         rds_logger.addHandler(rds_qh)
 
         loader_logger = logging.getLogger('IntroLoader')
-        loader_logger.setLevel(logging.INFO)
+        loader_logger.setLevel(log_level)
         loader_logger.propagate = False
         loader_logger.addHandler(loader_qh)
 
         ad_scheduler_logger = logging.getLogger('AdScheduler')
-        ad_scheduler_logger.setLevel(logging.DEBUG)
+        ad_scheduler_logger.setLevel(log_level)
         ad_scheduler_logger.propagate = False
         ad_scheduler_logger.addHandler(ad_scheduler_qh)
 

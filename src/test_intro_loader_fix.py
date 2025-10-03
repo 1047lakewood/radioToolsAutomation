@@ -12,6 +12,7 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from intro_loader_handler import IntroLoaderHandler
+from config_manager import ConfigManager
 
 # Setup basic logging
 logging.basicConfig(
@@ -28,7 +29,8 @@ def test_intro_loader_initialization():
     try:
         # Initialize IntroLoaderHandler (should configure pydub)
         log_queue = queue.Queue()
-        handler = IntroLoaderHandler(log_queue)
+        config_manager = ConfigManager()
+        handler = IntroLoaderHandler(log_queue, config_manager)
         
         print("✅ IntroLoaderHandler initialized successfully")
         print("   - Pydub window hiding should now be configured")

@@ -12,6 +12,7 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from intro_loader_handler import IntroLoaderHandler
+from config_manager import ConfigManager
 
 # Setup basic logging
 logging.basicConfig(
@@ -28,7 +29,8 @@ def test_audio_processing_directly():
     try:
         # Initialize IntroLoaderHandler (configures subprocess hiding)
         log_queue = queue.Queue()
-        handler = IntroLoaderHandler(log_queue)
+        config_manager = ConfigManager()
+        handler = IntroLoaderHandler(log_queue, config_manager)
         
         print("✅ IntroLoaderHandler initialized with subprocess hiding configured")
         
@@ -89,7 +91,8 @@ def test_force_xml_processing():
     try:
         # Initialize IntroLoaderHandler
         log_queue = queue.Queue()
-        handler = IntroLoaderHandler(log_queue)
+        config_manager = ConfigManager()
+        handler = IntroLoaderHandler(log_queue, config_manager)
         
         # Try to force an XML check by touching the file
         print("   - Attempting to touch XML file to trigger processing...")

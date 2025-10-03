@@ -28,6 +28,14 @@ class AdStatisticsWindow:
             logger.error("AdPlayLogger not available")
             self.ad_logger = None
 
+        # Initialize report generator
+        try:
+            from ad_report_generator import AdReportGenerator
+            self.report_generator = AdReportGenerator(self.ad_logger) if self.ad_logger else None
+        except ImportError:
+            logger.error("AdReportGenerator not available")
+            self.report_generator = None
+
         # Date filtering state (must be initialized before create_widgets)
         self.start_date_var = tk.StringVar()
         self.end_date_var = tk.StringVar()
@@ -35,8 +43,8 @@ class AdStatisticsWindow:
 
         self.window = tk.Toplevel(parent)
         self.window.title("Ad Play Statistics")
-        self.window.geometry("800x600")
-        self.window.minsize(700, 500)
+        self.window.geometry("1000x700")
+        self.window.minsize(900, 600)
 
         # Make window modal
         self.window.transient(parent)
@@ -129,27 +137,45 @@ class AdStatisticsWindow:
         self.end_date_entry.bind("<FocusIn>", lambda e: self._on_date_entry_focus_in(self.end_date_entry))
         self.end_date_entry.bind("<FocusOut>", lambda e: self._on_date_entry_focus_out(self.end_date_entry))
 
-        # Action buttons
+        # Action buttons - stack them vertically if needed
         button_frame = ttk.Frame(controls_frame)
-        button_frame.grid(row=0, column=1, sticky=tk.E)
+        button_frame.grid(row=0, column=1, sticky=tk.NE, padx=(10, 0))
+
+        # Row 1 of buttons
+        button_row1 = ttk.Frame(button_frame)
+        button_row1.pack(fill=tk.X, pady=(0, 5))
 
         ttk.Button(
-            button_frame,
+            button_row1,
             text="Refresh Stats",
-            command=self.refresh_stats
-        ).pack(side=tk.LEFT, padx=5)
+            command=self.refresh_stats,
+            width=15
+        ).pack(side=tk.LEFT, padx=2)
 
         ttk.Button(
-            button_frame,
+            button_row1,
             text="Reset All Counts",
-            command=self.reset_counts
-        ).pack(side=tk.LEFT, padx=5)
+            command=self.reset_counts,
+            width=15
+        ).pack(side=tk.LEFT, padx=2)
+
+        # Row 2 of buttons
+        button_row2 = ttk.Frame(button_frame)
+        button_row2.pack(fill=tk.X)
 
         ttk.Button(
-            button_frame,
+            button_row2,
             text="Export Stats",
-            command=self.export_stats
-        ).pack(side=tk.LEFT, padx=5)
+            command=self.export_stats,
+            width=15
+        ).pack(side=tk.LEFT, padx=2)
+
+        ttk.Button(
+            button_row2,
+            text="Generate Report",
+            command=self.generate_advertiser_report,
+            width=15
+        ).pack(side=tk.LEFT, padx=2)
 
         # Statistics summary
         summary_frame = ttk.LabelFrame(main_frame, text="Summary", padding="10")
@@ -449,7 +475,335 @@ class AdStatisticsWindow:
                 if " ↑" in current_text or " ↓" in current_text:
                     self.ad_tree.heading(column, text=current_text.replace(" ↑", "").replace(" ↓", ""))
 
+    def generate_advertiser_report(self):
+        """Open dialog to generate an advertiser report."""
+        if not self.report_generator:
+            messagebox.showerror("Error", "Report generator not available")
+            return
+
+        # Create report dialog
+        ReportGeneratorDialog(self.window, self.config_manager, self.report_generator)
+
     def on_close(self):
         """Handle window close event."""
         self.window.grab_release()
         self.window.destroy()
+
+
+class ReportGeneratorDialog:
+    """Dialog for generating advertiser reports."""
+
+    def __init__(self, parent, config_manager, report_generator):
+        """
+        Initialize the report generator dialog.
+
+        Args:
+            parent: Parent tkinter window
+            config_manager: ConfigManager instance
+            report_generator: AdReportGenerator instance
+        """
+        self.config_manager = config_manager
+        self.report_generator = report_generator
+
+        self.dialog = tk.Toplevel(parent)
+        self.dialog.title("Generate Advertiser Report")
+        self.dialog.geometry("600x700")
+        self.dialog.resizable(True, True)
+
+        # Make modal
+        self.dialog.transient(parent)
+        self.dialog.grab_set()
+
+        # Center the dialog
+        self._center_dialog()
+
+        self.create_widgets()
+
+    def _center_dialog(self):
+        """Center the dialog on the screen."""
+        self.dialog.update_idletasks()
+        width = self.dialog.winfo_width()
+        height = self.dialog.winfo_height()
+        x = (self.dialog.winfo_screenwidth() // 2) - (width // 2)
+        y = (self.dialog.winfo_screenheight() // 2) - (height // 2)
+        self.dialog.geometry(f'+{x}+{y}')
+
+    def create_widgets(self):
+        """Create and arrange all widgets."""
+        main_frame = ttk.Frame(self.dialog, padding="20")
+        main_frame.pack(fill=tk.BOTH, expand=True)
+
+        # Title
+        title_label = ttk.Label(
+            main_frame,
+            text="Generate Advertiser Report",
+            font=("Segoe UI", 14, "bold")
+        )
+        title_label.pack(pady=(0, 20))
+
+        # Report type selection
+        type_frame = ttk.LabelFrame(main_frame, text="Report Type", padding="10")
+        type_frame.pack(fill=tk.X, pady=(0, 15))
+
+        self.report_type_var = tk.StringVar(value="single")
+        ttk.Radiobutton(
+            type_frame,
+            text="Single Ad Report",
+            variable=self.report_type_var,
+            value="single",
+            command=self.on_report_type_changed
+        ).pack(anchor=tk.W, pady=2)
+
+        ttk.Radiobutton(
+            type_frame,
+            text="Multi-Ad Report",
+            variable=self.report_type_var,
+            value="multi",
+            command=self.on_report_type_changed
+        ).pack(anchor=tk.W, pady=2)
+
+        # Ad selection
+        ad_frame = ttk.LabelFrame(main_frame, text="Ad Selection", padding="10")
+        ad_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 15))
+
+        # Single ad selection
+        self.single_ad_frame = ttk.Frame(ad_frame)
+        self.single_ad_frame.pack(fill=tk.X)
+
+        ttk.Label(self.single_ad_frame, text="Select Ad:").pack(anchor=tk.W, pady=(0, 5))
+
+        ads = self.config_manager.get_ads() or []
+        ad_names = [ad.get("Name", "Unknown") for ad in ads]
+
+        self.ad_var = tk.StringVar()
+        self.ad_combo = ttk.Combobox(
+            self.single_ad_frame,
+            textvariable=self.ad_var,
+            values=ad_names,
+            state="readonly"
+        )
+        self.ad_combo.pack(fill=tk.X, pady=(0, 10))
+        if ad_names:
+            self.ad_combo.current(0)
+
+        # Multi-ad selection (hidden initially)
+        self.multi_ad_frame = ttk.Frame(ad_frame)
+
+        ttk.Label(self.multi_ad_frame, text="Select Ads (check all that apply):").pack(anchor=tk.W, pady=(0, 5))
+
+        # Scrollable frame for checkboxes
+        canvas = tk.Canvas(self.multi_ad_frame, height=150)
+        scrollbar = ttk.Scrollbar(self.multi_ad_frame, orient="vertical", command=canvas.yview)
+        scrollable_frame = ttk.Frame(canvas)
+
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        self.ad_check_vars = {}
+        for ad_name in ad_names:
+            var = tk.BooleanVar()
+            ttk.Checkbutton(
+                scrollable_frame,
+                text=ad_name,
+                variable=var
+            ).pack(anchor=tk.W, pady=2)
+            self.ad_check_vars[ad_name] = var
+
+        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        # Date range
+        date_frame = ttk.LabelFrame(main_frame, text="Date Range", padding="10")
+        date_frame.pack(fill=tk.X, pady=(0, 15))
+
+        date_grid = ttk.Frame(date_frame)
+        date_grid.pack(fill=tk.X)
+
+        ttk.Label(date_grid, text="From:").grid(row=0, column=0, sticky=tk.W, padx=(0, 5))
+        self.start_date_var = tk.StringVar()
+        self.start_date_entry = ttk.Entry(date_grid, textvariable=self.start_date_var, width=15)
+        self.start_date_entry.grid(row=0, column=1, sticky=tk.W, padx=(0, 20))
+        self.start_date_entry.insert(0, "YYYY-MM-DD")
+
+        ttk.Label(date_grid, text="To:").grid(row=0, column=2, sticky=tk.W, padx=(0, 5))
+        self.end_date_var = tk.StringVar()
+        self.end_date_entry = ttk.Entry(date_grid, textvariable=self.end_date_var, width=15)
+        self.end_date_entry.grid(row=0, column=3, sticky=tk.W)
+        self.end_date_entry.insert(0, "YYYY-MM-DD")
+
+        # Format selection
+        format_frame = ttk.LabelFrame(main_frame, text="Output Format", padding="10")
+        format_frame.pack(fill=tk.X, pady=(0, 15))
+
+        self.format_var = tk.StringVar(value="pdf")
+        ttk.Radiobutton(
+            format_frame,
+            text="PDF (Professional, recommended for advertisers)",
+            variable=self.format_var,
+            value="pdf"
+        ).pack(anchor=tk.W, pady=2)
+
+        ttk.Radiobutton(
+            format_frame,
+            text="CSV (Spreadsheet format)",
+            variable=self.format_var,
+            value="csv"
+        ).pack(anchor=tk.W, pady=2)
+
+        # Optional details for PDF
+        self.details_frame = ttk.LabelFrame(main_frame, text="Optional Details (PDF only)", padding="10")
+        self.details_frame.pack(fill=tk.X, pady=(0, 15))
+
+        ttk.Label(self.details_frame, text="Advertiser Name:").grid(row=0, column=0, sticky=tk.W, pady=5)
+        self.advertiser_name_var = tk.StringVar()
+        ttk.Entry(self.details_frame, textvariable=self.advertiser_name_var, width=40).grid(
+            row=0, column=1, sticky=tk.EW, padx=(10, 0), pady=5
+        )
+
+        ttk.Label(self.details_frame, text="Company Name:").grid(row=1, column=0, sticky=tk.W, pady=5)
+        self.company_name_var = tk.StringVar()
+        ttk.Entry(self.details_frame, textvariable=self.company_name_var, width=40).grid(
+            row=1, column=1, sticky=tk.EW, padx=(10, 0), pady=5
+        )
+
+        self.details_frame.grid_columnconfigure(1, weight=1)
+
+        # Buttons
+        button_frame = ttk.Frame(main_frame)
+        button_frame.pack(fill=tk.X, pady=(10, 0))
+
+        ttk.Button(
+            button_frame,
+            text="Generate Report",
+            command=self.generate_report
+        ).pack(side=tk.RIGHT, padx=(5, 0))
+
+        ttk.Button(
+            button_frame,
+            text="Cancel",
+            command=self.dialog.destroy
+        ).pack(side=tk.RIGHT)
+
+    def on_report_type_changed(self):
+        """Handle report type selection change."""
+        if self.report_type_var.get() == "single":
+            self.multi_ad_frame.pack_forget()
+            self.single_ad_frame.pack(fill=tk.X)
+        else:
+            self.single_ad_frame.pack_forget()
+            self.multi_ad_frame.pack(fill=tk.BOTH, expand=True)
+
+    def generate_report(self):
+        """Generate the report based on user selections."""
+        try:
+            # Validate dates
+            start_date = self.start_date_var.get().strip()
+            end_date = self.end_date_var.get().strip()
+
+            if not start_date or start_date == "YYYY-MM-DD":
+                messagebox.showerror("Error", "Please enter a start date.")
+                return
+
+            if not end_date or end_date == "YYYY-MM-DD":
+                messagebox.showerror("Error", "Please enter an end date.")
+                return
+
+            try:
+                datetime.strptime(start_date, "%Y-%m-%d")
+                datetime.strptime(end_date, "%Y-%m-%d")
+            except ValueError:
+                messagebox.showerror("Error", "Please enter dates in YYYY-MM-DD format.")
+                return
+
+            if start_date > end_date:
+                messagebox.showerror("Error", "Start date must be before or equal to end date.")
+                return
+
+            # Get selected format
+            report_format = self.format_var.get()
+            file_ext = "pdf" if report_format == "pdf" else "csv"
+
+            # Get file save location
+            from tkinter import filedialog
+            default_filename = f"ad_report_{start_date}_to_{end_date}.{file_ext}"
+
+            file_types = [
+                ("PDF files", "*.pdf"),
+                ("All files", "*.*")
+            ] if report_format == "pdf" else [
+                ("CSV files", "*.csv"),
+                ("All files", "*.*")
+            ]
+
+            output_file = filedialog.asksaveasfilename(
+                defaultextension=f".{file_ext}",
+                filetypes=file_types,
+                initialfile=default_filename,
+                title="Save Report As"
+            )
+
+            if not output_file:
+                return
+
+            # Generate appropriate report
+            success = False
+            if self.report_type_var.get() == "single":
+                ad_name = self.ad_var.get()
+                if not ad_name:
+                    messagebox.showerror("Error", "Please select an ad.")
+                    return
+
+                if report_format == "pdf":
+                    success = self.report_generator.generate_pdf_report(
+                        ad_name=ad_name,
+                        start_date=start_date,
+                        end_date=end_date,
+                        output_file=output_file,
+                        advertiser_name=self.advertiser_name_var.get().strip() or None,
+                        company_name=self.company_name_var.get().strip() or None
+                    )
+                else:
+                    success = self.report_generator.generate_csv_report(
+                        ad_name=ad_name,
+                        start_date=start_date,
+                        end_date=end_date,
+                        output_file=output_file
+                    )
+            else:
+                # Multi-ad report
+                selected_ads = [name for name, var in self.ad_check_vars.items() if var.get()]
+                if not selected_ads:
+                    messagebox.showerror("Error", "Please select at least one ad.")
+                    return
+
+                success = self.report_generator.generate_multi_ad_report(
+                    ad_names=selected_ads,
+                    start_date=start_date,
+                    end_date=end_date,
+                    output_file=output_file,
+                    format=report_format
+                )
+
+            if success:
+                result = messagebox.askyesno(
+                    "Success",
+                    f"Report generated successfully!\n\nSaved to:\n{output_file}\n\nWould you like to open it?",
+                    icon="info"
+                )
+                if result:
+                    import os
+                    os.startfile(output_file)
+                self.dialog.destroy()
+            else:
+                messagebox.showerror("Error", "Failed to generate report. Check logs for details.")
+
+        except Exception as e:
+            logger.error(f"Error in generate_report: {e}")
+            import traceback
+            traceback.print_exc()
+            messagebox.showerror("Error", f"Failed to generate report: {e}")
