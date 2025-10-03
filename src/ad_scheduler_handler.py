@@ -96,13 +96,9 @@ class AdSchedulerHandler:
         try:
             logger.debug(f"Starting main loop. Running state: {self.running}")
             while self.running:
-                logger.debug(f"Loop condition check: self.running = {self.running}")
                 try:
                     iteration_count += 1
                     current_hour = datetime.now().hour
-
-                    logger.debug(f"Loop iteration {iteration_count}, current hour: {current_hour}, last checked hour: {self.last_hour_checked}")
-                    logger.debug(f"Current running state: {self.running}")
 
                     # Check if we've crossed into a new hour
                     if current_hour != self.last_hour_checked:

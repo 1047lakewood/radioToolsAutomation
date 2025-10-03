@@ -207,8 +207,8 @@
             "MP3File": "G:/Misc/Sponsorships/Audio Files/final ace restoration.mp3",
             "Days": [],
             "Times": [],
-            "PlayCount": 8,
-            "LastPlayed": "2025-10-03T06:00:49.842238"
+            "PlayCount": 19,
+            "LastPlayed": "2025-10-03T17:28:26.891718"
         },
         {
             "Name": "TEST_AlwaysOn_2",
@@ -217,8 +217,8 @@
             "MP3File": "G:/Misc/Sponsorships/Audio Files/Judaica Plaza.mp3",
             "Days": [],
             "Times": [],
-            "PlayCount": 8,
-            "LastPlayed": "2025-10-03T06:00:49.893922"
+            "PlayCount": 19,
+            "LastPlayed": "2025-10-03T17:28:26.941580"
         },
         {
             "Name": "TEST_Morning_6to9",
@@ -248,8 +248,8 @@
                     "hour": 9
                 }
             ],
-            "PlayCount": 1,
-            "LastPlayed": "2025-10-03T06:00:49.912181"
+            "PlayCount": 4,
+            "LastPlayed": "2025-10-03T09:31:00.507940"
         },
         {
             "Name": "TEST_Midday_12to13",
@@ -273,8 +273,8 @@
                     "hour": 13
                 }
             ],
-            "PlayCount": 0,
-            "LastPlayed": null
+            "PlayCount": 2,
+            "LastPlayed": "2025-10-03T13:00:13.705642"
         },
         {
             "Name": "TEST_Afternoon_15to17",
@@ -301,8 +301,8 @@
                     "hour": 17
                 }
             ],
-            "PlayCount": 0,
-            "LastPlayed": null
+            "PlayCount": 3,
+            "LastPlayed": "2025-10-03T17:28:26.961700"
         },
         {
             "Name": "TEST_Evening_19to21",
@@ -370,8 +370,8 @@
                 "Friday"
             ],
             "Times": [],
-            "PlayCount": 8,
-            "LastPlayed": "2025-10-03T06:00:49.930246"
+            "PlayCount": 19,
+            "LastPlayed": "2025-10-03T17:28:26.977704"
         },
         {
             "Name": "TEST_Weekend_Only",
@@ -395,8 +395,8 @@
                 "Friday"
             ],
             "Times": [],
-            "PlayCount": 8,
-            "LastPlayed": "2025-10-03T06:00:49.948682"
+            "PlayCount": 19,
+            "LastPlayed": "2025-10-03T17:28:26.993444"
         },
         {
             "Name": "TEST_Weekday_Morning_Commute",
@@ -418,8 +418,8 @@
                     "hour": 8
                 }
             ],
-            "PlayCount": 0,
-            "LastPlayed": null
+            "PlayCount": 2,
+            "LastPlayed": "2025-10-03T08:10:56.872889"
         },
         {
             "Name": "TEST_Weekday_Evening_Commute",
@@ -441,8 +441,8 @@
                     "hour": 18
                 }
             ],
-            "PlayCount": 0,
-            "LastPlayed": null
+            "PlayCount": 1,
+            "LastPlayed": "2025-10-03T17:28:27.008647"
         },
         {
             "Name": "TEST_Weekend_Brunch",
@@ -685,8 +685,8 @@
                     "hour": 7
                 }
             ],
-            "PlayCount": 0,
-            "LastPlayed": null
+            "PlayCount": 1,
+            "LastPlayed": "2025-10-03T07:03:53.319698"
         },
         {
             "Name": "TEST_Every_Hour_0800",
@@ -707,8 +707,8 @@
                     "hour": 8
                 }
             ],
-            "PlayCount": 0,
-            "LastPlayed": null
+            "PlayCount": 1,
+            "LastPlayed": "2025-10-03T08:10:56.893173"
         },
         {
             "Name": "TEST_Every_Hour_0900",
@@ -729,8 +729,8 @@
                     "hour": 9
                 }
             ],
-            "PlayCount": 0,
-            "LastPlayed": null
+            "PlayCount": 1,
+            "LastPlayed": "2025-10-03T09:31:00.564885"
         },
         {
             "Name": "TEST_Every_Hour_1000",
@@ -751,8 +751,8 @@
                     "hour": 10
                 }
             ],
-            "PlayCount": 0,
-            "LastPlayed": null
+            "PlayCount": 1,
+            "LastPlayed": "2025-10-03T10:10:03.941848"
         },
         {
             "Name": "TEST_Every_Hour_1100",
@@ -773,8 +773,8 @@
                     "hour": 11
                 }
             ],
-            "PlayCount": 0,
-            "LastPlayed": null
+            "PlayCount": 1,
+            "LastPlayed": "2025-10-03T11:19:07.178980"
         },
         {
             "Name": "TEST_Every_Hour_1200",
@@ -795,8 +795,8 @@
                     "hour": 12
                 }
             ],
-            "PlayCount": 0,
-            "LastPlayed": null
+            "PlayCount": 1,
+            "LastPlayed": "2025-10-03T12:25:10.547271"
         },
         {
             "Name": "TEST_Every_Hour_1300",
@@ -817,8 +817,8 @@
                     "hour": 13
                 }
             ],
-            "PlayCount": 0,
-            "LastPlayed": null
+            "PlayCount": 1,
+            "LastPlayed": "2025-10-03T13:00:13.761029"
         },
         {
             "Name": "TEST_Every_Hour_1400",
@@ -839,8 +839,8 @@
                     "hour": 14
                 }
             ],
-            "PlayCount": 0,
-            "LastPlayed": null
+            "PlayCount": 1,
+            "LastPlayed": "2025-10-03T14:09:17.149719"
         },
         {
             "Name": "TEST_Every_Hour_1500",
@@ -861,8 +861,8 @@
                     "hour": 15
                 }
             ],
-            "PlayCount": 0,
-            "LastPlayed": null
+            "PlayCount": 1,
+            "LastPlayed": "2025-10-03T15:12:20.384258"
         },
         {
             "Name": "TEST_Every_Hour_1600",
@@ -883,8 +883,8 @@
                     "hour": 16
                 }
             ],
-            "PlayCount": 0,
-            "LastPlayed": null
+            "PlayCount": 1,
+            "LastPlayed": "2025-10-03T16:00:23.581572"
         },
         {
             "Name": "TEST_Every_Hour_1700",
@@ -905,8 +905,8 @@
                     "hour": 17
                 }
             ],
-            "PlayCount": 0,
-            "LastPlayed": null
+            "PlayCount": 1,
+            "LastPlayed": "2025-10-03T17:28:27.028550"
         },
         {
             "Name": "TEST_Every_Hour_1800",
