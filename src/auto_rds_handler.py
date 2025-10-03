@@ -25,7 +25,7 @@ ERROR_RETRY_DELAY = 15 # Seconds to wait after a major loop error
 
 class AutoRDSHandler:
     # Accept log_queue in init, though not directly used here (logger config handles it)
-    def __init__(self, config_manager, log_queue):
+    def __init__(self, log_queue, config_manager):
         """
         Initializes the AutoRDS handler.
 
@@ -42,15 +42,23 @@ class AutoRDSHandler:
         self.last_sent_text = None
         
         # Load configurable settings from config
+        self.reload_configuration()
+
+        # Initialize LectureDetector
+        self.reload_lecture_detector()
+
+    def reload_configuration(self):
+        """Reload configuration settings from config manager."""
         self.rds_ip = self.config_manager.get_setting("settings.rds.ip", "50.208.125.83")
         self.rds_port = self.config_manager.get_setting("settings.rds.port", 10001)
         self.now_playing_xml = self.config_manager.get_setting("settings.rds.now_playing_xml", r"G:\To_RDS\nowplaying.xml")
         self.default_message = self.config_manager.get_setting("settings.rds.default_message", "732.901.7777 to SUPPORT and hear this program!")
 
-        # Initialize LectureDetector
+    def reload_lecture_detector(self):
+        """Reload the LectureDetector with current configuration."""
         self.lecture_detector = LectureDetector(
             xml_path=self.now_playing_xml,
-            config_manager=config_manager
+            config_manager=self.config_manager
         )
 
     def _load_now_playing(self):

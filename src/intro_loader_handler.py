@@ -90,7 +90,7 @@ MAX_LOG_LINES = 500 # Maximum number of lines to keep in the missing artists log
 
 class IntroLoaderHandler:
     # Accept log_queue in init, though not directly used here (logger config handles it)
-    def __init__(self, config_manager, log_queue):
+    def __init__(self, log_queue, config_manager):
         self.config_manager = config_manager
         self.running = False
         self.thread = None
@@ -100,6 +100,10 @@ class IntroLoaderHandler:
         self.last_known_next_artist = None
 
         # Load configurable settings from config
+        self.reload_configuration()
+
+    def reload_configuration(self):
+        """Reload configuration settings from config manager."""
         self.now_playing_xml = self.config_manager.get_setting("settings.intro_loader.now_playing_xml", r"G:\To_RDS\nowplaying.xml")
         self.mp3_directory = self.config_manager.get_setting("settings.intro_loader.mp3_directory", r"G:\Shiurim\introsCleanedUp")
         self.missing_artist_log = self.config_manager.get_setting("settings.intro_loader.missing_artists_log", r"G:\Misc\Dev\CombinedRDSApp\missing_artists.log")
