@@ -149,8 +149,8 @@
                     "schedule_url": "http://192.168.3.11:9000/?pass=bmas220&action=schedule&type=run&id=TBACFNBGJKOMETDYSQYR",
                     "current_artist_filename": "currentArtist_1047.mp3",
                     "actual_current_artist_filename": "actualCurrentArtist_1047.mp3",
-                    "blank_mp3_filename": "blank_1047.mp3",
-                    "silent_mp3_filename": "near_silent_1047.mp3"
+                    "blank_mp3_filename": "blank.mp3",
+                    "silent_mp3_filename": "near_silent.mp3"
                 },
                 "ad_inserter": {
                     "insertion_url": "http://localhost:8000/insert",
@@ -233,7 +233,7 @@
             ],
             "settings": {
                 "rds": {
-                    "ip": "47.21.151.125",
+                    "ip": "47.21.151.25",
                     "port": 10001,
                     "now_playing_xml": "G:/To_RDS/nowplaying_test.xml",
                     "default_message": "Ein OD Milvado"

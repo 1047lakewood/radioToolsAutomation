@@ -295,61 +295,57 @@ class AutoRDSHandler:
                     display_text = None
                     selected_duration = 10 # Default duration
 
-                    # Determine what to display
+                    # Determine what to display - send messages every loop iteration for constant updates
                     if not valid_messages:
-                        # No valid custom messages, check if it's time for the default
-                        if current_time - self.last_message_time >= self.current_message_duration:
-                            if self.last_sent_text != self.default_message:
-                                display_text = self.default_message
-                                selected_duration = 10 # Default duration for default message
-                            else:
-                                # Default is already showing, just reset timer
-                                self.last_message_time = current_time
-                                self.current_message_duration = 10
+                        # No valid custom messages, use default message
+                        if self.last_sent_text != self.default_message:
+                            display_text = self.default_message
+                            selected_duration = 10 # Default duration for default message
+                        else:
+                            # Default is already showing, but send it again for constant updates
+                            display_text = self.default_message
+                            selected_duration = 10
                     else:
-                        # There are valid custom messages, check if it's time to rotate
-                        if current_time - self.last_message_time >= self.current_message_duration:
-                            # Cycle through valid messages
-                            if len(valid_messages) > 0:
-                                current_valid_message = valid_messages[self.message_index % len(valid_messages)]
-                                formatted_text = self._format_message_text(current_valid_message["Text"], now_playing)
+                        # There are valid custom messages, always send the current one
+                        if len(valid_messages) > 0:
+                            current_valid_message = valid_messages[self.message_index % len(valid_messages)]
+                            formatted_text = self._format_message_text(current_valid_message["Text"], now_playing)
 
-                                if formatted_text and formatted_text != self.last_sent_text:
-                                    display_text = formatted_text
-                                    selected_duration = current_valid_message.get("Message Time", 10)
-                                    # Increment index ONLY when a new message is selected to be sent
-                                    self.message_index = (self.message_index + 1)
-                                elif not formatted_text:
-                                    # Message evaluated to empty (e.g., placeholder missing), skip it
-                                    self.logger.debug(
-                                        f"Formatted message resulted in empty string, skipping: {current_valid_message['Text']}"
-                                    )
-                                    # Move to next message so rotation doesn't get stuck
-                                    self.message_index = (self.message_index + 1)
-                                    # Reset timer but use short duration to try next message quickly
-                                    self.last_message_time = current_time
-                                    self.current_message_duration = 1  # Wait briefly before trying next
-                                else:
-                                    # Text is the same as last sent, reset timer, keep duration
-                                    self.logger.debug(f"Message text '{formatted_text}' is same as last sent, resetting timer.")
-                                    self.last_message_time = current_time
-                                    self.current_message_duration = selected_duration # Keep last duration
+                            if formatted_text:
+                                display_text = formatted_text
+                                selected_duration = current_valid_message.get("Message Time", 10)
+                                # Increment index for next cycle
+                                self.message_index = (self.message_index + 1) % len(valid_messages)
                             else:
-                                 # Should not happen if valid_messages check is correct, but as fallback:
-                                 self.last_message_time = current_time
-                                 self.current_message_duration = 1 # Wait briefly
-
-                    # Send the message if one was chosen
+                                # Message evaluated to empty, skip it and try next
+                                self.logger.debug(
+                                    f"Formatted message resulted in empty string, skipping: {current_valid_message['Text']}"
+                                )
+                                self.message_index = (self.message_index + 1) % len(valid_messages)
+                                # Don't set display_text, will fall back to default
+                        
+                    # Send the message if one was chosen - send every minute for constant updates
                     if display_text is not None:
-                        self.logger.info(f"Sending RDS message: '{display_text}' for {selected_duration}s")
-                        try:
-                            result = self._send_message_to_rds(display_text)
-                            self.logger.info(f"Sent RDS message: {display_text} - Result: {result}")
-                        except Exception as e:
-                            self.logger.error(f"Failed to send RDS message '{display_text}': {e}")
-                        self.last_sent_text = display_text
-                        self.last_message_time = current_time
-                        self.current_message_duration = selected_duration
+                        # Send every minute (60 seconds) to ensure RDS machine stays updated
+                        time_since_last_send = current_time - self.last_message_time
+                        should_send = (time_since_last_send >= 60)
+
+                        self.logger.debug(f"Time since last send: {time_since_last_send:.1f}s, Should send: {should_send}, Current time: {current_time}, Last send time: {self.last_message_time}")
+
+                        if should_send:
+                            self.logger.info(f"Sending RDS message: '{display_text}' for {selected_duration}s (minute update)")
+                            try:
+                                result = self._send_message_to_rds(display_text)
+                                self.logger.info(f"Sent RDS message: {display_text} - Result: {result}")
+                            except Exception as e:
+                                self.logger.error(f"Failed to send RDS message '{display_text}': {e}")
+                            self.last_sent_text = display_text
+                            self.last_message_time = current_time
+                            self.current_message_duration = selected_duration
+                            self.logger.debug(f"Updated last_message_time to {self.last_message_time}")
+                        else:
+                            # Don't update timer - wait for the 60-second interval to pass
+                            self.logger.debug(f"Not sending yet - only {time_since_last_send:.1f}s since last send")
 
                     # Wait before the next check
                     time.sleep(LOOP_SLEEP)

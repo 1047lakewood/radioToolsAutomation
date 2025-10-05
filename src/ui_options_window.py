@@ -33,7 +33,7 @@ class OptionsWindow(Toplevel):
         self.transient(parent)
         self.grab_set()
         self.title("Options")
-        self.geometry("750x600")  # Adjusted height to fit buttons
+        self.geometry("750x700")  # Increased height for better visibility
 
         self.config_manager = config_manager
         self.intro_1047_handler = intro_loader_handler_1047
