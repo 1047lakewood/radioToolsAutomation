@@ -39,7 +39,7 @@ class AdPlayLogger:
         """
         try:
             # Get current ads configuration
-            ads = self.config_manager.get_ads()
+            ads = self.config_manager.get_station_ads(self.station_id)
             if not ads:
                 self.logger.warning("No ads found in configuration")
                 return False
@@ -64,7 +64,7 @@ class AdPlayLogger:
                 return False
 
             # Save updated configuration
-            self.config_manager.set_ads(ads)
+            self.config_manager.set_station_ads(self.station_id, ads)
             self.config_manager.save_config()
 
             # Also save detailed statistics
@@ -99,7 +99,7 @@ class AdPlayLogger:
             Dict containing ad statistics
         """
         try:
-            ads = self.config_manager.get_ads()
+            ads = self.config_manager.get_station_ads(self.station_id)
             stats = {
                 "total_ads": len(ads),
                 "enabled_ads": sum(1 for ad in ads if ad.get("Enabled", False)),
@@ -136,12 +136,12 @@ class AdPlayLogger:
             bool: True if successfully reset, False otherwise
         """
         try:
-            ads = self.config_manager.get_ads()
+            ads = self.config_manager.get_station_ads(self.station_id)
             for ad in ads:
                 ad["PlayCount"] = 0
                 ad["LastPlayed"] = None
 
-            self.config_manager.set_ads(ads)
+            self.config_manager.set_station_ads(self.station_id, ads)
             self.config_manager.save_config()
 
             self.logger.info("Reset all ad play counts")
@@ -271,7 +271,7 @@ class AdPlayLogger:
             ad_totals = detailed_stats.get("ad_totals", {})
 
             # Get current ads for structure
-            ads = self.config_manager.get_ads()
+            ads = self.config_manager.get_station_ads(self.station_id)
 
             # Build ad details with filtered play counts
             ad_details = []
