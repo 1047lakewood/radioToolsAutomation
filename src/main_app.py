@@ -50,12 +50,6 @@ class MainApp(tk.Tk):
         try:
             self.config_manager = ConfigManager()
             
-            # Apply debug logging setting from config
-            enable_debug = self.config_manager.get_shared_setting("debug.enable_debug_logs", False)
-            if enable_debug:
-                logging.getLogger().setLevel(logging.DEBUG)
-                logging.info("Debug logging enabled from config")
-            
             logging.info("ConfigManager initialized successfully.")
         except Exception as e:
             logging.error(f"Failed to initialize ConfigManager: {e}")

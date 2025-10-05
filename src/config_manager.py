@@ -363,7 +363,7 @@ class ConfigManager:
             else:
                 # Try shared settings
                 return self.get_shared_setting(key, default)
-        except:
+        except (KeyError, TypeError, AttributeError):
             return default
 
     def update_setting(self, key, value):

@@ -170,7 +170,7 @@ class AutoRDSHandler:
                             self.logger.warning(f"Invalid hour format in schedule time: {time_obj}")
                             continue # Skip invalid time object
                     else:
-                         self.logger.warning(f"Unexpected format in schedule times list: {time_obj}")
+                        self.logger.warning(f"Unexpected format in schedule times list: {time_obj}")
 
                 if not hour_match:
                     self.logger.debug(f"Message '{message_text}' not scheduled for this hour ({current_hour}).")
