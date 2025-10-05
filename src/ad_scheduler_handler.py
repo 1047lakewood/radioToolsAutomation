@@ -525,7 +525,7 @@ class AdSchedulerHandler:
             self.logger.debug(f"Calculated track end time: {track_end_time}")
 
             # Check if end time is within current hour
-            current_hour_end = (current_time + timedelta(hours=1)).replace(minute=0, second=0, microsecond=0)
+            current_hour_end = current_time.replace(minute=59, second=59, microsecond=999999)
             self.logger.debug(f"Current hour end: {current_hour_end}")
 
             within_hour = track_end_time <= current_hour_end
