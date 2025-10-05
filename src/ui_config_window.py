@@ -10,20 +10,45 @@ import utils
 class ConfigWindow(Toplevel):
     """Window for configuring RDS messages (add, delete, edit, schedule)."""
     def __init__(self, parent, config_manager):
+        """
+        Initialize the Configure RDS Messages window.
+
+        Args:
+            parent: Parent tkinter window
+            config_manager: ConfigManager instance
+        """
         super().__init__(parent)
         self.transient(parent) # Keep window on top of parent
         self.grab_set() # Modal behavior
         self.title("Configure RDS Messages")
-        self.geometry("1150x700") # Slightly larger for potential future additions
+        self.geometry("1200x800") # Larger for dual-station tabs
 
         self.config_manager = config_manager
-        # Get a reference to the list; changes here will be reflected in the manager's list
-        # if the manager returns a direct reference. If it returns a copy, we need to update it on save.
-        # Assuming ConfigManager handles the state internally and we just tell it to save.
-        self.messages = self.config_manager.get_messages()
-        self.selected_index = None
-        self.changes_pending = False
-        self.is_loading_selection = False
+        self.current_station = "station_1047"  # Default station
+
+        # Station-specific storage for messages and UI state
+        self.station_messages = {
+            "station_1047": self.config_manager.get_station_messages("station_1047"),
+            "station_887": self.config_manager.get_station_messages("station_887")
+        }
+        self.station_selected_indices = {
+            "station_1047": None,
+            "station_887": None
+        }
+        self.station_changes_pending = {
+            "station_1047": False,
+            "station_887": False
+        }
+
+        # Station-specific UI widget storage
+        self.station_message_vars = {}
+        self.station_enable_vars = {}
+        self.station_duration_vars = {}
+        self.station_use_schedule_vars = {}
+        self.station_days_vars = {}
+        self.station_char_count_vars = {}
+        self.station_time_entries = {}
+        self.station_schedule_containers = {}
 
         # Use parent's theme settings if possible (ttkthemes applies globally)
         self.style = ttk.Style() # Inherit style from parent
@@ -39,8 +64,34 @@ class ConfigWindow(Toplevel):
         main_frame = ttk.Frame(self, padding="10")
         main_frame.pack(fill=tk.BOTH, expand=True)
 
+        # Create notebook for station tabs
+        self.notebook = ttk.Notebook(main_frame)
+        self.notebook.pack(fill=tk.BOTH, expand=True)
+
+        # Create tabs for each station
+        self.station_frames = {}
+        self.station_trees = {}
+        self.station_details_frames = {}
+
+        # Station 104.7 FM tab
+        station_1047_frame = ttk.Frame(self.notebook, padding="10")
+        self.notebook.add(station_1047_frame, text="Station 104.7 FM")
+        self.station_frames["station_1047"] = station_1047_frame
+        self.create_station_tab(station_1047_frame, "station_1047")
+
+        # Station 88.7 FM tab
+        station_887_frame = ttk.Frame(self.notebook, padding="10")
+        self.notebook.add(station_887_frame, text="Station 88.7 FM")
+        self.station_frames["station_887"] = station_887_frame
+        self.create_station_tab(station_887_frame, "station_887")
+
+        # Bind tab change event
+        self.notebook.bind('<<NotebookTabChanged>>', self.on_tab_changed)
+
+    def create_station_tab(self, parent_frame, station_id):
+        """Create the message configuration interface for a specific station."""
         # Split view - messages list on left, details on right
-        paned = ttk.PanedWindow(main_frame, orient=tk.HORIZONTAL)
+        paned = ttk.PanedWindow(parent_frame, orient=tk.HORIZONTAL)
         paned.pack(fill=tk.BOTH, expand=True)
 
         # --- Message list frame (left side) ---
@@ -55,39 +106,38 @@ class ConfigWindow(Toplevel):
         ttk.Button(list_toolbar, text="Move Up", command=self.move_message_up).pack(side=tk.LEFT, padx=2)
         ttk.Button(list_toolbar, text="Move Down", command=self.move_message_down).pack(side=tk.LEFT, padx=2)
 
-
         # Treeview with scrollbars
         tree_frame = ttk.Frame(list_frame)
         tree_frame.pack(fill=tk.BOTH, expand=True)
 
-        self.tree = ttk.Treeview(tree_frame, columns=("Text", "Enabled", "Scheduled", "Duration", "Days", "Times"),
+        tree = ttk.Treeview(tree_frame, columns=("Text", "Enabled", "Scheduled", "Duration", "Days", "Times"),
                                show='headings', selectmode="browse")
-        self.tree.heading("Text", text="Message", anchor=tk.W)
-        self.tree.heading("Enabled", text="Enabled", anchor=tk.CENTER)
-        self.tree.heading("Scheduled", text="Use Sched", anchor=tk.CENTER)
-        self.tree.heading("Duration", text="Dur (s)", anchor=tk.CENTER)
-        self.tree.heading("Days", text="Days", anchor=tk.W)
-        self.tree.heading("Times", text="Times (Hr)", anchor=tk.W)
+        tree.heading("Text", text="Message", anchor=tk.W)
+        tree.heading("Enabled", text="Enabled", anchor=tk.CENTER)
+        tree.heading("Scheduled", text="Use Sched", anchor=tk.CENTER)
+        tree.heading("Duration", text="Dur (s)", anchor=tk.CENTER)
+        tree.heading("Days", text="Days", anchor=tk.W)
+        tree.heading("Times", text="Times (Hr)", anchor=tk.W)
 
-        self.tree.column("Text", width=200, stretch=True)
-        self.tree.column("Enabled", width=60, stretch=False, anchor=tk.CENTER)
-        self.tree.column("Scheduled", width=70, stretch=False, anchor=tk.CENTER)
-        self.tree.column("Duration", width=60, stretch=False, anchor=tk.CENTER)
-        self.tree.column("Days", width=150, stretch=True)
-        self.tree.column("Times", width=100, stretch=True)
+        tree.column("Text", width=200, stretch=True)
+        tree.column("Enabled", width=60, stretch=False, anchor=tk.CENTER)
+        tree.column("Scheduled", width=70, stretch=False, anchor=tk.CENTER)
+        tree.column("Duration", width=60, stretch=False, anchor=tk.CENTER)
+        tree.column("Days", width=150, stretch=True)
+        tree.column("Times", width=100, stretch=True)
 
-        vsb = ttk.Scrollbar(tree_frame, orient="vertical", command=self.tree.yview)
-        hsb = ttk.Scrollbar(tree_frame, orient="horizontal", command=self.tree.xview)
-        self.tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
+        vsb = ttk.Scrollbar(tree_frame, orient="vertical", command=tree.yview)
+        hsb = ttk.Scrollbar(tree_frame, orient="horizontal", command=tree.xview)
+        tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
 
-        self.tree.grid(column=0, row=0, sticky="nsew")
+        tree.grid(column=0, row=0, sticky="nsew")
         vsb.grid(column=1, row=0, sticky="ns")
         hsb.grid(column=0, row=1, sticky="ew")
 
         tree_frame.columnconfigure(0, weight=1)
         tree_frame.rowconfigure(0, weight=1)
 
-        self.tree.bind("<<TreeviewSelect>>", self.on_message_select)
+        tree.bind("<<TreeviewSelect>>", self.on_message_select)
 
         # --- Message details frame (right side) ---
         details_frame = ttk.LabelFrame(paned, text="Message Details")
@@ -97,77 +147,116 @@ class ConfigWindow(Toplevel):
         details_content = ttk.Frame(details_frame, padding=(10, 5))
         details_content.pack(fill=tk.BOTH, expand=True)
 
-        message_frame = ttk.LabelFrame(details_content, text="Message Content (64 char max)")
+        # Store references for this station
+        self.station_trees[station_id] = tree
+        self.station_details_frames[station_id] = details_content
+
+        # Create station-specific details widgets
+        self.create_station_details_widgets(details_content, station_id)
+
+    def create_station_details_widgets(self, parent_frame, station_id):
+        """Create the message details editing widgets for a specific station."""
+        message_frame = ttk.LabelFrame(parent_frame, text="Message Content (64 char max)")
         message_frame.pack(fill=tk.X, pady=(0, 10))
 
-        self.message_var = tk.StringVar()
-        self.message_entry = ttk.Entry(message_frame, textvariable=self.message_var, font=("Segoe UI", 10), width=64)
-        self.message_entry.pack(fill=tk.X, padx=5, pady=5)
+        message_var = tk.StringVar()
+        self.station_message_vars[station_id] = message_var
+        message_entry = ttk.Entry(message_frame, textvariable=message_var, font=("Segoe UI", 10), width=64)
+        message_entry.pack(fill=tk.X, padx=5, pady=5)
 
-        self.char_count_var = tk.StringVar(value="0/64")
-        char_count_label = ttk.Label(message_frame, textvariable=self.char_count_var, anchor=tk.E)
+        char_count_var = tk.StringVar(value="0/64")
+        self.station_char_count_vars[station_id] = char_count_var
+        char_count_label = ttk.Label(message_frame, textvariable=char_count_var, anchor=tk.E)
         char_count_label.pack(fill=tk.X, padx=5, pady=(0, 5))
-        self.message_var.trace_add("write", self.update_char_count)
+        message_var.trace_add("write", lambda *args, sid=station_id: self.update_station_char_count(sid))
 
-        settings_frame = ttk.LabelFrame(details_content, text="Message Settings")
+        settings_frame = ttk.LabelFrame(parent_frame, text="Message Settings")
         settings_frame.pack(fill=tk.X, pady=(0, 10))
         settings_grid = ttk.Frame(settings_frame)
         settings_grid.pack(fill=tk.X, padx=5, pady=5)
 
-        self.enable_var = tk.BooleanVar()
-        enable_check = ttk.Checkbutton(settings_grid, text="Message Enabled", variable=self.enable_var, command=self.mark_changes)
+        enable_var = tk.BooleanVar()
+        self.station_enable_vars[station_id] = enable_var
+        enable_check = ttk.Checkbutton(settings_grid, text="Message Enabled", variable=enable_var,
+                                     command=lambda sid=station_id: self.mark_station_changes(sid))
         enable_check.grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
 
         ttk.Label(settings_grid, text="Duration (seconds):").grid(row=0, column=1, sticky=tk.W, padx=(20, 5), pady=5)
-        self.duration_var = tk.StringVar()
+        duration_var = tk.StringVar()
+        self.station_duration_vars[station_id] = duration_var
         vcmd = (self.register(self.validate_duration), '%P')
-        duration_spin = ttk.Spinbox(settings_grid, from_=1, to=60, width=5, textvariable=self.duration_var, validate='key', validatecommand=vcmd)
+        duration_spin = ttk.Spinbox(settings_grid, from_=1, to=60, width=5, textvariable=duration_var, validate='key', validatecommand=vcmd)
         duration_spin.grid(row=0, column=2, sticky=tk.W, padx=5, pady=5)
-        self.duration_var.trace_add("write", lambda *args: self.mark_changes())
+        duration_var.trace_add("write", lambda *args, sid=station_id: self.mark_station_changes(sid))
 
-        schedule_frame = ttk.LabelFrame(details_content, text="Message Schedule")
+        schedule_frame = ttk.LabelFrame(parent_frame, text="Message Schedule")
         schedule_frame.pack(fill=tk.X)
         schedule_options = ttk.Frame(schedule_frame)
         schedule_options.pack(fill=tk.X, padx=5, pady=5)
 
-        self.use_schedule_var = tk.BooleanVar()
-        schedule_check = ttk.Checkbutton(schedule_options, text="Use Scheduling", variable=self.use_schedule_var, command=self.toggle_schedule_controls)
+        use_schedule_var = tk.BooleanVar()
+        self.station_use_schedule_vars[station_id] = use_schedule_var
+        schedule_check = ttk.Checkbutton(schedule_options, text="Use Scheduling", variable=use_schedule_var,
+                                       command=lambda sid=station_id: self.toggle_station_schedule_controls(sid))
         schedule_check.pack(anchor=tk.W)
         schedule_help = ttk.Label(schedule_options, text="If unchecked, message will always display when enabled (subject to artist filters)", font=("Segoe UI", 9), foreground="#666666")
         schedule_help.pack(anchor=tk.W, pady=(0, 5))
 
-        self.schedule_container = ttk.Frame(schedule_frame)
-        self.schedule_container.pack(fill=tk.X, padx=5, pady=5)
+        schedule_container = ttk.Frame(schedule_frame)
+        schedule_container.pack(fill=tk.X, padx=5, pady=5)
+        self.station_schedule_containers[station_id] = schedule_container
 
-        days_frame = ttk.Frame(self.schedule_container)
+        # Days of the week checkboxes
+        days_frame = ttk.Frame(schedule_container)
         days_frame.pack(fill=tk.X, pady=5)
         ttk.Label(days_frame, text="Schedule Days:").grid(row=0, column=0, sticky=tk.W)
-        self.days_vars = {}
-        day_labels = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
         days_checks_frame = ttk.Frame(days_frame)
         days_checks_frame.grid(row=1, column=0, sticky=tk.W)
+
+        days_vars = {}
+        self.station_days_vars[station_id] = days_vars
+        day_labels = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
         for i, day in enumerate(day_labels):
-            self.days_vars[day] = tk.BooleanVar()
-            check = ttk.Checkbutton(days_checks_frame, text=day, variable=self.days_vars[day], command=self.mark_changes)
+            var = tk.BooleanVar()
+            days_vars[day] = var
+            check = ttk.Checkbutton(days_checks_frame, text=day, variable=var,
+                                  command=lambda sid=station_id: self.mark_station_changes(sid))
             row, col = divmod(i, 4)
             check.grid(row=row, column=col, sticky=tk.W, padx=5, pady=2)
 
-        times_frame = ttk.Frame(self.schedule_container)
+        times_frame = ttk.Frame(schedule_container)
         times_frame.pack(fill=tk.X, pady=5)
         times_label = ttk.Label(times_frame, text="Schedule Hours (24h format, comma-separated):")
         times_label.pack(anchor=tk.W)
         example_label = ttk.Label(times_frame, text="Examples: '9, 14, 23' (specific hours) or '13-16' (range)", font=("Segoe UI", 9), foreground="#666666")
         example_label.pack(anchor=tk.W, pady=(0, 5))
-        self.time_entry = ttk.Entry(times_frame, font=("Segoe UI", 10))
-        self.time_entry.pack(fill=tk.X, pady=2)
-        self.time_entry.bind("<KeyRelease>", lambda e: self.mark_changes())
+        time_entry = ttk.Entry(times_frame, font=("Segoe UI", 10))
+        self.station_time_entries[station_id] = time_entry
+        time_entry.pack(fill=tk.X, pady=2)
+        time_entry.bind("<KeyRelease>", lambda e, sid=station_id: self.mark_station_changes(sid))
 
-        button_frame = ttk.Frame(main_frame)
+        button_frame = ttk.Frame(parent_frame)
         button_frame.pack(fill=tk.X, pady=(10, 0))
         ttk.Button(button_frame, text="Save Changes", command=self.save_and_close).pack(side=tk.RIGHT, padx=5)
         ttk.Button(button_frame, text="Cancel", command=self.on_close).pack(side=tk.RIGHT, padx=5)
 
         self.set_details_state(tk.DISABLED)
+
+    def on_tab_changed(self, event):
+        """Handle tab change event."""
+        # Get the current tab index
+        current_tab = self.notebook.index(self.notebook.select())
+
+        # Determine station_id based on tab index
+        if current_tab == 0:
+            self.current_station = "station_1047"
+        elif current_tab == 1:
+            self.current_station = "station_887"
+        else:
+            return  # Unknown tab
+
+        # Update messages and reload tree for current station
+        self.load_messages_into_tree()
 
     def validate_duration(self, P):
         if P == "": return True
@@ -177,20 +266,52 @@ class ConfigWindow(Toplevel):
         except ValueError:
             return False
 
-    def update_char_count(self, *args):
+    def update_station_char_count(self, station_id):
+        """Update character count for a specific station."""
         if self.is_loading_selection: return
-        text = self.message_var.get()
+        text = self.station_message_vars[station_id].get()
         count = len(text)
         if count > 64:
-            self.message_var.set(text[:64])
+            self.station_message_vars[station_id].set(text[:64])
             count = 64
-        self.char_count_var.set(f"{count}/64")
-        self.mark_changes()
+        self.station_char_count_vars[station_id].set(f"{count}/64")
+        self.mark_station_changes(station_id)
 
-    def toggle_schedule_controls(self):
+    def mark_station_changes(self, station_id):
+        """Mark changes for a specific station."""
+        if self.station_selected_indices[station_id] is not None and not self.is_loading_selection:
+            self.station_changes_pending[station_id] = True
+            self.update_station_current_message_data(station_id)
+
+    def update_station_current_message_data(self, station_id):
+        """Update the current message data for a specific station."""
+        selected_index = self.station_selected_indices[station_id]
+        if selected_index is None or self.is_loading_selection: return
+        try:
+            current_messages = self.station_messages[station_id]
+            current_msg = current_messages[selected_index]
+            current_msg["Text"] = self.station_message_vars[station_id].get()
+            current_msg["Enabled"] = self.station_enable_vars[station_id].get()
+            try:
+                duration = int(self.station_duration_vars[station_id].get())
+                current_msg["Message Time"] = duration if 1 <= duration <= 60 else 10
+            except ValueError: current_msg["Message Time"] = 10
+            use_schedule = self.station_use_schedule_vars[station_id].get()
+            current_msg["Scheduled"] = {"Enabled": use_schedule, "Days": [day for day, var in self.station_days_vars[station_id].items() if var.get()] if use_schedule else [], "Times": self.parse_station_times(station_id) if use_schedule else []}
+            self.update_treeview_item(selected_index)
+        except IndexError:
+             logging.error(f"Selected index {selected_index} out of bounds.")
+             self.station_selected_indices[station_id] = None
+             self.set_details_state(tk.DISABLED)
+        except Exception as e:
+            logging.exception(f"Error updating message data: {e}")
+            messagebox.showerror("Error", f"Error updating message details:\n{e}", parent=self)
+
+    def toggle_station_schedule_controls(self, station_id):
+        """Toggle schedule controls for a specific station."""
         if self.is_loading_selection: return
-        new_state = tk.NORMAL if self.use_schedule_var.get() else tk.DISABLED
-        logging.info(f"Toggle schedule controls: use_schedule={self.use_schedule_var.get()}, new_state={new_state}")
+        new_state = tk.NORMAL if self.station_use_schedule_vars[station_id].get() else tk.DISABLED
+        logging.info(f"Toggle schedule controls for {station_id}: use_schedule={self.station_use_schedule_vars[station_id].get()}, new_state={new_state}")
         def recursive_configure(widget, state):
             try:
                 if isinstance(widget, (ttk.Checkbutton, ttk.Entry, ttk.Spinbox, ttk.Button)):
@@ -198,63 +319,27 @@ class ConfigWindow(Toplevel):
                 for child in widget.winfo_children():
                     recursive_configure(child, state)
             except tk.TclError: pass
-        recursive_configure(self.schedule_container, new_state)
-        self.mark_changes()
+        # Configure the schedule container for this station
+        if station_id in self.station_schedule_containers:
+            recursive_configure(self.station_schedule_containers[station_id], new_state)
+        else:
+            logging.warning(f"No schedule container found for {station_id}")
+        self.mark_station_changes(station_id)
 
     def set_details_state(self, state):
-        duration_spinbox = None
-        # Simplified search for spinbox assuming structure
-        try:
-            settings_grid = self.enable_var.master # settings_grid
-            for widget in settings_grid.winfo_children():
-                 if isinstance(widget, ttk.Spinbox):
-                     duration_spinbox = widget
-                     break
-        except Exception: pass # Ignore if structure changes
-
-        if duration_spinbox: duration_spinbox.config(state=state)
-
-        # Toggle Checkbuttons in settings_grid
-        try:
-            settings_grid = self.enable_var.master
-            for widget in settings_grid.winfo_children():
-                 if isinstance(widget, ttk.Checkbutton):
-                     widget.config(state=state)
-        except Exception: pass
-
-        # Toggle schedule container children
-        schedule_state = state if self.use_schedule_var.get() else tk.DISABLED
-        def recursive_configure(widget, current_state):
-             try:
-                 if isinstance(widget, (ttk.Checkbutton, ttk.Entry, ttk.Spinbox, ttk.Button)):
-                     widget.configure(state=current_state)
-                 for child in widget.winfo_children():
-                     recursive_configure(child, current_state)
-             except tk.TclError: pass
-        recursive_configure(self.schedule_container, schedule_state if state == tk.NORMAL else tk.DISABLED)
-
-        self.message_entry.config(state=state)
-        # Time entry state depends on both main state and schedule checkbox
-        final_time_entry_state = schedule_state if state == tk.NORMAL else tk.DISABLED
-        logging.info(f"Setting time_entry state to: {final_time_entry_state} (main_state={state}, schedule_state={schedule_state})")
-        logging.info(f"Time entry content before state change: '{self.time_entry.get()}'")
-        self.time_entry.config(state=final_time_entry_state)
-        logging.info(f"Time entry content after state change: '{self.time_entry.get()}'")
-
-        if state == tk.DISABLED:
-            self.is_loading_selection = True
-            self.message_var.set("")
-            self.char_count_var.set("0/64")
-            self.enable_var.set(False)
-            self.duration_var.set("10")
-            self.use_schedule_var.set(False)
-            for var in self.days_vars.values(): var.set(False)
-            self.time_entry.delete(0, tk.END)
-            self.is_loading_selection = False
+        """Set the state of details widgets for the current station."""
+        # Since we now have station-specific widgets, this method is simplified
+        # The actual widget state management is handled by the station-specific logic
+        # and the toggle_station_schedule_controls method
+        pass
 
     def load_messages_into_tree(self):
-        self.tree.delete(*self.tree.get_children())
-        for i, msg in enumerate(self.messages):
+        # Get the current tree and messages for the current station
+        current_tree = self.station_trees[self.current_station]
+        current_messages = self.station_messages[self.current_station]
+
+        current_tree.delete(*current_tree.get_children())
+        for i, msg in enumerate(current_messages):
             days = ", ".join(msg.get("Scheduled", {}).get("Days", []))
             time_list = msg.get("Scheduled", {}).get("Times", [])
             formatted_times = []
@@ -266,49 +351,43 @@ class ConfigWindow(Toplevel):
             scheduled = "Yes" if msg.get("Scheduled", {}).get("Enabled", False) else "No"
             text = msg.get("Text", "")
             display_text = (text[:27] + "...") if len(text) > 30 else text
-            self.tree.insert("", tk.END, iid=f"item{i}", values=(display_text, enabled, scheduled, msg.get("Message Time", 10), days, times))
+            current_tree.insert("", tk.END, iid=f"item{i}", values=(display_text, enabled, scheduled, msg.get("Message Time", 10), days, times))
+
+        # Restore the selected index for this station
+        selected_index = self.station_selected_indices[self.current_station]
+        if selected_index is not None and selected_index < len(current_messages):
+            current_tree.selection_set(f"item{selected_index}")
+            current_tree.see(f"item{selected_index}")
+            self.on_message_select(None)
 
     def mark_changes(self, *args):
-        if self.selected_index is not None and not self.is_loading_selection:
-            self.changes_pending = True
-            self.update_current_message_data()
-
-    def update_current_message_data(self):
-        if self.selected_index is None or self.is_loading_selection: return
-        try:
-            current_msg = self.messages[self.selected_index]
-            current_msg["Text"] = self.message_var.get()
-            current_msg["Enabled"] = self.enable_var.get()
-            try:
-                duration = int(self.duration_var.get())
-                current_msg["Message Time"] = duration if 1 <= duration <= 60 else 10
-            except ValueError: current_msg["Message Time"] = 10
-            use_schedule = self.use_schedule_var.get()
-            current_msg["Scheduled"] = {"Enabled": use_schedule, "Days": [day for day, var in self.days_vars.items() if var.get()] if use_schedule else [], "Times": self.parse_times() if use_schedule else []}
-            self.update_treeview_item(self.selected_index)
-        except IndexError:
-             logging.error(f"Selected index {self.selected_index} out of bounds.")
-             self.selected_index = None; self.set_details_state(tk.DISABLED)
-        except Exception as e:
-            logging.exception(f"Error updating message data: {e}")
-            messagebox.showerror("Error", f"Error updating message details:\n{e}", parent=self)
+        if self.station_selected_indices[self.current_station] is not None and not self.is_loading_selection:
+            self.station_changes_pending[self.current_station] = True
+            self.update_station_current_message_data(self.current_station)
 
     def update_treeview_item(self, index):
-         try:
-             item_id = f"item{index}"
-             if not self.tree.exists(item_id): return
-             msg = self.messages[index]
-             days = ", ".join(msg.get("Scheduled", {}).get("Days", []))
-             time_list = msg.get("Scheduled", {}).get("Times", [])
-             formatted_times = [f"{t['hour']}" for t in time_list if isinstance(t, dict) and 'hour' in t]
-             times = ", ".join(formatted_times)
-             enabled = "Yes" if msg.get("Enabled", False) else "No"
-             scheduled = "Yes" if msg.get("Scheduled", {}).get("Enabled", False) else "No"
-             text = msg.get("Text", "")
-             display_text = (text[:27] + "...") if len(text) > 30 else text
-             self.tree.item(item_id, values=(display_text, enabled, scheduled, msg.get("Message Time", 10), days, times))
-         except IndexError: logging.warning(f"Update treeview invalid index {index}")
-         except Exception as e: logging.exception(f"Error updating treeview item {index}: {e}")
+        try:
+            item_id = f"item{index}"
+            current_tree = self.station_trees[self.current_station]
+            if not current_tree.exists(item_id): return
+            current_messages = self.station_messages[self.current_station]
+            msg = current_messages[index]
+            days = ", ".join(msg.get("Scheduled", {}).get("Days", []))
+            time_list = msg.get("Scheduled", {}).get("Times", [])
+            formatted_times = [f"{t['hour']}" for t in time_list if isinstance(t, dict) and 'hour' in t]
+            times = ", ".join(formatted_times)
+            enabled = "Yes" if msg.get("Enabled", False) else "No"
+            scheduled = "Yes" if msg.get("Scheduled", {}).get("Enabled", False) else "No"
+            text = msg.get("Text", "")
+            display_text = (text[:27] + "...") if len(text) > 30 else text
+            current_tree.item(item_id, values=(display_text, enabled, scheduled, msg.get("Message Time", 10), days, times))
+        except IndexError: logging.warning(f"Update treeview invalid index {index}")
+        except Exception as e: logging.exception(f"Error updating treeview item {index}: {e}")
+
+    def parse_station_times(self, station_id):
+        """Parse the hours from the station-specific time entry widget."""
+        time_str = self.station_time_entries[station_id].get().strip()
+        return utils.parse_time_string(time_str)
 
     def parse_times(self):
         """Parse the hours from the entry widget using ``utils.parse_time_string``."""
@@ -316,94 +395,150 @@ class ConfigWindow(Toplevel):
         return utils.parse_time_string(time_str)
 
     def on_message_select(self, event):
-        selected_items = self.tree.selection()
-        if not selected_items: self.selected_index = None; self.set_details_state(tk.DISABLED); return
+        current_tree = self.station_trees[self.current_station]
+        current_messages = self.station_messages[self.current_station]
+
+        selected_items = current_tree.selection()
+        if not selected_items:
+            self.station_selected_indices[self.current_station] = None
+            self.set_details_state(tk.DISABLED)
+            return
+
         selected_item_id = selected_items[0]
         try: item_index = int(selected_item_id.replace("item", ""))
-        except (ValueError, IndexError): logging.error(f"Bad index from ID: {selected_item_id}"); self.selected_index = None; self.set_details_state(tk.DISABLED); return
-        self.selected_index = item_index
-        try: message = self.messages[item_index]
-        except IndexError: logging.error(f"Index {item_index} out of range."); self.selected_index = None; self.set_details_state(tk.DISABLED); return
+        except (ValueError, IndexError):
+            logging.error(f"Bad index from ID: {selected_item_id}")
+            self.station_selected_indices[self.current_station] = None
+            self.set_details_state(tk.DISABLED)
+            return
+
+        self.station_selected_indices[self.current_station] = item_index
+        try: message = current_messages[item_index]
+        except IndexError:
+            logging.error(f"Index {item_index} out of range.")
+            self.station_selected_indices[self.current_station] = None
+            self.set_details_state(tk.DISABLED)
+            return
         self.is_loading_selection = True
         logging.info(f"Selecting item index: {item_index}, Text: {message.get('Text', '')}")
-        # Set basic message data first
-        self.message_var.set(message.get("Text", "")[:64])
-        self.char_count_var.set(f"{len(self.message_var.get())}/64")
-        self.enable_var.set(message.get("Enabled", False))
-        self.duration_var.set(message.get("Message Time", 10))
+        # Set basic message data first for current station
+        station_id = self.current_station
+        self.station_message_vars[station_id].set(message.get("Text", "")[:64])
+        self.station_char_count_vars[station_id].set(f"{len(self.station_message_vars[station_id].get())}/64")
+        self.station_enable_vars[station_id].set(message.get("Enabled", False))
+        self.station_duration_vars[station_id].set(message.get("Message Time", 10))
         use_schedule = message.get("Scheduled", {}).get("Enabled", False)
-        self.use_schedule_var.set(use_schedule)
+        self.station_use_schedule_vars[station_id].set(use_schedule)
         # Now set the details state after schedule variables are set
         self.set_details_state(tk.NORMAL)
         scheduled_days = message.get("Scheduled", {}).get("Days", [])
         logging.info(f"Scheduled Days Before Loading: {scheduled_days}")
-        for day, var in self.days_vars.items(): var.set(day in scheduled_days)
+        for day, var in self.station_days_vars[station_id].items(): var.set(day in scheduled_days)
         time_list = message.get("Scheduled", {}).get("Times", [])
         logging.info(f"Scheduled Times Before Loading: {time_list}")
         formatted_times = []
         if isinstance(time_list, list):
             formatted_times = [str(t['hour']) for t in time_list if isinstance(t, dict) and 'hour' in t]
-        self.time_entry.delete(0, tk.END)
-        self.time_entry.insert(0, ", ".join(formatted_times))
+        self.station_time_entries[station_id].delete(0, tk.END)
+        self.station_time_entries[station_id].insert(0, ", ".join(formatted_times))
         # Keep is_loading_selection = True while toggle_schedule_controls() runs to prevent unintended mark_changes()
-        self.toggle_schedule_controls()
-        logging.info(f"Days After Loading: {[day for day, var in self.days_vars.items() if var.get()]}")
+        self.toggle_station_schedule_controls(station_id)
+        logging.info(f"Days After Loading: {[day for day, var in self.station_days_vars[station_id].items() if var.get()]}")
         logging.info(f"Times After Loading: {formatted_times}")
-        logging.info(f"Time Entry Field Content: '{self.time_entry.get()}'")
+        logging.info(f"Time Entry Field Content: '{self.station_time_entries[station_id].get()}'")
         self.is_loading_selection = False
 
     def add_message(self):
+        current_messages = self.station_messages[self.current_station]
         new_message = {"Text": "New Message", "Enabled": False, "Message Time": 10, "Scheduled": {"Enabled": False, "Days": [], "Times": []}}
-        self.messages.append(new_message); self.changes_pending = True
-        new_index = len(self.messages) - 1
+        current_messages.append(new_message)
+        self.station_changes_pending[self.current_station] = True
+        new_index = len(current_messages) - 1
         self.load_messages_into_tree()
         new_item_id = f"item{new_index}"
-        if self.tree.exists(new_item_id):
-            self.tree.selection_set(new_item_id); self.tree.see(new_item_id); self.on_message_select(None)
+        current_tree = self.station_trees[self.current_station]
+        if current_tree.exists(new_item_id):
+            current_tree.selection_set(new_item_id); current_tree.see(new_item_id); self.on_message_select(None)
         else: logging.error("Failed to find new item in tree.")
 
     def delete_message(self):
-        if self.selected_index is None: messagebox.showwarning("No Selection", "Please select a message to delete.", parent=self); return
-        # if messagebox.askyesno("Confirm Delete", f"Delete message:\n'{self.messages[self.selected_index].get('Text', '')[:30]}...'?", parent=self):
-        del self.messages[self.selected_index]; self.changes_pending = True
-        original_selection_index = self.selected_index
-        self.load_messages_into_tree(); self.selected_index = None; self.set_details_state(tk.DISABLED)
-        if self.messages:
-                new_selection_index = min(original_selection_index, len(self.messages) - 1)
-                new_item_id = f"item{new_selection_index}"
-                if self.tree.exists(new_item_id): self.tree.selection_set(new_item_id); self.tree.see(new_item_id); self.on_message_select(None)
+        selected_index = self.station_selected_indices[self.current_station]
+        if selected_index is None:
+            messagebox.showwarning("No Selection", "Please select a message to delete.", parent=self)
+            return
+
+        current_messages = self.station_messages[self.current_station]
+        # if messagebox.askyesno("Confirm Delete", f"Delete message:\n'{current_messages[selected_index].get('Text', '')[:30]}...'?", parent=self):
+        del current_messages[selected_index]
+        self.station_changes_pending[self.current_station] = True
+        original_selection_index = selected_index
+        self.load_messages_into_tree()
+        self.station_selected_indices[self.current_station] = None
+        self.set_details_state(tk.DISABLED)
+
+        if current_messages:
+            new_selection_index = min(original_selection_index, len(current_messages) - 1)
+            new_item_id = f"item{new_selection_index}"
+            current_tree = self.station_trees[self.current_station]
+            if current_tree.exists(new_item_id):
+                current_tree.selection_set(new_item_id)
+                current_tree.see(new_item_id)
+                self.on_message_select(None)
 
     def move_message_up(self):
-        if self.selected_index is None or self.selected_index == 0: return
-        idx = self.selected_index
-        self.messages.insert(idx - 1, self.messages.pop(idx)); self.changes_pending = True
+        selected_index = self.station_selected_indices[self.current_station]
+        if selected_index is None or selected_index == 0: return
+
+        current_messages = self.station_messages[self.current_station]
+        idx = selected_index
+        current_messages.insert(idx - 1, current_messages.pop(idx))
+        self.station_changes_pending[self.current_station] = True
         new_item_id = f"item{idx - 1}"
         self.load_messages_into_tree()
-        if self.tree.exists(new_item_id): self.tree.selection_set(new_item_id); self.tree.see(new_item_id); self.on_message_select(None)
+        current_tree = self.station_trees[self.current_station]
+        if current_tree.exists(new_item_id):
+            current_tree.selection_set(new_item_id)
+            current_tree.see(new_item_id)
+            self.on_message_select(None)
 
     def move_message_down(self):
-        if self.selected_index is None or self.selected_index >= len(self.messages) - 1: return
-        idx = self.selected_index
-        self.messages.insert(idx + 1, self.messages.pop(idx)); self.changes_pending = True
+        selected_index = self.station_selected_indices[self.current_station]
+        current_messages = self.station_messages[self.current_station]
+        if selected_index is None or selected_index >= len(current_messages) - 1: return
+
+        idx = selected_index
+        current_messages.insert(idx + 1, current_messages.pop(idx))
+        self.station_changes_pending[self.current_station] = True
         new_item_id = f"item{idx + 1}"
         self.load_messages_into_tree()
-        if self.tree.exists(new_item_id): self.tree.selection_set(new_item_id); self.tree.see(new_item_id); self.on_message_select(None)
+        current_tree = self.station_trees[self.current_station]
+        if current_tree.exists(new_item_id):
+            current_tree.selection_set(new_item_id)
+            current_tree.see(new_item_id)
+            self.on_message_select(None)
 
     def save_changes(self):
-        if self.changes_pending:
-            logging.info("Saving message configuration changes...")
+        if self.station_changes_pending[self.current_station]:
+            logging.info(f"Saving message configuration changes for station {self.current_station}...")
             # Ensure the manager has the current list reference before saving
-            self.config_manager.set_messages(self.messages)
+            self.config_manager.set_station_messages(self.current_station, self.station_messages[self.current_station])
             self.config_manager.save_config()
-            self.changes_pending = False
+            self.station_changes_pending[self.current_station] = False
             return True
         return False
 
     def save_and_close(self):
-        self.save_changes(); self.destroy()
+        # Save changes for all stations that have pending changes
+        for station_id in self.station_changes_pending:
+            if self.station_changes_pending[station_id]:
+                self.current_station = station_id
+                self.save_changes()
+        self.destroy()
 
     def on_close(self):
-        if self.changes_pending:
+        # Check if any station has unsaved changes
+        has_changes = any(self.station_changes_pending.values())
+        if has_changes:
             response = messagebox.askyesnocancel("Unsaved Changes", "Save changes before closing?", parent=self)
             if response is True: self.save_and_close()
             elif response is False: self.destroy()

@@ -3,20 +3,29 @@ import logging
 import os
 from datetime import datetime
 
-logger = logging.getLogger('AdPlayLogger')
+# Logger will be set in __init__ based on station_id
 
 class AdPlayLogger:
     """Handles tracking and logging of ad play counts."""
 
-    def __init__(self, config_manager):
+    def __init__(self, config_manager, station_id):
         """
         Initialize the AdPlayLogger.
 
         Args:
             config_manager: ConfigManager instance to access and update ad configurations
+            station_id: Station identifier (e.g., 'station_1047' or 'station_887')
         """
         self.config_manager = config_manager
-        self.ad_stats_file = "ad_play_statistics.json"
+        self.station_id = station_id
+
+        # Set up logger based on station_id
+        logger_name = f'AdPlayLogger_{station_id.split("_")[1]}'  # e.g., 'AdPlayLogger_1047'
+        self.logger = logging.getLogger(logger_name)
+
+        # Station-specific statistics file
+        station_number = station_id.split("_")[1]  # e.g., '1047' or '887'
+        self.ad_stats_file = f"ad_play_statistics_{station_number}.json"
 
     def record_ad_play(self, ad_name):
         """
@@ -32,7 +41,7 @@ class AdPlayLogger:
             # Get current ads configuration
             ads = self.config_manager.get_ads()
             if not ads:
-                logger.warning("No ads found in configuration")
+                self.logger.warning("No ads found in configuration")
                 return False
 
             # Find the ad by name and update its play count
@@ -47,11 +56,11 @@ class AdPlayLogger:
                     # Update last played timestamp
                     ad["LastPlayed"] = datetime.now().isoformat()
 
-                    logger.info(f"Recorded play for ad '{ad_name}': count now {ad['PlayCount']}")
+                    self.logger.info(f"Recorded play for ad '{ad_name}': count now {ad['PlayCount']}")
                     break
 
             if not ad_found:
-                logger.warning(f"Ad '{ad_name}' not found in configuration")
+                self.logger.warning(f"Ad '{ad_name}' not found in configuration")
                 return False
 
             # Save updated configuration
@@ -64,7 +73,7 @@ class AdPlayLogger:
             return True
 
         except Exception as e:
-            logger.error(f"Error recording ad play for '{ad_name}': {e}")
+            self.logger.error(f"Error recording ad play for '{ad_name}': {e}")
             return False
 
     def record_multiple_ad_plays(self, ad_names):
@@ -116,7 +125,7 @@ class AdPlayLogger:
             return stats
 
         except Exception as e:
-            logger.error(f"Error getting ad statistics: {e}")
+            self.logger.error(f"Error getting ad statistics: {e}")
             return {"error": str(e)}
 
     def reset_all_play_counts(self):
@@ -135,11 +144,11 @@ class AdPlayLogger:
             self.config_manager.set_ads(ads)
             self.config_manager.save_config()
 
-            logger.info("Reset all ad play counts")
+            self.logger.info("Reset all ad play counts")
             return True
 
         except Exception as e:
-            logger.error(f"Error resetting play counts: {e}")
+            self.logger.error(f"Error resetting play counts: {e}")
             return False
 
     def get_most_played_ads(self, limit=10):
@@ -171,7 +180,7 @@ class AdPlayLogger:
                     with open(self.ad_stats_file, 'r', encoding='utf-8') as f:
                         stats_data = json.load(f)
                 except json.JSONDecodeError:
-                    logger.warning("Could not load existing ad statistics file")
+                    self.logger.warning("Could not load existing ad statistics file")
 
             # Ensure structure exists
             if "daily_plays" not in stats_data:
@@ -196,7 +205,7 @@ class AdPlayLogger:
                 json.dump(stats_data, f, indent=2, ensure_ascii=False)
 
         except Exception as e:
-            logger.error(f"Error saving detailed ad statistics: {e}")
+            self.logger.error(f"Error saving detailed ad statistics: {e}")
 
     def get_detailed_stats(self, start_date=None, end_date=None):
         """
@@ -236,7 +245,7 @@ class AdPlayLogger:
             return filtered_stats
 
         except Exception as e:
-            logger.error(f"Error loading detailed statistics: {e}")
+            self.logger.error(f"Error loading detailed statistics: {e}")
             return {"error": str(e)}
 
     def get_ad_statistics_filtered(self, start_date=None, end_date=None):
@@ -306,7 +315,7 @@ class AdPlayLogger:
             return stats
 
         except Exception as e:
-            logger.error(f"Error getting filtered ad statistics: {e}")
+            self.logger.error(f"Error getting filtered ad statistics: {e}")
             return {"error": str(e)}
 
     def _is_date_in_range(self, date_str, start_date, end_date):
@@ -341,7 +350,7 @@ class AdPlayLogger:
             return True
 
         except Exception as e:
-            logger.error(f"Error checking date range for {date_str}: {e}")
+            self.logger.error(f"Error checking date range for {date_str}: {e}")
             return False
 
     def get_date_range_summary(self, start_date, end_date):
@@ -386,5 +395,5 @@ class AdPlayLogger:
             return summary
 
         except Exception as e:
-            logger.error(f"Error getting date range summary: {e}")
+            self.logger.error(f"Error getting date range summary: {e}")
             return {"error": str(e)}

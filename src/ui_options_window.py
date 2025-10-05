@@ -13,22 +13,46 @@ from ad_inserter_service import AdInserterService
 
 class OptionsWindow(Toplevel):
     """Window for application options (Whitelist, Blacklist, Debug)."""
-    def __init__(self, parent, config_manager, intro_loader_handler, auto_rds_handler=None, ad_scheduler_handler=None):
+    def __init__(self, parent, config_manager, intro_loader_handler_1047, intro_loader_handler_887,
+                 auto_rds_handler_1047=None, auto_rds_handler_887=None,
+                 ad_scheduler_handler_1047=None, ad_scheduler_handler_887=None):
+        """
+        Initialize the Options window.
+
+        Args:
+            parent: Parent tkinter window
+            config_manager: ConfigManager instance
+            intro_loader_handler_1047: IntroLoaderHandler for station 1047
+            intro_loader_handler_887: IntroLoaderHandler for station 887
+            auto_rds_handler_1047: AutoRDSHandler for station 1047
+            auto_rds_handler_887: AutoRDSHandler for station 887
+            ad_scheduler_handler_1047: AdSchedulerHandler for station 1047
+            ad_scheduler_handler_887: AdSchedulerHandler for station 887
+        """
         super().__init__(parent)
         self.transient(parent)
         self.grab_set()
         self.title("Options")
-        self.geometry("750x700")  # Open larger so all settings are visible
+        self.geometry("750x600")  # Adjusted height to fit buttons
 
         self.config_manager = config_manager
-        self.intro_loader_handler = intro_loader_handler
-        self.auto_rds_handler = auto_rds_handler
-        self.ad_scheduler_handler = ad_scheduler_handler
+        self.intro_1047_handler = intro_loader_handler_1047
+        self.intro_887_handler = intro_loader_handler_887
+        self.rds_1047_handler = auto_rds_handler_1047
+        self.rds_887_handler = auto_rds_handler_887
+        self.ad_1047_handler = ad_scheduler_handler_1047
+        self.ad_887_handler = ad_scheduler_handler_887
 
-        # Store initial lists to detect changes
-        self.initial_whitelist = self.config_manager.get_whitelist().copy()
-        self.initial_blacklist = self.config_manager.get_blacklist().copy()
+        # Store initial lists to detect changes (shared across stations)
+        self.initial_whitelist = self.config_manager.get_shared_whitelist().copy()
+        self.initial_blacklist = self.config_manager.get_shared_blacklist().copy()
         self.changes_pending = False # Track if lists were modified
+
+        # Store station-specific variables in dictionaries to avoid conflicts
+        self.station_vars = {
+            'station_1047': {},
+            'station_887': {}
+        }
 
         self.create_widgets()
 
@@ -39,8 +63,15 @@ class OptionsWindow(Toplevel):
         main_frame = ttk.Frame(self, padding="10")
         main_frame.pack(fill=tk.BOTH, expand=True)
 
+        # --- Bottom Buttons (pack first to ensure they're always visible) ---
+        button_frame = ttk.Frame(main_frame)
+        button_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=(5, 0))
+        ttk.Button(button_frame, text="Save & Close", command=self.save_and_close).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(button_frame, text="Cancel", command=self.on_close).pack(side=tk.RIGHT, padx=5)
+
+        # --- Notebook (fills remaining space) ---
         notebook = ttk.Notebook(main_frame)
-        notebook.pack(fill=tk.BOTH, expand=True, pady=5)
+        notebook.pack(fill=tk.BOTH, expand=True, pady=(0, 5))
 
         # --- Whitelist Tab ---
         whitelist_frame = ttk.Frame(notebook, padding="10")
@@ -60,236 +91,25 @@ class OptionsWindow(Toplevel):
             self.initial_blacklist # Pass initial list
         )
 
-        # --- Debug Tab (Re-added) ---
+        # --- Station 104.7 FM Settings Tab ---
+        station_1047_frame = ttk.Frame(notebook, padding="10")
+        notebook.add(station_1047_frame, text="Station 104.7 FM")
+        self.create_station_settings_tab(station_1047_frame, "station_1047")
+
+        # --- Station 88.7 FM Settings Tab ---
+        station_887_frame = ttk.Frame(notebook, padding="10")
+        notebook.add(station_887_frame, text="Station 88.7 FM")
+        self.create_station_settings_tab(station_887_frame, "station_887")
+
+        # --- mAirList Schedule Tab ---
+        mairlist_frame = ttk.Frame(notebook, padding="10")
+        notebook.add(mairlist_frame, text="mAirList Schedule")
+        self.create_mairlist_tab(mairlist_frame)
+
+        # --- Debug Tab ---
         debug_frame = ttk.Frame(notebook, padding="10")
         notebook.add(debug_frame, text="Debug")
-        debug_label = ttk.Label(debug_frame, text="Debug Tools", font=("Segoe UI", 10, "bold"))
-        debug_label.pack(pady=(0,10))
-
-        # Add button to "touch" the XML file
-        touch_button = ttk.Button(debug_frame, text="Touch XML File", command=self.touch_xml_file_action)
-        touch_button.pack(pady=5)
-        touch_help = ttk.Label(
-            debug_frame,
-            text="Updates the XML file's modification time to force the Intro Loader to re-check it.",
-            wraplength=380,
-        )
-        touch_help.pack(pady=2)
-
-        # Button to combine ads and trigger the ad inserter URL
-        ad_button = ttk.Button(debug_frame, text="Run Ad Service", command=self.run_ad_service_action)
-        ad_button.pack(pady=5)
-        ad_help = ttk.Label(
-            debug_frame,
-            text="Combine enabled ads into one MP3 and call the ad inserter URL.",
-            wraplength=380,
-        )
-        ad_help.pack(pady=2)
-
-        # Button to instantly play ads via the instant URL
-        instant_button = ttk.Button(debug_frame, text="Play Ad Now", command=self.run_instant_ad_service_action)
-        instant_button.pack(pady=5)
-        instant_help = ttk.Label(
-            debug_frame,
-            text="Combine enabled ads and trigger immediate playback.",
-            wraplength=380,
-        )
-        instant_help.pack(pady=2)
-
-        # Button to simulate start of hour for AdScheduler testing
-        hour_button = ttk.Button(debug_frame, text="Simulate Hour Start", command=self.simulate_hour_start)
-        hour_button.pack(pady=5)
-        hour_help = ttk.Label(
-            debug_frame,
-            text="Triggers the AdScheduler's hourly check logic to test ad insertion timing.",
-            wraplength=380,
-        )
-        hour_help.pack(pady=2)
-
-        # Separator
-        ttk.Separator(debug_frame, orient='horizontal').pack(fill=tk.X, pady=10)
-
-        # Logging Level Controls
-        logging_label = ttk.Label(debug_frame, text="Logging Level", font=("Segoe UI", 10, "bold"))
-        logging_label.pack(pady=(5, 10))
-
-        self.enable_debug_logs_var = tk.BooleanVar(
-            value=self.config_manager.get_setting("settings.debug.enable_debug_logs", False)
-        )
-        
-        debug_checkbox = ttk.Checkbutton(
-            debug_frame,
-            text="Enable Debug Logs (Shows detailed DEBUG messages)",
-            variable=self.enable_debug_logs_var,
-            command=self.toggle_debug_logging
-        )
-        debug_checkbox.pack(pady=5)
-        
-        debug_note = ttk.Label(
-            debug_frame,
-            text="Note: Debug logs provide detailed information useful for troubleshooting.\nDisabling this will only show INFO, WARNING, and ERROR messages.",
-            wraplength=380,
-            foreground="gray"
-        )
-        debug_note.pack(pady=2)
-
-        # --- Settings Tab (New) ---
-        settings_frame = ttk.Frame(notebook, padding="10")
-        notebook.add(settings_frame, text="Settings")
-
-        # RDS Settings Section
-        rds_label = ttk.Label(settings_frame, text="RDS Settings", font=("Segoe UI", 10, "bold"))
-        rds_label.pack(anchor=tk.W, pady=(0,5))
-
-        rds_frame = ttk.Frame(settings_frame)
-        rds_frame.pack(fill=tk.X, pady=5)
-
-        # RDS IP
-        ttk.Label(rds_frame, text="RDS IP:").grid(row=0, column=0, sticky=tk.W, padx=5)
-        self.rds_ip_var = tk.StringVar(value=self.config_manager.get_setting("settings.rds.ip", "50.208.125.83"))
-        ttk.Entry(rds_frame, textvariable=self.rds_ip_var, width=40).grid(row=0, column=1, sticky=tk.W, padx=5)
-
-        # RDS Port
-        ttk.Label(rds_frame, text="RDS Port:").grid(row=1, column=0, sticky=tk.W, padx=5)
-        self.rds_port_var = tk.IntVar(value=self.config_manager.get_setting("settings.rds.port", 10001))
-        ttk.Entry(rds_frame, textvariable=self.rds_port_var, width=40).grid(row=1, column=1, sticky=tk.W, padx=5)
-
-        # Now Playing XML
-        ttk.Label(rds_frame, text="Now Playing XML:").grid(row=2, column=0, sticky=tk.W, padx=5)
-        self.rds_xml_var = tk.StringVar(value=self.config_manager.get_setting("settings.rds.now_playing_xml", r"G:\To_RDS\nowplaying.xml"))
-        ttk.Entry(rds_frame, textvariable=self.rds_xml_var, width=40).grid(row=2, column=1, sticky=tk.W, padx=5)
-        ttk.Button(rds_frame, text="Browse", command=lambda: self.browse_file(self.rds_xml_var)).grid(row=2, column=2, padx=5)
-
-        # Default Message
-        ttk.Label(rds_frame, text="Default Message:").grid(row=3, column=0, sticky=tk.W, padx=5)
-        self.rds_default_var = tk.StringVar(value=self.config_manager.get_setting("settings.rds.default_message", "732.901.7777 to SUPPORT and hear this program!"))
-        ttk.Entry(rds_frame, textvariable=self.rds_default_var, width=40).grid(row=3, column=1, sticky=tk.W, padx=5)
-
-        # Intro Loader Settings Section
-        loader_label = ttk.Label(settings_frame, text="Intro Loader Settings", font=("Segoe UI", 10, "bold"))
-        loader_label.pack(anchor=tk.W, pady=(10,5))
-
-        loader_frame = ttk.Frame(settings_frame)
-        loader_frame.pack(fill=tk.X, pady=5)
-
-        # Now Playing XML (shared with RDS, but allow separate if needed)
-        ttk.Label(loader_frame, text="Now Playing XML:").grid(row=0, column=0, sticky=tk.W, padx=5)
-        self.loader_xml_var = tk.StringVar(value=self.config_manager.get_setting("settings.intro_loader.now_playing_xml", r"G:\To_RDS\nowplaying.xml"))
-        ttk.Entry(loader_frame, textvariable=self.loader_xml_var, width=40).grid(row=0, column=1, sticky=tk.W, padx=5)
-        ttk.Button(loader_frame, text="Browse", command=lambda: self.browse_file(self.loader_xml_var)).grid(row=0, column=2, padx=5)
-
-        # MP3 Directory
-        ttk.Label(loader_frame, text="MP3 Directory:").grid(row=1, column=0, sticky=tk.W, padx=5)
-        self.loader_mp3_dir_var = tk.StringVar(value=self.config_manager.get_setting("settings.intro_loader.mp3_directory", r"G:\Shiurim\introsCleanedUp"))
-        ttk.Entry(loader_frame, textvariable=self.loader_mp3_dir_var, width=40).grid(row=1, column=1, sticky=tk.W, padx=5)
-        ttk.Button(loader_frame, text="Browse", command=lambda: self.browse_directory(self.loader_mp3_dir_var)).grid(row=1, column=2, padx=5)
-
-        # Missing Artists Log
-        ttk.Label(loader_frame, text="Missing Artists Log:").grid(row=2, column=0, sticky=tk.W, padx=5)
-        self.loader_log_var = tk.StringVar(value=self.config_manager.get_setting("settings.intro_loader.missing_artists_log", r"G:\Misc\Dev\CombinedRDSApp\missing_artists.log"))
-        ttk.Entry(loader_frame, textvariable=self.loader_log_var, width=40).grid(row=2, column=1, sticky=tk.W, padx=5)
-        ttk.Button(loader_frame, text="Browse", command=lambda: self.browse_file(self.loader_log_var, save=True)).grid(row=2, column=2, padx=5)
-
-        # Schedule URL
-        ttk.Label(loader_frame, text="Schedule URL:").grid(row=3, column=0, sticky=tk.W, padx=5)
-        self.loader_url_var = tk.StringVar(
-            value=self.config_manager.get_setting(
-                "settings.intro_loader.schedule_url",
-                "http://192.168.3.11:9000/?pass=bmas220&action=schedule&type=run&id=TBACFNBGJKOMETDYSQYR",
-            )
-        )
-        ttk.Entry(loader_frame, textvariable=self.loader_url_var, width=40).grid(row=3, column=1, sticky=tk.W, padx=5)
-
-        # --- Ad Settings Tab ---
-        ads_tab = ttk.Frame(notebook, padding="10")
-        notebook.add(ads_tab, text="Ad Settings")
-
-        ad_label = ttk.Label(ads_tab, text="Ad Inserter Settings", font=("Segoe UI", 10, "bold"))
-        ad_label.pack(anchor=tk.W, pady=(0,5))
-
-        ad_frame = ttk.Frame(ads_tab)
-        ad_frame.pack(fill=tk.X, pady=5)
-
-        ttk.Label(ad_frame, text="Schedule URL:").grid(row=0, column=0, sticky=tk.W, padx=5)
-        self.ad_url_var = tk.StringVar(value=self.config_manager.get_setting("settings.ad_inserter.insertion_url", "http://localhost:8000/insert"))
-        ttk.Entry(ad_frame, textvariable=self.ad_url_var, width=40).grid(row=0, column=1, sticky=tk.W, padx=5)
-
-        ttk.Label(ad_frame, text="Instant URL:").grid(row=1, column=0, sticky=tk.W, padx=5)
-        self.ad_instant_url_var = tk.StringVar(value=self.config_manager.get_setting("settings.ad_inserter.instant_url", "http://localhost:8000/play"))
-        ttk.Entry(ad_frame, textvariable=self.ad_instant_url_var, width=40).grid(row=1, column=1, sticky=tk.W, padx=5)
-
-        ttk.Label(ad_frame, text="New Ad MP3:").grid(row=2, column=0, sticky=tk.W, padx=5)
-        self.ad_mp3_var = tk.StringVar(value=self.config_manager.get_setting("settings.ad_inserter.output_mp3", r"G:\\Ads\\newAd.mp3"))
-        ttk.Entry(ad_frame, textvariable=self.ad_mp3_var, width=40).grid(row=2, column=1, sticky=tk.W, padx=5)
-        ttk.Button(ad_frame, text="Browse", command=lambda: self.browse_file(self.ad_mp3_var)).grid(row=2, column=2, padx=5)
-
-        # Separator
-        ttk.Separator(ads_tab, orient='horizontal').pack(fill=tk.X, pady=10)
-
-        # mAirList Event Fetcher Section
-        events_label = ttk.Label(ads_tab, text="mAirList Events", font=("Segoe UI", 10, "bold"))
-        events_label.pack(anchor=tk.W, pady=(5,5))
-
-        events_help = ttk.Label(
-            ads_tab,
-            text="Fetch events from mAirList to easily get event IDs for the URLs above.",
-            wraplength=700,
-            foreground="gray"
-        )
-        events_help.pack(anchor=tk.W, pady=(0,5))
-
-        # Server configuration
-        server_frame = ttk.Frame(ads_tab)
-        server_frame.pack(fill=tk.X, pady=5)
-
-        ttk.Label(server_frame, text="Server:").grid(row=0, column=0, sticky=tk.W, padx=5)
-        self.mairlist_server_var = tk.StringVar(value=self.config_manager.get_setting("settings.mairlist.server", "localhost:9000"))
-        ttk.Entry(server_frame, textvariable=self.mairlist_server_var, width=30).grid(row=0, column=1, sticky=tk.W, padx=5)
-
-        ttk.Label(server_frame, text="Password:").grid(row=0, column=2, sticky=tk.W, padx=(20,5))
-        self.mairlist_password_var = tk.StringVar(value=self.config_manager.get_setting("settings.mairlist.password", "bmas220"))
-        ttk.Entry(server_frame, textvariable=self.mairlist_password_var, width=20, show="*").grid(row=0, column=3, sticky=tk.W, padx=5)
-
-        ttk.Button(server_frame, text="Fetch Events", command=self.fetch_mairlist_events).grid(row=0, column=4, padx=(20,5))
-
-        # Events list
-        events_list_frame = ttk.Frame(ads_tab)
-        events_list_frame.pack(fill=tk.BOTH, expand=True, pady=5)
-
-        # Create Treeview with columns
-        columns = ("Task Name", "Event ID", "Enabled", "Type")
-        self.events_tree = ttk.Treeview(events_list_frame, columns=columns, show="headings", height=8)
-        
-        self.events_tree.heading("Task Name", text="Task Name")
-        self.events_tree.heading("Event ID", text="Event ID")
-        self.events_tree.heading("Enabled", text="Enabled")
-        self.events_tree.heading("Type", text="Type")
-        
-        self.events_tree.column("Task Name", width=200)
-        self.events_tree.column("Event ID", width=200)
-        self.events_tree.column("Enabled", width=70)
-        self.events_tree.column("Type", width=100)
-
-        # Scrollbar for tree
-        tree_scrollbar = ttk.Scrollbar(events_list_frame, orient=tk.VERTICAL, command=self.events_tree.yview)
-        self.events_tree.configure(yscrollcommand=tree_scrollbar.set)
-        
-        self.events_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        tree_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-
-        # Buttons for actions
-        events_button_frame = ttk.Frame(ads_tab)
-        events_button_frame.pack(fill=tk.X, pady=5)
-
-        ttk.Button(events_button_frame, text="Set as Scheduled URL", command=self.set_as_scheduled_url).pack(side=tk.LEFT, padx=5)
-        ttk.Button(events_button_frame, text="Set as Instant URL", command=self.set_as_instant_url).pack(side=tk.LEFT, padx=5)
-        ttk.Button(events_button_frame, text="Copy URL to Clipboard", command=self.copy_event_url).pack(side=tk.LEFT, padx=5)
-
-        # --- Bottom Buttons ---
-        button_frame = ttk.Frame(main_frame)
-        button_frame.pack(fill=tk.X, pady=(10, 0))
-        ttk.Button(button_frame, text="Save & Close", command=self.save_and_close).pack(side=tk.RIGHT, padx=5)
-        ttk.Button(button_frame, text="Cancel", command=self.on_close).pack(side=tk.RIGHT, padx=5)
+        self.create_debug_tab(debug_frame)
 
     def browse_file(self, var, save=False):
         """Opens a file dialog to select a file path and sets the variable."""
@@ -444,9 +264,10 @@ class OptionsWindow(Toplevel):
             logging.error(f"Failed to save debug logging setting: {e}")
 
     def fetch_mairlist_events(self):
-        """Fetch events from mAirList server and display them."""
-        server = self.mairlist_server_var.get().strip()
-        password = self.mairlist_password_var.get().strip()
+        """Fetch events from mAirList server using the mAirList tab settings."""
+        server = self.mairlist_server_entry_var.get().strip()
+        password = self.mairlist_password_entry_var.get().strip()
+        station_id = self.mairlist_station_var.get()
 
         if not server:
             messagebox.showerror("Error", "Please enter mAirList server address.", parent=self)
@@ -459,7 +280,7 @@ class OptionsWindow(Toplevel):
         url = f"{server}/?pass={password}&action=schedule&type=list"
 
         try:
-            logging.info(f"Fetching mAirList events from: {url}")
+            logging.info(f"Fetching mAirList events from: {url} for {station_id}")
             
             # Fetch the XML
             with urllib.request.urlopen(url, timeout=10) as response:
@@ -469,8 +290,8 @@ class OptionsWindow(Toplevel):
             root = ET.fromstring(xml_data)
             
             # Clear existing items
-            for item in self.events_tree.get_children():
-                self.events_tree.delete(item)
+            for item in self.mairlist_events_tree.get_children():
+                self.mairlist_events_tree.delete(item)
             
             # Parse events
             event_count = 0
@@ -488,15 +309,19 @@ class OptionsWindow(Toplevel):
                 
                 # Only show events with task names and IDs
                 if event_id:
-                    self.events_tree.insert('', tk.END, values=(task_name, event_id, enabled, event_type))
+                    self.mairlist_events_tree.insert('', tk.END, values=(task_name, event_id, enabled, event_type))
                     event_count += 1
             
-            logging.info(f"Successfully fetched {event_count} events from mAirList")
-            messagebox.showinfo("Success", f"Fetched {event_count} events from mAirList.", parent=self)
-            
-            # Save server settings
-            self.config_manager.update_setting("settings.mairlist.server", self.mairlist_server_var.get())
-            self.config_manager.update_setting("settings.mairlist.password", self.mairlist_password_var.get())
+            logging.info(f"Successfully fetched {event_count} events from mAirList for {station_id}")
+
+            # Update the station's mAirList settings and save to config
+            self.station_vars[station_id]['mairlist_server'].set(server)
+            self.station_vars[station_id]['mairlist_password'].set(password)
+
+            # Save the mAirList settings to config for this station
+            self.config_manager.update_station_setting(station_id, "mairlist.server", server)
+            self.config_manager.update_station_setting(station_id, "mairlist.password", password)
+            self.config_manager.save_config()
             
         except urllib.error.URLError as e:
             logging.error(f"Failed to fetch mAirList events: {e}")
@@ -508,62 +333,34 @@ class OptionsWindow(Toplevel):
             logging.exception("Error fetching mAirList events")
             messagebox.showerror("Error", f"An error occurred:\n{e}", parent=self)
 
-    def get_selected_event_url(self):
-        """Get the URL for the selected event."""
-        selection = self.events_tree.selection()
+    def copy_mairlist_event_url(self):
+        """Copy the selected event URL to clipboard."""
+        selection = self.mairlist_events_tree.selection()
         if not selection:
             messagebox.showwarning("No Selection", "Please select an event from the list.", parent=self)
-            return None
+            return
         
-        item = self.events_tree.item(selection[0])
+        item = self.mairlist_events_tree.item(selection[0])
         values = item['values']
         event_id = values[1]  # Event ID is in column 1
+        task_name = values[0]  # Task name is in column 0
         
-        # Build URL
-        server = self.mairlist_server_var.get().strip()
-        password = self.mairlist_password_var.get().strip()
+        # Build URL using current settings
+        server = self.mairlist_server_entry_var.get().strip()
+        password = self.mairlist_password_entry_var.get().strip()
         
         if not server.startswith("http://") and not server.startswith("https://"):
             server = f"http://{server}"
         
         url = f"{server}/?pass={password}&action=schedule&type=run&id={event_id}"
-        return url
-
-    def set_as_scheduled_url(self):
-        """Set the selected event as the scheduled URL."""
-        url = self.get_selected_event_url()
-        if url:
-            self.ad_url_var.set(url)
-            selection = self.events_tree.selection()
-            item = self.events_tree.item(selection[0])
-            task_name = item['values'][0]
-            logging.info(f"Set scheduled URL to event: {task_name}")
-            messagebox.showinfo("URL Set", f"Scheduled URL set to:\n{task_name}", parent=self)
-
-    def set_as_instant_url(self):
-        """Set the selected event as the instant URL."""
-        url = self.get_selected_event_url()
-        if url:
-            self.ad_instant_url_var.set(url)
-            selection = self.events_tree.selection()
-            item = self.events_tree.item(selection[0])
-            task_name = item['values'][0]
-            logging.info(f"Set instant URL to event: {task_name}")
-            messagebox.showinfo("URL Set", f"Instant URL set to:\n{task_name}", parent=self)
-
-    def copy_event_url(self):
-        """Copy the selected event URL to clipboard."""
-        url = self.get_selected_event_url()
-        if url:
-            self.clipboard_clear()
-            self.clipboard_append(url)
-            self.update()  # Required for clipboard to work
-            
-            selection = self.events_tree.selection()
-            item = self.events_tree.item(selection[0])
-            task_name = item['values'][0]
-            logging.info(f"Copied URL for event: {task_name}")
-            messagebox.showinfo("Copied", f"URL copied to clipboard:\n{task_name}", parent=self)
+        
+        # Copy to clipboard
+        self.clipboard_clear()
+        self.clipboard_append(url)
+        self.update()  # Required for clipboard to work
+        
+        logging.info(f"Copied URL for event: {task_name}")
+        messagebox.showinfo("Copied", f"URL copied to clipboard:\n\n{task_name}\n\n{url}", parent=self)
 
     def save_and_close(self):
         """Saves the whitelist/blacklist if changed and closes."""
@@ -585,23 +382,33 @@ class OptionsWindow(Toplevel):
                  messagebox.showerror("Save Error", f"Failed to save settings:\n{e}", parent=self)
                  return # Don't close if save failed
 
-        # Save settings from the new tab
-        self.config_manager.update_setting("settings.rds.ip", self.rds_ip_var.get())
-        self.config_manager.update_setting("settings.rds.port", self.rds_port_var.get())
-        self.config_manager.update_setting("settings.rds.now_playing_xml", self.rds_xml_var.get())
-        self.config_manager.update_setting("settings.rds.default_message", self.rds_default_var.get())
-        self.config_manager.update_setting("settings.intro_loader.now_playing_xml", self.loader_xml_var.get())
-        self.config_manager.update_setting("settings.intro_loader.mp3_directory", self.loader_mp3_dir_var.get())
-        self.config_manager.update_setting("settings.intro_loader.missing_artists_log", self.loader_log_var.get())
-        self.config_manager.update_setting("settings.intro_loader.schedule_url", self.loader_url_var.get())
-        self.config_manager.update_setting("settings.ad_inserter.insertion_url", self.ad_url_var.get())
-        self.config_manager.update_setting("settings.ad_inserter.instant_url", self.ad_instant_url_var.get())
-        self.config_manager.update_setting("settings.ad_inserter.output_mp3", self.ad_mp3_var.get())
+        # Save settings from both station tabs
+        for station_id, station_vars in self.station_vars.items():
+            # RDS settings
+            self.config_manager.update_station_setting(station_id, "rds.ip", station_vars['rds_ip'].get())
+            self.config_manager.update_station_setting(station_id, "rds.port", station_vars['rds_port'].get())
+            self.config_manager.update_station_setting(station_id, "rds.now_playing_xml", station_vars['rds_xml'].get())
+            self.config_manager.update_station_setting(station_id, "rds.default_message", station_vars['rds_default'].get())
+
+            # Intro Loader settings
+            self.config_manager.update_station_setting(station_id, "intro_loader.now_playing_xml", station_vars['loader_xml'].get())
+            self.config_manager.update_station_setting(station_id, "intro_loader.mp3_directory", station_vars['loader_mp3_dir'].get())
+            self.config_manager.update_station_setting(station_id, "intro_loader.missing_artists_log", station_vars['loader_log'].get())
+            self.config_manager.update_station_setting(station_id, "intro_loader.schedule_url", station_vars['loader_url'].get())
+
+            # Ad Inserter settings
+            self.config_manager.update_station_setting(station_id, "ad_inserter.insertion_url", station_vars['ad_url'].get())
+            self.config_manager.update_station_setting(station_id, "ad_inserter.instant_url", station_vars['ad_instant_url'].get())
+            self.config_manager.update_station_setting(station_id, "ad_inserter.output_mp3", station_vars['ad_mp3'].get())
+
+            # mAirList settings
+            self.config_manager.update_station_setting(station_id, "mairlist.server", station_vars['mairlist_server'].get())
+            self.config_manager.update_station_setting(station_id, "mairlist.password", station_vars['mairlist_password'].get())
 
         # Save all settings changes to file
         try:
             self.config_manager.save_config()
-            logging.info("Settings changes saved.")
+            logging.info("Settings changes saved for all stations.")
         except Exception as e:
             logging.exception("Failed to save settings.")
             messagebox.showerror("Save Error", f"Failed to save settings:\n{e}", parent=self)
@@ -609,18 +416,27 @@ class OptionsWindow(Toplevel):
 
         # Reload configuration in handlers to apply changes immediately
         try:
-            self.intro_loader_handler.reload_configuration()
-            logging.info("Intro Loader configuration reloaded.")
+            self.intro_1047_handler.reload_configuration()
+            self.intro_887_handler.reload_configuration()
+            logging.info("Intro Loader configurations reloaded for both stations.")
         except Exception as e:
             logging.warning(f"Failed to reload Intro Loader configuration: {e}")
 
-        if self.auto_rds_handler:
+        if self.rds_1047_handler:
             try:
-                self.auto_rds_handler.reload_configuration()
-                self.auto_rds_handler.reload_lecture_detector()
-                logging.info("RDS Handler configuration reloaded.")
+                self.rds_1047_handler.reload_configuration()
+                self.rds_1047_handler.reload_lecture_detector()
+                logging.info("RDS Handler 104.7 configuration reloaded.")
             except Exception as e:
-                logging.warning(f"Failed to reload RDS Handler configuration: {e}")
+                logging.warning(f"Failed to reload RDS Handler 104.7 configuration: {e}")
+
+        if self.rds_887_handler:
+            try:
+                self.rds_887_handler.reload_configuration()
+                self.rds_887_handler.reload_lecture_detector()
+                logging.info("RDS Handler 88.7 configuration reloaded.")
+            except Exception as e:
+                logging.warning(f"Failed to reload RDS Handler 88.7 configuration: {e}")
 
         self.destroy()
 
@@ -639,6 +455,264 @@ class OptionsWindow(Toplevel):
             # else: Cancel, do nothing
         else:
             self.destroy() # No changes, just close
+
+    def create_mairlist_tab(self, parent_frame):
+        """Create the mAirList schedule events tab."""
+        title_label = ttk.Label(parent_frame, text="mAirList Schedule Events", font=("Segoe UI", 12, "bold"))
+        title_label.pack(pady=(0,10))
+
+        help_label = ttk.Label(
+            parent_frame,
+            text="Fetch scheduled events from your mAirList server. Select an event and copy its URL to use in Ad Inserter or Intro Loader settings.",
+            wraplength=700,
+            foreground="gray"
+        )
+        help_label.pack(pady=(0,10))
+
+        # Station selector
+        station_frame = ttk.Frame(parent_frame)
+        station_frame.pack(fill=tk.X, pady=5)
+
+        ttk.Label(station_frame, text="Station:").pack(side=tk.LEFT, padx=5)
+        self.mairlist_station_var = tk.StringVar(value="station_1047")
+        station_combo = ttk.Combobox(station_frame, textvariable=self.mairlist_station_var, 
+                                     values=["station_1047", "station_887"], state="readonly", width=15)
+        station_combo.pack(side=tk.LEFT, padx=5)
+
+        # Display labels for station name
+        ttk.Label(station_frame, text="(104.7 FM or 88.7 FM)").pack(side=tk.LEFT, padx=5)
+
+        # Server configuration
+        server_frame = ttk.Frame(parent_frame)
+        server_frame.pack(fill=tk.X, pady=10)
+
+        ttk.Label(server_frame, text="Server:").grid(row=0, column=0, sticky=tk.W, padx=5)
+        self.mairlist_server_entry_var = tk.StringVar()
+        server_entry = ttk.Entry(server_frame, textvariable=self.mairlist_server_entry_var, width=35)
+        server_entry.grid(row=0, column=1, sticky=tk.W, padx=5)
+
+        ttk.Label(server_frame, text="Password:").grid(row=0, column=2, sticky=tk.W, padx=(20,5))
+        self.mairlist_password_entry_var = tk.StringVar()
+        password_entry = ttk.Entry(server_frame, textvariable=self.mairlist_password_entry_var, width=20, show="*")
+        password_entry.grid(row=0, column=3, sticky=tk.W, padx=5)
+
+        ttk.Button(server_frame, text="Fetch Events", command=self.fetch_mairlist_events).grid(row=0, column=4, padx=(20,5))
+
+        # Update server/password fields when station changes
+        def on_station_change(*args):
+            station_id = self.mairlist_station_var.get()
+            self.mairlist_server_entry_var.set(self.station_vars[station_id]['mairlist_server'].get())
+            self.mairlist_password_entry_var.set(self.station_vars[station_id]['mairlist_password'].get())
+
+        # Update station variables when mAirList fields change
+        def on_server_change(*args):
+            station_id = self.mairlist_station_var.get()
+            self.station_vars[station_id]['mairlist_server'].set(self.mairlist_server_entry_var.get())
+
+        def on_password_change(*args):
+            station_id = self.mairlist_station_var.get()
+            self.station_vars[station_id]['mairlist_password'].set(self.mairlist_password_entry_var.get())
+
+        self.mairlist_station_var.trace('w', on_station_change)
+        self.mairlist_server_entry_var.trace('w', on_server_change)
+        self.mairlist_password_entry_var.trace('w', on_password_change)
+        on_station_change()  # Initialize with current station
+
+        # Events list
+        events_list_frame = ttk.Frame(parent_frame)
+        events_list_frame.pack(fill=tk.BOTH, expand=True, pady=10)
+
+        # Create Treeview with columns
+        columns = ("Task Name", "Event ID", "Enabled", "Type")
+        self.mairlist_events_tree = ttk.Treeview(events_list_frame, columns=columns, show="headings", height=8)
+        
+        self.mairlist_events_tree.heading("Task Name", text="Task Name")
+        self.mairlist_events_tree.heading("Event ID", text="Event ID")
+        self.mairlist_events_tree.heading("Enabled", text="Enabled")
+        self.mairlist_events_tree.heading("Type", text="Type")
+        
+        self.mairlist_events_tree.column("Task Name", width=250)
+        self.mairlist_events_tree.column("Event ID", width=250)
+        self.mairlist_events_tree.column("Enabled", width=80)
+        self.mairlist_events_tree.column("Type", width=100)
+
+        # Scrollbar for tree
+        tree_scrollbar = ttk.Scrollbar(events_list_frame, orient=tk.VERTICAL, command=self.mairlist_events_tree.yview)
+        self.mairlist_events_tree.configure(yscrollcommand=tree_scrollbar.set)
+        
+        self.mairlist_events_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        tree_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        # Button for copying URL
+        button_frame = ttk.Frame(parent_frame)
+        button_frame.pack(fill=tk.X, pady=10)
+
+        ttk.Button(button_frame, text="Copy URL to Clipboard", command=self.copy_mairlist_event_url).pack(side=tk.LEFT, padx=5)
+
+    def create_debug_tab(self, parent_frame):
+        """Create the debug tab with testing and logging controls."""
+        debug_label = ttk.Label(parent_frame, text="Debug Tools", font=("Segoe UI", 10, "bold"))
+        debug_label.pack(pady=(0,10))
+
+        # Add button to "touch" the XML file
+        touch_button = ttk.Button(parent_frame, text="Touch XML File", command=self.touch_xml_file_action)
+        touch_button.pack(pady=5)
+        touch_help = ttk.Label(
+            parent_frame,
+            text="Updates the XML file's modification time to force the Intro Loader to re-check it.",
+            wraplength=380,
+        )
+        touch_help.pack(pady=2)
+
+        # Button to combine ads and trigger the ad inserter URL
+        ad_button = ttk.Button(parent_frame, text="Run Ad Service", command=self.run_ad_service_action)
+        ad_button.pack(pady=5)
+        ad_help = ttk.Label(
+            parent_frame,
+            text="Combine enabled ads into one MP3 and call the ad inserter URL.",
+            wraplength=380,
+        )
+        ad_help.pack(pady=2)
+
+        # Button to instantly play ads via the instant URL
+        instant_button = ttk.Button(parent_frame, text="Play Ad Now", command=self.run_instant_ad_service_action)
+        instant_button.pack(pady=5)
+        instant_help = ttk.Label(
+            parent_frame,
+            text="Combine enabled ads and trigger immediate playback.",
+            wraplength=380,
+        )
+        instant_help.pack(pady=2)
+
+        # Button to simulate start of hour for AdScheduler testing
+        hour_button = ttk.Button(parent_frame, text="Simulate Hour Start", command=self.simulate_hour_start)
+        hour_button.pack(pady=5)
+        hour_help = ttk.Label(
+            parent_frame,
+            text="Triggers the AdScheduler's hourly check logic to test ad insertion timing.",
+            wraplength=380,
+        )
+        hour_help.pack(pady=2)
+
+        # Separator
+        ttk.Separator(parent_frame, orient='horizontal').pack(fill=tk.X, pady=10)
+
+        # Logging Level Controls
+        logging_label = ttk.Label(parent_frame, text="Logging Level", font=("Segoe UI", 10, "bold"))
+        logging_label.pack(pady=(5, 10))
+
+        self.enable_debug_logs_var = tk.BooleanVar(
+            value=self.config_manager.get_setting("settings.debug.enable_debug_logs", False)
+        )
+
+        debug_checkbox = ttk.Checkbutton(
+            parent_frame,
+            text="Enable Debug Logs (Shows detailed DEBUG messages)",
+            variable=self.enable_debug_logs_var,
+            command=self.toggle_debug_logging
+        )
+        debug_checkbox.pack(pady=5)
+
+        debug_note = ttk.Label(
+            parent_frame,
+            text="Note: Debug logs provide detailed information useful for troubleshooting.\nDisabling this will only show INFO, WARNING, and ERROR messages.",
+            wraplength=380,
+            foreground="gray"
+        )
+        debug_note.pack(pady=2)
+
+    def create_station_settings_tab(self, parent_frame, station_id):
+        """Create a settings tab for a specific station."""
+        # Store variables for this station
+        station_vars = self.station_vars[station_id]
+        
+        # RDS Settings Section
+        rds_label = ttk.Label(parent_frame, text="RDS Settings", font=("Segoe UI", 10, "bold"))
+        rds_label.pack(anchor=tk.W, pady=(0,5))
+
+        rds_frame = ttk.Frame(parent_frame)
+        rds_frame.pack(fill=tk.X, pady=5)
+
+        # RDS IP
+        ttk.Label(rds_frame, text="RDS IP:").grid(row=0, column=0, sticky=tk.W, padx=5)
+        station_vars['rds_ip'] = tk.StringVar(value=self.config_manager.get_station_setting(station_id, "settings.rds.ip", "50.208.125.83"))
+        ttk.Entry(rds_frame, textvariable=station_vars['rds_ip'], width=40).grid(row=0, column=1, sticky=tk.W, padx=5)
+
+        # RDS Port
+        ttk.Label(rds_frame, text="RDS Port:").grid(row=1, column=0, sticky=tk.W, padx=5)
+        station_vars['rds_port'] = tk.IntVar(value=self.config_manager.get_station_setting(station_id, "settings.rds.port", 10001))
+        ttk.Entry(rds_frame, textvariable=station_vars['rds_port'], width=40).grid(row=1, column=1, sticky=tk.W, padx=5)
+
+        # Now Playing XML
+        ttk.Label(rds_frame, text="Now Playing XML:").grid(row=2, column=0, sticky=tk.W, padx=5)
+        station_vars['rds_xml'] = tk.StringVar(value=self.config_manager.get_station_setting(station_id, "settings.rds.now_playing_xml", r"G:\To_RDS\nowplaying.xml"))
+        ttk.Entry(rds_frame, textvariable=station_vars['rds_xml'], width=40).grid(row=2, column=1, sticky=tk.W, padx=5)
+        ttk.Button(rds_frame, text="Browse", command=lambda: self.browse_file(station_vars['rds_xml'])).grid(row=2, column=2, padx=5)
+
+        # Default Message
+        ttk.Label(rds_frame, text="Default Message:").grid(row=3, column=0, sticky=tk.W, padx=5)
+        station_vars['rds_default'] = tk.StringVar(value=self.config_manager.get_station_setting(station_id, "settings.rds.default_message", ""))
+        ttk.Entry(rds_frame, textvariable=station_vars['rds_default'], width=40).grid(row=3, column=1, sticky=tk.W, padx=5)
+
+        # Intro Loader Settings Section
+        loader_label = ttk.Label(parent_frame, text="Intro Loader Settings", font=("Segoe UI", 10, "bold"))
+        loader_label.pack(anchor=tk.W, pady=(10,5))
+
+        loader_frame = ttk.Frame(parent_frame)
+        loader_frame.pack(fill=tk.X, pady=5)
+
+        # Now Playing XML (shared with RDS, but allow separate if needed)
+        ttk.Label(loader_frame, text="Now Playing XML:").grid(row=0, column=0, sticky=tk.W, padx=5)
+        station_vars['loader_xml'] = tk.StringVar(value=self.config_manager.get_station_setting(station_id, "settings.intro_loader.now_playing_xml", r"G:\To_RDS\nowplaying.xml"))
+        ttk.Entry(loader_frame, textvariable=station_vars['loader_xml'], width=40).grid(row=0, column=1, sticky=tk.W, padx=5)
+        ttk.Button(loader_frame, text="Browse", command=lambda: self.browse_file(station_vars['loader_xml'])).grid(row=0, column=2, padx=5)
+
+        # MP3 Directory
+        ttk.Label(loader_frame, text="MP3 Directory:").grid(row=1, column=0, sticky=tk.W, padx=5)
+        station_vars['loader_mp3_dir'] = tk.StringVar(value=self.config_manager.get_station_setting(station_id, "settings.intro_loader.mp3_directory", r"G:\Shiurim\introsCleanedUp"))
+        ttk.Entry(loader_frame, textvariable=station_vars['loader_mp3_dir'], width=40).grid(row=1, column=1, sticky=tk.W, padx=5)
+        ttk.Button(loader_frame, text="Browse", command=lambda: self.browse_directory(station_vars['loader_mp3_dir'])).grid(row=1, column=2, padx=5)
+
+        # Missing Artists Log
+        ttk.Label(loader_frame, text="Missing Artists Log:").grid(row=2, column=0, sticky=tk.W, padx=5)
+        station_vars['loader_log'] = tk.StringVar(value=self.config_manager.get_station_setting(station_id, "settings.intro_loader.missing_artists_log", r"G:\Misc\Dev\CombinedRDSApp\missing_artists.log"))
+        ttk.Entry(loader_frame, textvariable=station_vars['loader_log'], width=40).grid(row=2, column=1, sticky=tk.W, padx=5)
+        ttk.Button(loader_frame, text="Browse", command=lambda: self.browse_file(station_vars['loader_log'], save=True)).grid(row=2, column=2, padx=5)
+
+        # Schedule URL
+        ttk.Label(loader_frame, text="Schedule URL:").grid(row=3, column=0, sticky=tk.W, padx=5)
+        station_vars['loader_url'] = tk.StringVar(
+            value=self.config_manager.get_station_setting(
+                station_id,
+                "settings.intro_loader.schedule_url",
+                "http://192.168.3.11:9000/?pass=bmas220&action=schedule&type=run&id=TBACFNBGJKOMETDYSQYR",
+            )
+        )
+        ttk.Entry(loader_frame, textvariable=station_vars['loader_url'], width=40).grid(row=3, column=1, sticky=tk.W, padx=5)
+
+        # --- Ad Settings ---
+        ad_label = ttk.Label(parent_frame, text="Ad Inserter Settings", font=("Segoe UI", 10, "bold"))
+        ad_label.pack(anchor=tk.W, pady=(10,5))
+
+        ad_frame = ttk.Frame(parent_frame)
+        ad_frame.pack(fill=tk.X, pady=5)
+
+        ttk.Label(ad_frame, text="Schedule URL:").grid(row=0, column=0, sticky=tk.W, padx=5)
+        station_vars['ad_url'] = tk.StringVar(value=self.config_manager.get_station_setting(station_id, "settings.ad_inserter.insertion_url", "http://localhost:8000/insert"))
+        ttk.Entry(ad_frame, textvariable=station_vars['ad_url'], width=40).grid(row=0, column=1, sticky=tk.W, padx=5)
+
+        ttk.Label(ad_frame, text="Instant URL:").grid(row=1, column=0, sticky=tk.W, padx=5)
+        station_vars['ad_instant_url'] = tk.StringVar(value=self.config_manager.get_station_setting(station_id, "settings.ad_inserter.instant_url", "http://localhost:8000/play"))
+        ttk.Entry(ad_frame, textvariable=station_vars['ad_instant_url'], width=40).grid(row=1, column=1, sticky=tk.W, padx=5)
+
+        ttk.Label(ad_frame, text="New Ad MP3:").grid(row=2, column=0, sticky=tk.W, padx=5)
+        station_vars['ad_mp3'] = tk.StringVar(value=self.config_manager.get_station_setting(station_id, "settings.ad_inserter.output_mp3", r"G:\\Ads\\newAd.mp3"))
+        ttk.Entry(ad_frame, textvariable=station_vars['ad_mp3'], width=40).grid(row=2, column=1, sticky=tk.W, padx=5)
+        ttk.Button(ad_frame, text="Browse", command=lambda: self.browse_file(station_vars['ad_mp3'])).grid(row=2, column=2, padx=5)
+
+        # mAirList server settings (just server info, no UI)
+        station_vars['mairlist_server'] = tk.StringVar(value=self.config_manager.get_station_setting(station_id, "mairlist.server", "localhost:9000"))
+        station_vars['mairlist_password'] = tk.StringVar(value=self.config_manager.get_station_setting(station_id, "mairlist.password", "bmas220"))
 
 # Example usage for testing
 if __name__ == "__main__":

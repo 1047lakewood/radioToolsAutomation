@@ -9,22 +9,37 @@ try:
 except ImportError:  # pragma: no cover - optional dependency
     PYDUB_AVAILABLE = False
 
-logger = logging.getLogger('AdService')
+# Logger will be set in __init__ based on station_id
 
 class AdInserterService:
     """Combine enabled/scheduled ads into a single MP3 and trigger insertion."""
 
-    def __init__(self, config_manager):
+    def __init__(self, config_manager, station_id):
+        """
+        Initialize the AdInserterService.
+
+        Args:
+            config_manager: ConfigManager instance
+            station_id: Station identifier (e.g., 'station_1047' or 'station_887')
+        """
         self.config_manager = config_manager
-        self.insertion_url = self.config_manager.get_setting(
+        self.station_id = station_id
+
+        # Set up logger based on station_id
+        logger_name = f'AdService_{station_id.split("_")[1]}'  # e.g., 'AdService_1047'
+        self.logger = logging.getLogger(logger_name)
+        self.insertion_url = self.config_manager.get_station_setting(
+            station_id,
             "settings.ad_inserter.insertion_url",
             "http://localhost:8000/insert",
         )
-        self.instant_url = self.config_manager.get_setting(
+        self.instant_url = self.config_manager.get_station_setting(
+            station_id,
             "settings.ad_inserter.instant_url",
             "http://localhost:8000/play",
         )
-        self.output_mp3 = self.config_manager.get_setting(
+        self.output_mp3 = self.config_manager.get_station_setting(
+            station_id,
             "settings.ad_inserter.output_mp3",
             r"G:\\Ads\\newAd.mp3",
         )
@@ -32,9 +47,9 @@ class AdInserterService:
         # Initialize ad play logger
         try:
             from ad_play_logger import AdPlayLogger
-            self.ad_logger = AdPlayLogger(config_manager)
+            self.ad_logger = AdPlayLogger(config_manager, station_id)
         except ImportError:
-            logger.error("AdPlayLogger not available - ad play tracking disabled")
+            self.logger.error("AdPlayLogger not available - ad play tracking disabled")
             self.ad_logger = None
 
     def run(self):
@@ -50,7 +65,7 @@ class AdInserterService:
         return False
 
     def _combine_ads(self):
-        ads = self.config_manager.get_ads() or []
+        ads = self.config_manager.get_station_ads(self.station_id) or []
         valid_files = []
         now = datetime.now()
         for ad in ads:
@@ -60,12 +75,12 @@ class AdInserterService:
                 continue
             mp3 = ad.get("MP3File")
             if not mp3 or not os.path.exists(mp3):
-                logger.warning(f"Ad MP3 not found: {mp3}")
+                self.logger.warning(f"Ad MP3 not found: {mp3}")
                 continue
             valid_files.append(mp3)
 
         if not valid_files:
-            logger.warning("No valid ads to combine.")
+            self.logger.warning("No valid ads to combine.")
             return False
 
         # Log the ads that will be played
@@ -99,31 +114,31 @@ class AdInserterService:
         return True
 
     def _concatenate_mp3_files(self, files, output_path):
-        logger.debug(f"Concatenating {len(files)} files to {output_path}")
+        self.logger.debug(f"Concatenating {len(files)} files to {output_path}")
         if not PYDUB_AVAILABLE:
-            logger.error("pydub not available - cannot concatenate MP3 files")
+            self.logger.error("pydub not available - cannot concatenate MP3 files")
             return False
         try:
             combined = AudioSegment.empty()
             for fp in files:
                 if not os.path.exists(fp):
-                    logger.error(f"File not found: {fp}")
+                    self.logger.error(f"File not found: {fp}")
                     return False
                 combined += AudioSegment.from_mp3(fp)
             combined.export(output_path, format="mp3")
             return True
         except Exception as e:  # pragma: no cover - runtime safety
-            logger.exception(f"Error concatenating ads: {e}")
+            self.logger.exception(f"Error concatenating ads: {e}")
             return False
 
     def _call_url(self, url):
-        logger.info(f"Calling ad service URL: {url}")
+        self.logger.info(f"Calling ad service URL: {url}")
         try:
             with urllib.request.urlopen(url, timeout=10) as resp:
-                logger.info(f"Ad service response: {resp.status}")
+                self.logger.info(f"Ad service response: {resp.status}")
             return True
         except Exception as e:  # pragma: no cover - runtime safety
-            logger.error(f"Failed to call ad service URL: {e}")
+            self.logger.error(f"Failed to call ad service URL: {e}")
             return False
 
     def _log_ad_plays(self, ad_names):
@@ -142,14 +157,14 @@ class AdInserterService:
             total = len(results)
 
             if successful > 0:
-                logger.info(f"Successfully logged {successful}/{total} ad plays")
+                self.logger.info(f"Successfully logged {successful}/{total} ad plays")
                 for ad_name, success in results.items():
                     if success:
-                        logger.debug(f"Ad '{ad_name}' play logged successfully")
+                        self.logger.debug(f"Ad '{ad_name}' play logged successfully")
                     else:
-                        logger.warning(f"Failed to log play for ad '{ad_name}'")
+                        self.logger.warning(f"Failed to log play for ad '{ad_name}'")
             else:
-                logger.warning("No ad plays were successfully logged")
+                self.logger.warning("No ad plays were successfully logged")
 
         except Exception as e:
-            logger.error(f"Error logging ad plays: {e}")
+            self.logger.error(f"Error logging ad plays: {e}")

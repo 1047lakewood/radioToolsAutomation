@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import List, Dict, Optional
 import logging
 
-logger = logging.getLogger('AdReportGenerator')
+# Logger will be set in __init__ based on station_id
 
 try:
     from reportlab.lib import colors
@@ -17,20 +17,26 @@ try:
     REPORTLAB_AVAILABLE = True
 except ImportError:
     REPORTLAB_AVAILABLE = False
-    logger.warning("reportlab not available - PDF report generation disabled")
+    # Logger will be available in instances
 
 
 class AdReportGenerator:
     """Generate professional advertiser reports for verification and invoicing."""
 
-    def __init__(self, ad_logger):
+    def __init__(self, ad_logger, station_id):
         """
         Initialize the report generator.
 
         Args:
             ad_logger: AdPlayLogger instance to access play statistics
+            station_id: Station identifier (e.g., 'station_1047' or 'station_887')
         """
         self.ad_logger = ad_logger
+        self.station_id = station_id
+
+        # Set up logger based on station_id
+        logger_name = f'AdReportGenerator_{station_id.split("_")[1]}'  # e.g., 'AdReportGenerator_1047'
+        self.logger = logging.getLogger(logger_name)
 
     def generate_csv_report(self, ad_name: str, start_date: str, end_date: str, 
                            output_file: str) -> bool:
@@ -50,7 +56,7 @@ class AdReportGenerator:
             # Get detailed statistics
             detailed_stats = self.ad_logger.get_detailed_stats(start_date, end_date)
             if "error" in detailed_stats:
-                logger.error(f"Error getting stats: {detailed_stats['error']}")
+                self.logger.error(f"Error getting stats: {detailed_stats['error']}")
                 return False
 
             daily_plays = detailed_stats.get("daily_plays", {})
@@ -94,11 +100,11 @@ class AdReportGenerator:
                 writer.writerow([])
                 writer.writerow(["TOTAL", total_plays])
 
-            logger.info(f"CSV report generated: {output_file}")
+            self.logger.info(f"CSV report generated: {output_file}")
             return True
 
         except Exception as e:
-            logger.error(f"Error generating CSV report: {e}")
+            self.logger.error(f"Error generating CSV report: {e}")
             return False
 
     def generate_pdf_report(self, ad_name: str, start_date: str, end_date: str,
@@ -119,14 +125,14 @@ class AdReportGenerator:
             bool: True if successful, False otherwise
         """
         if not REPORTLAB_AVAILABLE:
-            logger.error("reportlab not available - cannot generate PDF")
+            self.logger.error("reportlab not available - cannot generate PDF")
             return False
 
         try:
             # Get detailed statistics
             detailed_stats = self.ad_logger.get_detailed_stats(start_date, end_date)
             if "error" in detailed_stats:
-                logger.error(f"Error getting stats: {detailed_stats['error']}")
+                self.logger.error(f"Error getting stats: {detailed_stats['error']}")
                 return False
 
             daily_plays = detailed_stats.get("daily_plays", {})
@@ -295,11 +301,11 @@ class AdReportGenerator:
             # Build PDF
             doc.build(story)
 
-            logger.info(f"PDF report generated: {output_file}")
+            self.logger.info(f"PDF report generated: {output_file}")
             return True
 
         except Exception as e:
-            logger.error(f"Error generating PDF report: {e}")
+            self.logger.error(f"Error generating PDF report: {e}")
             import traceback
             traceback.print_exc()
             return False
@@ -326,11 +332,11 @@ class AdReportGenerator:
             elif format.lower() == "pdf":
                 return self._generate_multi_ad_pdf(ad_names, start_date, end_date, output_file)
             else:
-                logger.error(f"Unsupported format: {format}")
+                self.logger.error(f"Unsupported format: {format}")
                 return False
 
         except Exception as e:
-            logger.error(f"Error generating multi-ad report: {e}")
+            self.logger.error(f"Error generating multi-ad report: {e}")
             return False
 
     def _generate_multi_ad_csv(self, ad_names: List[str], start_date: str,
@@ -387,18 +393,18 @@ class AdReportGenerator:
                 writer.writerow([])
                 writer.writerow(totals_row)
 
-            logger.info(f"Multi-ad CSV report generated: {output_file}")
+            self.logger.info(f"Multi-ad CSV report generated: {output_file}")
             return True
 
         except Exception as e:
-            logger.error(f"Error generating multi-ad CSV: {e}")
+            self.logger.error(f"Error generating multi-ad CSV: {e}")
             return False
 
     def _generate_multi_ad_pdf(self, ad_names: List[str], start_date: str,
                                end_date: str, output_file: str) -> bool:
         """Generate a PDF report for multiple ads."""
         if not REPORTLAB_AVAILABLE:
-            logger.error("reportlab not available - cannot generate PDF")
+            self.logger.error("reportlab not available - cannot generate PDF")
             return False
 
         try:
@@ -496,10 +502,10 @@ class AdReportGenerator:
             story.append(detail_table)
             doc.build(story)
 
-            logger.info(f"Multi-ad PDF report generated: {output_file}")
+            self.logger.info(f"Multi-ad PDF report generated: {output_file}")
             return True
 
         except Exception as e:
-            logger.error(f"Error generating multi-ad PDF: {e}")
+            self.logger.error(f"Error generating multi-ad PDF: {e}")
             return False
 
