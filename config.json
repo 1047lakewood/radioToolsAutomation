@@ -2,60 +2,142 @@
     "stations": {
         "station_1047": {
             "name": "104.7 FM",
-            "Messages": [],
-            "Ads": [
+            "Messages": [
                 {
-                    "Name": "New Adfgdfg",
+                    "Text": "{artist}",
                     "Enabled": true,
-                    "Scheduled": false,
-                    "PlayCount": 22,
-                    "LastPlayed": "2025-09-30T19:41:11.329307",
-                    "MP3File": "G:/Misc/Radio Info/1047 Station ID.mp3",
-                    "Days": [],
-                    "Times": []
+                    "Message Time": 40,
+                    "Scheduled": {
+                        "Enabled": false,
+                        "Days": [],
+                        "Times": []
+                    }
                 },
                 {
-                    "Name": "New Ad",
+                    "Text": "Lizchus that Ahron Meir should find a shidduch",
                     "Enabled": true,
-                    "Scheduled": false,
-                    "PlayCount": 22,
-                    "LastPlayed": "2025-09-30T19:41:11.348397",
-                    "MP3File": "G:/Misc/Radio Info/r meilich Ba'erev Tochlu Matzos.mp3",
-                    "Days": [],
-                    "Times": []
+                    "Message Time": 20,
+                    "Scheduled": {
+                        "Enabled": true,
+                        "Days": [
+                            "Monday",
+                            "Friday"
+                        ],
+                        "Times": []
+                    }
                 },
                 {
-                    "Name": "New Ad3",
+                    "Text": "Bechol koreinu eilav",
                     "Enabled": false,
-                    "Scheduled": true,
-                    "MP3File": "",
-                    "Days": [
-                        "Monday"
-                    ],
-                    "Times": [
-                        {
-                            "hour": 13
-                        },
-                        {
-                            "hour": 14
-                        },
-                        {
-                            "hour": 15
-                        }
-                    ]
+                    "Message Time": 2,
+                    "Scheduled": {
+                        "Enabled": false,
+                        "Days": [],
+                        "Times": []
+                    }
                 },
                 {
-                    "Name": "Test Ad",
-                    "Enabled": true,
-                    "Scheduled": false,
-                    "MP3File": "test.mp3",
-                    "Days": [],
-                    "Times": []
+                    "Text": "Ein Od Milvado",
+                    "Enabled": false,
+                    "Message Time": 5,
+                    "Scheduled": {
+                        "Enabled": true,
+                        "Days": [
+                            "Monday",
+                            "Thursday",
+                            "Friday"
+                        ],
+                        "Times": []
+                    }
+                },
+                {
+                    "Text": "SPONSOR 732.901.7777",
+                    "Enabled": false,
+                    "Message Time": 35,
+                    "Scheduled": {
+                        "Enabled": true,
+                        "Days": [
+                            "Sunday",
+                            "Monday",
+                            "Tuesday",
+                            "Wednesday",
+                            "Thursday",
+                            "Friday",
+                            "Saturday"
+                        ],
+                        "Times": [
+                            {
+                                "hour": 7
+                            },
+                            {
+                                "hour": 9
+                            },
+                            {
+                                "hour": 11
+                            },
+                            {
+                                "hour": 16
+                            },
+                            {
+                                "hour": 17
+                            },
+                            {
+                                "hour": 18
+                            },
+                            {
+                                "hour": 19
+                            },
+                            {
+                                "hour": 21
+                            }
+                        ]
+                    }
+                },
+                {
+                    "Text": "ACE RESTORATION 732.364.9123",
+                    "Enabled": false,
+                    "Message Time": 20,
+                    "Scheduled": {
+                        "Enabled": false,
+                        "Days": [],
+                        "Times": []
+                    }
+                },
+                {
+                    "Text": "KOSHER CELL 848.299.4081",
+                    "Enabled": false,
+                    "Message Time": 25,
+                    "Scheduled": {
+                        "Enabled": false,
+                        "Days": [],
+                        "Times": []
+                    }
+                },
+                {
+                    "Text": "A.I. STONE ",
+                    "Enabled": false,
+                    "Message Time": 20,
+                    "Scheduled": {
+                        "Enabled": false,
+                        "Days": [],
+                        "Times": []
+                    }
+                },
+                {
+                    "Text": "JUDAICA PLAZA ",
+                    "Enabled": false,
+                    "Message Time": 15,
+                    "Scheduled": {
+                        "Enabled": false,
+                        "Days": [],
+                        "Times": []
+                    }
                 }
             ],
+            "Ads": [],
             "settings": {
                 "rds": {
-                    "ip": "50.208.125.83",
+                    "ip": "50.208.125.85",
                     "port": 10001,
                     "now_playing_xml": "G:\\To_RDS\\nowplaying.xml",
                     "default_message": "732.901.7777 to SUPPORT and hear this program!"
@@ -63,45 +145,144 @@
                 "intro_loader": {
                     "now_playing_xml": "G:\\To_RDS\\nowplaying.xml",
                     "mp3_directory": "G:\\Shiurim\\introsCleanedUp",
-                    "missing_artists_log": "missing_artists_1047.log",
-                    "schedule_url": "http://192.168.3.11:9000/?pass=bmas220&action=schedule&type=run&id=TBACFNBGJKOMETDYSQYR"
+                    "missing_artists_log": "G:\\Misc\\Dev\\CombinedRDSApp\\missing_artists.log",
+                    "schedule_url": "http://192.168.3.11:9000/?pass=bmas220&action=schedule&type=run&id=TBACFNBGJKOMETDYSQYR",
+                    "current_artist_filename": "currentArtist_1047.mp3",
+                    "actual_current_artist_filename": "actualCurrentArtist_1047.mp3",
+                    "blank_mp3_filename": "blank.mp3",
+                    "silent_mp3_filename": "near_silent.mp3"
                 },
                 "ad_inserter": {
                     "insertion_url": "http://localhost:8000/insert",
                     "instant_url": "http://localhost:8000/play",
-                    "output_mp3": "G:\\Ads\\adRoll_1047.mp3"
+                    "output_mp3": "G:\\\\Ads\\\\newAd.mp3"
+                },
+                "mairlist": {
+                    "server": "http://192.168.3.11:9000",
+                    "password": "bmas220"
+                },
+                "debug": {
+                    "enable_debug_logs": true
                 }
             }
         },
         "station_887": {
             "name": "88.7 FM",
-            "Messages": [],
-            "Ads": [],
+            "Messages": [
+                {
+                    "Text": "{artist}",
+                    "Enabled": true,
+                    "Message Time": 10,
+                    "Scheduled": {
+                        "Enabled": false,
+                        "Days": [],
+                        "Times": []
+                    }
+                }
+            ],
+            "Ads": [
+                {
+                    "Name": "shuk",
+                    "Enabled": true,
+                    "MP3File": "G:/Misc/Sponsorships/Audio Files/shuk ad.mp3",
+                    "Scheduled": true,
+                    "Days": [
+                        "Sunday",
+                        "Monday",
+                        "Tuesday"
+                    ],
+                    "Hours": [
+                        0,
+                        1,
+                        2,
+                        3,
+                        4,
+                        5,
+                        6,
+                        7,
+                        8,
+                        9,
+                        10,
+                        11,
+                        12,
+                        13,
+                        14,
+                        15,
+                        16,
+                        17,
+                        18,
+                        19,
+                        20,
+                        21,
+                        22,
+                        23
+                    ],
+                    "PlayCount": 0,
+                    "LastPlayed": null
+                },
+                {
+                    "Name": "asifa",
+                    "Enabled": true,
+                    "MP3File": "G:/Misc/Sponsorships/Audio Files/asifa.mp3",
+                    "Scheduled": false,
+                    "Days": [],
+                    "Hours": [],
+                    "PlayCount": 0,
+                    "LastPlayed": null
+                }
+            ],
             "settings": {
                 "rds": {
-                    "ip": "192.168.1.100",
-                    "port": 10002,
-                    "now_playing_xml": "G:\\To_RDS\\nowplaying_887.xml",
-                    "default_message": "88.7 FM"
+                    "ip": "47.21.151.25",
+                    "port": 10001,
+                    "now_playing_xml": "G:/To_RDS/nowplaying_test.xml",
+                    "default_message": "Ein OD Milvado"
                 },
                 "intro_loader": {
-                    "now_playing_xml": "G:\\To_RDS\\nowplaying_887.xml",
+                    "now_playing_xml": "G:\\To_RDS\\nowplaying_test.xml",
                     "mp3_directory": "G:\\Shiurim\\introsCleanedUp",
                     "missing_artists_log": "missing_artists_887.log",
-                    "schedule_url": "http://192.168.1.100:9000/?pass=password&action=schedule&type=run&id=INTRO"
+                    "schedule_url": "http://192.168.1.100:9000/?pass=password&action=schedule&type=run&id=INTRO",
+                    "current_artist_filename": "currentArtist_887.mp3",
+                    "actual_current_artist_filename": "actualCurrentArtist_887.mp3",
+                    "blank_mp3_filename": "blank.mp3",
+                    "silent_mp3_filename": "near_silent.mp3"
                 },
                 "ad_inserter": {
-                    "insertion_url": "http://192.168.1.100:8000/insert",
-                    "instant_url": "http://192.168.1.100:8000/play",
+                    "insertion_url": "http://localhost:9000/?pass=bmas220&action=schedule&type=run&id=IZVRTKXNHAHFUHXVPCGY",
+                    "instant_url": "http://localhost:9000/?pass=bmas220&action=schedule&type=run&id=NDCKWHGTOQWWGYPRVEKT",
                     "output_mp3": "G:\\Ads\\adRoll_887.mp3"
+                },
+                "mairlist": {
+                    "server": "http://localhost:9000",
+                    "password": "bmas220"
                 }
             }
         }
     },
     "shared": {
-        "Whitelist": [],
-        "Blacklist": [],
-        "playlist_presets": {},
+        "Whitelist": [
+            "Charlie Harary"
+        ],
+        "Blacklist": [
+            "R' Michel Twersky",
+            "R. Michel Twerski",
+            "Rav Michel Twerski",
+            "R' BARUCH CHAIT & ACHEINU"
+        ],
+        "playlist_presets": {
+            "Station ID": "G:\\Misc\\Radio Info\\Station ID Playlist.m3u8",
+            "Sponsorships List": "G:\\Misc\\Sponsorships\\Sponsorships List.m3u8",
+            "Morning M-Tu-F": "G:\\Misc\\Sponsorships\\Morning M-Tu-F.m3u8",
+            "Daily Sponsor 1": "G:\\Misc\\Sponsorships\\daily sponsor 1.m3u8",
+            "ace restoration": "G:\\Misc\\Sponsorships\\ace restoration with staion id.m3u8",
+            "Sponsor  and dedicate ad": "G:\\Misc\\Sponsorships\\sponsor and dedicate.m3u8",
+            "kosher-cell": "G:\\Misc\\Sponsorships\\stID-koshercell.m3u8",
+            "will_cont-kosher-cell": "G:\\Misc\\Sponsorships\\will_cont-kosher-cell.m3u8",
+            "a": "G:\\Misc\\Sponsorships\\Playlists\\stID-shuk-ace-sirota.m3u8",
+            "b": "G:\\Misc\\Sponsorships\\Playlists\\stID-shuk-koCell-sirota.m3u8",
+            "d": "G:\\Misc\\Sponsorships\\Playlists\\stID-jp.m3u8"
+        },
         "debug": {
             "enable_debug_logs": false
         }
