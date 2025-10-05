@@ -52,6 +52,15 @@ class AdSchedulerHandler:
         self.logger.info("AdSchedulerHandler initialized successfully.")
         self.logger.debug(f"Initial state: running={self.running}, last_hour_checked={self.last_hour_checked}")
 
+    def reload_configuration(self):
+        """Reload configuration settings from config manager."""
+        try:
+            self.reload_components()
+            self.logger.info(f"AdScheduler configuration reloaded for {self.station_id}")
+        except Exception as e:
+            self.logger.error(f"Failed to reload AdScheduler configuration: {e}")
+            raise
+
     def reload_components(self):
         """Reload configuration-dependent components."""
         try:
@@ -97,6 +106,13 @@ class AdSchedulerHandler:
         self.logger.info(f"AdScheduler handler {self.station_id} started in thread: {threading.current_thread().name}")
         self.logger.info("AdScheduler handler started.")
         self.logger.debug("AdScheduler run() method executing in thread")
+        
+        # Log initial configuration
+        ads = self.config_manager.get_station_ads(self.station_id) or []
+        self.logger.info(f"AdScheduler for {self.station_id} found {len(ads)} ads in configuration")
+        for ad in ads:
+            self.logger.info(f"  Ad: {ad.get('Name')} - Enabled: {ad.get('Enabled')} - Scheduled: {ad.get('Scheduled')} - Days: {ad.get('Days')} - Hours: {len(ad.get('Hours', []))} hours")
+        
         iteration_count = 0
 
         try:

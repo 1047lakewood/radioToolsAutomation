@@ -146,7 +146,11 @@
                     "now_playing_xml": "G:\\To_RDS\\nowplaying.xml",
                     "mp3_directory": "G:\\Shiurim\\introsCleanedUp",
                     "missing_artists_log": "G:\\Misc\\Dev\\CombinedRDSApp\\missing_artists.log",
-                    "schedule_url": "http://192.168.3.11:9000/?pass=bmas220&action=schedule&type=run&id=TBACFNBGJKOMETDYSQYR"
+                    "schedule_url": "http://192.168.3.11:9000/?pass=bmas220&action=schedule&type=run&id=TBACFNBGJKOMETDYSQYR",
+                    "current_artist_filename": "currentArtist_1047.mp3",
+                    "actual_current_artist_filename": "actualCurrentArtist_1047.mp3",
+                    "blank_mp3_filename": "blank_1047.mp3",
+                    "silent_mp3_filename": "near_silent_1047.mp3"
                 },
                 "ad_inserter": {
                     "insertion_url": "http://localhost:8000/insert",
@@ -231,14 +235,18 @@
                 "rds": {
                     "ip": "47.21.151.125",
                     "port": 10001,
-                    "now_playing_xml": "G:\\To_RDS\\nowplaying_test.xml",
-                    "default_message": "TESTa"
+                    "now_playing_xml": "G:/To_RDS/nowplaying_test.xml",
+                    "default_message": "Ein OD Milvado"
                 },
                 "intro_loader": {
-                    "now_playing_xml": "G:\\To_RDS\\nowplaying_887.xml",
+                    "now_playing_xml": "G:\\To_RDS\\nowplaying_test.xml",
                     "mp3_directory": "G:\\Shiurim\\introsCleanedUp",
                     "missing_artists_log": "missing_artists_887.log",
-                    "schedule_url": "http://192.168.1.100:9000/?pass=password&action=schedule&type=run&id=INTRO"
+                    "schedule_url": "http://192.168.1.100:9000/?pass=password&action=schedule&type=run&id=INTRO",
+                    "current_artist_filename": "currentArtist_887.mp3",
+                    "actual_current_artist_filename": "actualCurrentArtist_887.mp3",
+                    "blank_mp3_filename": "blank.mp3",
+                    "silent_mp3_filename": "near_silent.mp3"
                 },
                 "ad_inserter": {
                     "insertion_url": "http://localhost:9000/?pass=bmas220&action=schedule&type=run&id=IZVRTKXNHAHFUHXVPCGY",

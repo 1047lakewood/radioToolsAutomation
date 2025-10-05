@@ -114,7 +114,11 @@ class ConfigManager:
                             "now_playing_xml": r"G:\To_RDS\nowplaying.xml",
                             "mp3_directory": r"G:\Shiurim\introsCleanedUp",
                             "missing_artists_log": r"missing_artists_1047.log",
-                            "schedule_url": "http://192.168.3.11:9000/?pass=bmas220&action=schedule&type=run&id=TBACFNBGJKOMETDYSQYR"
+                            "schedule_url": "http://192.168.3.11:9000/?pass=bmas220&action=schedule&type=run&id=TBACFNBGJKOMETDYSQYR",
+                            "current_artist_filename": "currentArtist_1047.mp3",
+                            "actual_current_artist_filename": "actualCurrentArtist_1047.mp3",
+                            "blank_mp3_filename": "blank_1047.mp3",
+                            "silent_mp3_filename": "near_silent_1047.mp3"
                         },
                         "ad_inserter": {
                             "insertion_url": "http://localhost:8000/insert",
@@ -138,7 +142,11 @@ class ConfigManager:
                             "now_playing_xml": r"G:\To_RDS\nowplaying_887.xml",
                             "mp3_directory": r"G:\Shiurim\introsCleanedUp",
                             "missing_artists_log": r"missing_artists_887.log",
-                            "schedule_url": "http://192.168.1.100:9000/?pass=password&action=schedule&type=run&id=INTRO"
+                            "schedule_url": "http://192.168.1.100:9000/?pass=password&action=schedule&type=run&id=INTRO",
+                            "current_artist_filename": "currentArtist_887.mp3",
+                            "actual_current_artist_filename": "actualCurrentArtist_887.mp3",
+                            "blank_mp3_filename": "blank_887.mp3",
+                            "silent_mp3_filename": "near_silent_887.mp3"
                         },
                         "ad_inserter": {
                             "insertion_url": "http://192.168.1.100:8000/insert",

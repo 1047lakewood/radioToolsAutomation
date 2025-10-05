@@ -285,8 +285,12 @@ class AutoRDSHandler:
                     messages = self.config_manager.get_station_messages(self.station_id) # Get latest from config manager
                     now_playing = self._load_now_playing()
 
+                    self.logger.debug(f"Found {len(messages)} messages and now playing: {now_playing}")
+
                     # Filter messages based on current conditions
                     valid_messages = [m for m in messages if self._should_display_message(m, now_playing)]
+
+                    self.logger.debug(f"Found {len(valid_messages)} valid messages for station {self.station_id}")
 
                     display_text = None
                     selected_duration = 10 # Default duration
@@ -338,8 +342,11 @@ class AutoRDSHandler:
                     # Send the message if one was chosen
                     if display_text is not None:
                         self.logger.info(f"Sending RDS message: '{display_text}' for {selected_duration}s")
-                        self._send_message_to_rds(display_text)
-                        self.logger.info(f"Sent RDS message: {display_text}")
+                        try:
+                            result = self._send_message_to_rds(display_text)
+                            self.logger.info(f"Sent RDS message: {display_text} - Result: {result}")
+                        except Exception as e:
+                            self.logger.error(f"Failed to send RDS message '{display_text}': {e}")
                         self.last_sent_text = display_text
                         self.last_message_time = current_time
                         self.current_message_duration = selected_duration

@@ -224,13 +224,19 @@ class OptionsWindow(Toplevel):
         """Simulate the start of an hour for AdScheduler testing."""
         logging.debug("Simulate Hour Start button clicked.")
         try:
-            if self.ad_scheduler_handler:
-                # Trigger the hourly check logic
-                self.ad_scheduler_handler._perform_hourly_check()
-                logging.info("AdScheduler hourly check triggered successfully.")
+            selected_station = self.simulate_station_var.get()
+            station_suffix = f"_{selected_station}"
+
+            # Get the appropriate handler based on selected station
+            handler_attr = f"ad{station_suffix}_handler"
+
+            if hasattr(self, handler_attr) and getattr(self, handler_attr):
+                handler = getattr(self, handler_attr)
+                handler._perform_hourly_check()
+                logging.info(f"AdScheduler {selected_station} hourly check triggered successfully.")
             else:
-                logging.error("AdScheduler handler not available.")
-                messagebox.showerror("Error", "AdScheduler handler not available.", parent=self)
+                logging.error(f"AdScheduler handler for station {selected_station} not available.")
+                messagebox.showerror("Error", f"AdScheduler handler for station {selected_station} not available.", parent=self)
         except Exception as e:
             logging.exception("Exception triggering AdScheduler hourly check.")
             messagebox.showerror("Error", f"Failed to trigger AdScheduler check:\n{e}", parent=self)
@@ -395,6 +401,10 @@ class OptionsWindow(Toplevel):
             self.config_manager.update_station_setting(station_id, "intro_loader.mp3_directory", station_vars['loader_mp3_dir'].get())
             self.config_manager.update_station_setting(station_id, "intro_loader.missing_artists_log", station_vars['loader_log'].get())
             self.config_manager.update_station_setting(station_id, "intro_loader.schedule_url", station_vars['loader_url'].get())
+            self.config_manager.update_station_setting(station_id, "intro_loader.current_artist_filename", station_vars['current_artist_filename'].get())
+            self.config_manager.update_station_setting(station_id, "intro_loader.actual_current_artist_filename", station_vars['actual_current_artist_filename'].get())
+            self.config_manager.update_station_setting(station_id, "intro_loader.blank_mp3_filename", station_vars['blank_mp3_filename'].get())
+            self.config_manager.update_station_setting(station_id, "intro_loader.silent_mp3_filename", station_vars['silent_mp3_filename'].get())
 
             # Ad Inserter settings
             self.config_manager.update_station_setting(station_id, "ad_inserter.insertion_url", station_vars['ad_url'].get())
@@ -437,6 +447,20 @@ class OptionsWindow(Toplevel):
                 logging.info("RDS Handler 88.7 configuration reloaded.")
             except Exception as e:
                 logging.warning(f"Failed to reload RDS Handler 88.7 configuration: {e}")
+
+        if self.ad_1047_handler:
+            try:
+                self.ad_1047_handler.reload_configuration()
+                logging.info("Ad Scheduler 104.7 configuration reloaded.")
+            except Exception as e:
+                logging.warning(f"Failed to reload Ad Scheduler 104.7 configuration: {e}")
+
+        if self.ad_887_handler:
+            try:
+                self.ad_887_handler.reload_configuration()
+                logging.info("Ad Scheduler 88.7 configuration reloaded.")
+            except Exception as e:
+                logging.warning(f"Failed to reload Ad Scheduler 88.7 configuration: {e}")
 
         self.destroy()
 
@@ -584,6 +608,15 @@ class OptionsWindow(Toplevel):
         )
         instant_help.pack(pady=2)
 
+        # Station selector for hour simulation
+        hour_station_frame = ttk.Frame(parent_frame)
+        hour_station_frame.pack(fill=tk.X, pady=2)
+        ttk.Label(hour_station_frame, text="Station:").pack(side=tk.LEFT)
+        self.simulate_station_var = tk.StringVar(value="887")
+        hour_station_combo = ttk.Combobox(hour_station_frame, textvariable=self.simulate_station_var,
+                                         values=["1047", "887"], state="readonly", width=5)
+        hour_station_combo.pack(side=tk.LEFT, padx=5)
+
         # Button to simulate start of hour for AdScheduler testing
         hour_button = ttk.Button(parent_frame, text="Simulate Hour Start", command=self.simulate_hour_start)
         hour_button.pack(pady=5)
@@ -635,17 +668,17 @@ class OptionsWindow(Toplevel):
 
         # RDS IP
         ttk.Label(rds_frame, text="RDS IP:").grid(row=0, column=0, sticky=tk.W, padx=5)
-        station_vars['rds_ip'] = tk.StringVar(value=self.config_manager.get_station_setting(station_id, "settings.rds.ip", "50.208.125.83"))
+        station_vars['rds_ip'] = tk.StringVar(value=self.config_manager.get_station_setting(station_id, "settings.rds.ip"))
         ttk.Entry(rds_frame, textvariable=station_vars['rds_ip'], width=40).grid(row=0, column=1, sticky=tk.W, padx=5)
 
         # RDS Port
         ttk.Label(rds_frame, text="RDS Port:").grid(row=1, column=0, sticky=tk.W, padx=5)
-        station_vars['rds_port'] = tk.IntVar(value=self.config_manager.get_station_setting(station_id, "settings.rds.port", 10001))
+        station_vars['rds_port'] = tk.IntVar(value=self.config_manager.get_station_setting(station_id, "settings.rds.port"))
         ttk.Entry(rds_frame, textvariable=station_vars['rds_port'], width=40).grid(row=1, column=1, sticky=tk.W, padx=5)
 
         # Now Playing XML
         ttk.Label(rds_frame, text="Now Playing XML:").grid(row=2, column=0, sticky=tk.W, padx=5)
-        station_vars['rds_xml'] = tk.StringVar(value=self.config_manager.get_station_setting(station_id, "settings.rds.now_playing_xml", r"G:\To_RDS\nowplaying.xml"))
+        station_vars['rds_xml'] = tk.StringVar(value=self.config_manager.get_station_setting(station_id, "settings.rds.now_playing_xml"))
         ttk.Entry(rds_frame, textvariable=station_vars['rds_xml'], width=40).grid(row=2, column=1, sticky=tk.W, padx=5)
         ttk.Button(rds_frame, text="Browse", command=lambda: self.browse_file(station_vars['rds_xml'])).grid(row=2, column=2, padx=5)
 
@@ -663,19 +696,19 @@ class OptionsWindow(Toplevel):
 
         # Now Playing XML (shared with RDS, but allow separate if needed)
         ttk.Label(loader_frame, text="Now Playing XML:").grid(row=0, column=0, sticky=tk.W, padx=5)
-        station_vars['loader_xml'] = tk.StringVar(value=self.config_manager.get_station_setting(station_id, "settings.intro_loader.now_playing_xml", r"G:\To_RDS\nowplaying.xml"))
+        station_vars['loader_xml'] = tk.StringVar(value=self.config_manager.get_station_setting(station_id, "settings.intro_loader.now_playing_xml"))
         ttk.Entry(loader_frame, textvariable=station_vars['loader_xml'], width=40).grid(row=0, column=1, sticky=tk.W, padx=5)
         ttk.Button(loader_frame, text="Browse", command=lambda: self.browse_file(station_vars['loader_xml'])).grid(row=0, column=2, padx=5)
 
         # MP3 Directory
         ttk.Label(loader_frame, text="MP3 Directory:").grid(row=1, column=0, sticky=tk.W, padx=5)
-        station_vars['loader_mp3_dir'] = tk.StringVar(value=self.config_manager.get_station_setting(station_id, "settings.intro_loader.mp3_directory", r"G:\Shiurim\introsCleanedUp"))
+        station_vars['loader_mp3_dir'] = tk.StringVar(value=self.config_manager.get_station_setting(station_id, "settings.intro_loader.mp3_directory"))
         ttk.Entry(loader_frame, textvariable=station_vars['loader_mp3_dir'], width=40).grid(row=1, column=1, sticky=tk.W, padx=5)
         ttk.Button(loader_frame, text="Browse", command=lambda: self.browse_directory(station_vars['loader_mp3_dir'])).grid(row=1, column=2, padx=5)
 
         # Missing Artists Log
         ttk.Label(loader_frame, text="Missing Artists Log:").grid(row=2, column=0, sticky=tk.W, padx=5)
-        station_vars['loader_log'] = tk.StringVar(value=self.config_manager.get_station_setting(station_id, "settings.intro_loader.missing_artists_log", r"G:\Misc\Dev\CombinedRDSApp\missing_artists.log"))
+        station_vars['loader_log'] = tk.StringVar(value=self.config_manager.get_station_setting(station_id, "settings.intro_loader.missing_artists_log"))
         ttk.Entry(loader_frame, textvariable=station_vars['loader_log'], width=40).grid(row=2, column=1, sticky=tk.W, padx=5)
         ttk.Button(loader_frame, text="Browse", command=lambda: self.browse_file(station_vars['loader_log'], save=True)).grid(row=2, column=2, padx=5)
 
@@ -689,6 +722,51 @@ class OptionsWindow(Toplevel):
             )
         )
         ttk.Entry(loader_frame, textvariable=station_vars['loader_url'], width=40).grid(row=3, column=1, sticky=tk.W, padx=5)
+
+        # Current Artist Filename
+        ttk.Label(loader_frame, text="Current Artist Filename:").grid(row=4, column=0, sticky=tk.W, padx=5)
+        station_suffix = "_1047" if station_id == "station_1047" else "_887"
+        station_vars['current_artist_filename'] = tk.StringVar(
+            value=self.config_manager.get_station_setting(
+                station_id,
+                "settings.intro_loader.current_artist_filename",
+                f"currentArtist{station_suffix}.mp3"
+            )
+        )
+        ttk.Entry(loader_frame, textvariable=station_vars['current_artist_filename'], width=40).grid(row=4, column=1, sticky=tk.W, padx=5)
+
+        # Actual Current Artist Filename
+        ttk.Label(loader_frame, text="Actual Current Artist Filename:").grid(row=5, column=0, sticky=tk.W, padx=5)
+        station_vars['actual_current_artist_filename'] = tk.StringVar(
+            value=self.config_manager.get_station_setting(
+                station_id,
+                "settings.intro_loader.actual_current_artist_filename",
+                f"actualCurrentArtist{station_suffix}.mp3"
+            )
+        )
+        ttk.Entry(loader_frame, textvariable=station_vars['actual_current_artist_filename'], width=40).grid(row=5, column=1, sticky=tk.W, padx=5)
+
+        # Blank MP3 Filename
+        ttk.Label(loader_frame, text="Blank MP3 Filename:").grid(row=6, column=0, sticky=tk.W, padx=5)
+        station_vars['blank_mp3_filename'] = tk.StringVar(
+            value=self.config_manager.get_station_setting(
+                station_id,
+                "settings.intro_loader.blank_mp3_filename",
+                f"blank{station_suffix}.mp3"
+            )
+        )
+        ttk.Entry(loader_frame, textvariable=station_vars['blank_mp3_filename'], width=40).grid(row=6, column=1, sticky=tk.W, padx=5)
+
+        # Silent MP3 Filename
+        ttk.Label(loader_frame, text="Silent MP3 Filename:").grid(row=7, column=0, sticky=tk.W, padx=5)
+        station_vars['silent_mp3_filename'] = tk.StringVar(
+            value=self.config_manager.get_station_setting(
+                station_id,
+                "settings.intro_loader.silent_mp3_filename",
+                f"near_silent{station_suffix}.mp3"
+            )
+        )
+        ttk.Entry(loader_frame, textvariable=station_vars['silent_mp3_filename'], width=40).grid(row=7, column=1, sticky=tk.W, padx=5)
 
         # --- Ad Settings ---
         ad_label = ttk.Label(parent_frame, text="Ad Inserter Settings", font=("Segoe UI", 10, "bold"))

@@ -121,10 +121,26 @@ class IntroLoaderHandler:
         self.mp3_directory = self.config_manager.get_station_setting(self.station_id, "settings.intro_loader.mp3_directory", r"G:\Shiurim\introsCleanedUp")
         self.missing_artist_log = self.config_manager.get_station_setting(self.station_id, "settings.intro_loader.missing_artists_log", r"G:\Misc\Dev\CombinedRDSApp\missing_artists.log")
         self.schedule_url = self.config_manager.get_station_setting(self.station_id, "settings.intro_loader.schedule_url", "http://192.168.3.11:9000/?pass=bmas220&action=schedule&type=run&id=TBACFNBGJKOMETDYSQYR")
-        self.current_artist_file = os.path.join(self.mp3_directory, "currentArtist.mp3")
-        self.actual_current_artist_file = os.path.join(self.mp3_directory, "actualCurrentArtist.mp3")
-        self.blank_mp3_file = os.path.join(self.mp3_directory, "blank.mp3")
-        self.silent_mp3_file = os.path.join(self.mp3_directory, "near_silent.mp3")
+        
+        # Get station-specific filenames (defaults include station suffix for uniqueness)
+        station_suffix = "_1047" if self.station_id == "station_1047" else "_887"
+        self.current_artist_filename = self.config_manager.get_station_setting(self.station_id, "intro_loader.current_artist_filename", f"currentArtist{station_suffix}.mp3")
+        self.actual_current_artist_filename = self.config_manager.get_station_setting(self.station_id, "intro_loader.actual_current_artist_filename", f"actualCurrentArtist{station_suffix}.mp3")
+        self.blank_mp3_filename = self.config_manager.get_station_setting(self.station_id, "intro_loader.blank_mp3_filename", f"blank{station_suffix}.mp3")
+        self.silent_mp3_filename = self.config_manager.get_station_setting(self.station_id, "intro_loader.silent_mp3_filename", f"near_silent{station_suffix}.mp3")
+        
+        # Construct full paths
+        self.current_artist_file = os.path.join(self.mp3_directory, self.current_artist_filename)
+        self.actual_current_artist_file = os.path.join(self.mp3_directory, self.actual_current_artist_filename)
+        self.blank_mp3_file = os.path.join(self.mp3_directory, self.blank_mp3_filename)
+        self.silent_mp3_file = os.path.join(self.mp3_directory, self.silent_mp3_filename)
+
+        # Log the actual filenames being used
+        self.logger.info(f"Intro loader {self.station_id} using filenames:")
+        self.logger.info(f"  current_artist_file: {self.current_artist_file}")
+        self.logger.info(f"  actual_current_artist_file: {self.actual_current_artist_file}")
+        self.logger.info(f"  blank_mp3_file: {self.blank_mp3_file}")
+        self.logger.info(f"  silent_mp3_file: {self.silent_mp3_file}")
 
         # Configure pydub to hide subprocess windows on Windows
         _configure_pydub_for_windows()
@@ -285,25 +301,31 @@ class IntroLoaderHandler:
                 try:
                     self.logger.debug(f"Copying '{current_artist_file_path}' to '{self.actual_current_artist_file}'")
                     shutil.copy2(current_artist_file_path, self.actual_current_artist_file)
-                    self.logger.info(f"{context}: Copied {chosen_file} to actualCurrentArtist.mp3")
+                    actual_filename = os.path.basename(self.actual_current_artist_file)
+                    self.logger.info(f"{context}: Copied {chosen_file} to {actual_filename}")
                     actual_success = True
                 except Exception as e:
-                    self.logger.error(f"Error copying {chosen_file} to actualCurrentArtist.mp3: {e}")
+                    actual_filename = os.path.basename(self.actual_current_artist_file)
+                    self.logger.error(f"Error copying {chosen_file} to {actual_filename}: {e}")
             else:
                 # Updated log format
                 self.logger.info(f"{context}: Didn't find {current_artist}.mp3")
                 self._log_missing_artist(current_artist, current_filename, is_current=True)
                 # Pass no_next_artist=False (default)
-                actual_success = self._copy_blank_to_target(self.actual_current_artist_file, context, "actualCurrentArtist.mp3")
+                actual_filename = os.path.basename(self.actual_current_artist_file)
+                actual_success = self._copy_blank_to_target(self.actual_current_artist_file, context, actual_filename)
         else:
             self.logger.info(f"{context}: No current artist specified in XML.")
             if current_filename: self._log_missing_artist(current_artist, current_filename, is_current=True)
             # Pass no_next_artist=False (default)
-            actual_success = self._copy_blank_to_target(self.actual_current_artist_file, context, "actualCurrentArtist.mp3")
-        self.logger.debug(f"actualCurrentArtist.mp3 update success: {actual_success}")
+            actual_filename = os.path.basename(self.actual_current_artist_file)
+            actual_success = self._copy_blank_to_target(self.actual_current_artist_file, context, actual_filename)
+        actual_filename = os.path.basename(self.actual_current_artist_file)
+        self.logger.debug(f"{actual_filename} update success: {actual_success}")
 
         # --- Handle currentArtist.mp3 (based on NEXT artist + silence) ---
-        self.logger.debug("Processing currentArtist.mp3...")
+        current_filename = os.path.basename(self.current_artist_file)
+        self.logger.debug(f"Processing {current_filename}...")
         next_success = False
         if next_artist:
             self.logger.debug(f"Searching for intro files starting with: '{next_artist}' in {self.mp3_directory}")
@@ -325,33 +347,33 @@ class IntroLoaderHandler:
                     concat_files = [self.silent_mp3_file, next_artist_file_path, self.silent_mp3_file]
                     concat_success = self._concatenate_mp3_files(concat_files, self.current_artist_file)
                     if concat_success:
-                        self.logger.info(f"{context}: Copied SILENCE + {chosen_file} + SILENCE to currentArtist.mp3")
+                        self.logger.info(f"{context}: Copied SILENCE + {chosen_file} + SILENCE to {current_filename}")
                         next_success = True
                     else:
                         self.logger.error(f"{context}: Concatenation failed for {chosen_file}, attempting blank copy.")
                         # Pass no_next_artist=False (default)
-                        next_success = self._copy_blank_to_target(self.current_artist_file, context, "currentArtist.mp3 (concat fallback)")
+                        next_success = self._copy_blank_to_target(self.current_artist_file, context, f"{current_filename} (concat fallback)")
                 else:
                     self.logger.warning(f"{context}: Silent MP3 missing ({self.silent_mp3_file}), copying next artist directly.")
                     try:
                         self.logger.debug(f"Copying '{next_artist_file_path}' directly to '{self.current_artist_file}'")
                         shutil.copy2(next_artist_file_path, self.current_artist_file)
-                        self.logger.info(f"{context}: Copied {chosen_file} directly to currentArtist.mp3")
+                        self.logger.info(f"{context}: Copied {chosen_file} directly to {current_filename}")
                         next_success = True
                     except Exception as e:
                         self.logger.error(f"Error copying next artist file directly: {e}")
                         # Pass no_next_artist=False (default)
-                        next_success = self._copy_blank_to_target(self.current_artist_file, context, "currentArtist.mp3 (direct copy fallback)")
+                        next_success = self._copy_blank_to_target(self.current_artist_file, context, f"{current_filename} (direct copy fallback)")
             else:
                 # Updated log format (though this specific message isn't in the target log, the action is)
                 self.logger.info(f"{context}: Didn't find {next_artist}.mp3")
                 # Pass no_next_artist=False (default)
-                next_success = self._copy_blank_to_target(self.current_artist_file, context, "currentArtist.mp3")
+                next_success = self._copy_blank_to_target(self.current_artist_file, context, current_filename)
         else:
             self.logger.info(f"{context}: No next artist specified in XML.")
             # Pass no_next_artist=True
-            next_success = self._copy_blank_to_target(self.current_artist_file, context, "currentArtist.mp3", no_next_artist=True)
-        self.logger.debug(f"currentArtist.mp3 update success: {next_success}")
+            next_success = self._copy_blank_to_target(self.current_artist_file, context, current_filename, no_next_artist=True)
+        self.logger.debug(f"{current_filename} update success: {next_success}")
 
         overall_success = actual_success and next_success
         self.logger.debug(f"--- File update ({context}) finished. Overall success: {overall_success} ---")
@@ -365,7 +387,7 @@ class IntroLoaderHandler:
             try:
                 shutil.copy2(self.blank_mp3_file, target_path)
                 # Modify log message based on no_next_artist flag
-                log_suffix = " (no next artist)" if no_next_artist and target_name_for_log == "currentArtist.mp3" else ""
+                log_suffix = " (no next artist)" if no_next_artist and "currentArtist" in target_name_for_log else ""
                 self.logger.info(f"{context}: Copying {os.path.basename(self.blank_mp3_file)} to {target_name_for_log}{log_suffix}")
                 return True
             except Exception as e:
