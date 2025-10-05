@@ -3,7 +3,56 @@
         "station_1047": {
             "name": "104.7 FM",
             "Messages": [],
-            "Ads": [],
+            "Ads": [
+                {
+                    "Name": "New Adfgdfg",
+                    "Enabled": true,
+                    "Scheduled": false,
+                    "PlayCount": 22,
+                    "LastPlayed": "2025-09-30T19:41:11.329307",
+                    "MP3File": "G:/Misc/Radio Info/1047 Station ID.mp3",
+                    "Days": [],
+                    "Times": []
+                },
+                {
+                    "Name": "New Ad",
+                    "Enabled": true,
+                    "Scheduled": false,
+                    "PlayCount": 22,
+                    "LastPlayed": "2025-09-30T19:41:11.348397",
+                    "MP3File": "G:/Misc/Radio Info/r meilich Ba'erev Tochlu Matzos.mp3",
+                    "Days": [],
+                    "Times": []
+                },
+                {
+                    "Name": "New Ad3",
+                    "Enabled": false,
+                    "Scheduled": true,
+                    "MP3File": "",
+                    "Days": [
+                        "Monday"
+                    ],
+                    "Times": [
+                        {
+                            "hour": 13
+                        },
+                        {
+                            "hour": 14
+                        },
+                        {
+                            "hour": 15
+                        }
+                    ]
+                },
+                {
+                    "Name": "Test Ad",
+                    "Enabled": true,
+                    "Scheduled": false,
+                    "MP3File": "test.mp3",
+                    "Days": [],
+                    "Times": []
+                }
+            ],
             "settings": {
                 "rds": {
                     "ip": "50.208.125.83",
