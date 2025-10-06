@@ -42,7 +42,10 @@ class MainApp(tk.Tk):
         self.minsize(800, 600)
         self.themed_style = ttkthemes.ThemedStyle(self)
         self.themed_style.set_theme("arc")  # Modern theme; options: 'arc', 'equilux', etc.
-        
+
+        # Create menu bar
+        self.create_menu_bar()
+
         # Initialize logging
         logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -154,6 +157,26 @@ class MainApp(tk.Tk):
             return
 
         self.create_widgets()
+
+    def create_menu_bar(self):
+        """Create the application menu bar."""
+        menubar = tk.Menu(self)
+        self.config(menu=menubar)
+
+        # Help menu
+        help_menu = tk.Menu(menubar, tearoff=0)
+        help_menu.add_command(label="About", command=self.show_about)
+        menubar.add_cascade(label="Help", menu=help_menu)
+
+    def show_about(self):
+        """Show the about dialog with version information."""
+        about_message = """radioToolsAutomation v2.1
+
+Dual Station RDS and Intro Automation System
+
+© 2025 - Radio Tools Automation
+"""
+        messagebox.showinfo("About radioToolsAutomation", about_message)
 
         # Start all 6 handlers in threads
         try:
