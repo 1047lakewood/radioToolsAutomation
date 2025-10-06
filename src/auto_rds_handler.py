@@ -335,8 +335,8 @@ class AutoRDSHandler:
                         if should_send:
                             self.logger.info(f"Sending RDS message: '{display_text}' for {selected_duration}s (minute update)")
                             try:
-                                result = self._send_message_to_rds(display_text)
-                                self.logger.info(f"Sent RDS message: {display_text} - Result: {result}")
+                                self._send_message_to_rds(display_text)
+                                self.logger.info(f"Sent RDS message: {display_text}")
                             except Exception as e:
                                 self.logger.error(f"Failed to send RDS message '{display_text}': {e}")
                             self.last_sent_text = display_text
