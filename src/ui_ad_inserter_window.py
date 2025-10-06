@@ -84,17 +84,28 @@ class AdInserterWindow(tk.Toplevel):
         station_data = self.stations[station_id]
         widgets = station_data['widgets']
         
-        # Left: Ad List
+        # Left: Ad List with move buttons
         left_frame = ttk.LabelFrame(parent_frame, text="Advertisements", padding="5")
-        left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=False, padx=(0, 10))
+        left_frame.pack(side=tk.LEFT, fill=tk.Y, expand=False, padx=(0, 10))
 
-        widgets['ad_listbox'] = tk.Listbox(left_frame, width=30, height=20, font=("Segoe UI", 10))
-        widgets['ad_listbox'].pack(fill=tk.BOTH, expand=True)
+        # Listbox container
+        list_container = ttk.Frame(left_frame)
+        list_container.pack(fill=tk.BOTH, expand=True)
+
+        widgets['ad_listbox'] = tk.Listbox(list_container, width=25, height=15, font=("Segoe UI", 10))
+        widgets['ad_listbox'].pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
         widgets['ad_listbox'].bind("<<ListboxSelect>>", lambda e: self.on_ad_select(station_id))
 
-        # Buttons for list management
+        # Move buttons to the right of the listbox
+        move_buttons = ttk.Frame(list_container)
+        move_buttons.pack(side=tk.RIGHT, fill=tk.Y, padx=(5, 0))
+
+        ttk.Button(move_buttons, text="↑", width=3, command=lambda: self.move_up_ad(station_id)).pack(pady=2)
+        ttk.Button(move_buttons, text="↓", width=3, command=lambda: self.move_down_ad(station_id)).pack(pady=2)
+
+        # Buttons for list management (Add New, Delete)
         list_buttons = ttk.Frame(left_frame)
-        list_buttons.pack(fill=tk.X, pady=5)
+        list_buttons.pack(fill=tk.X, pady=(5, 0))
         ttk.Button(list_buttons, text="Add New", command=lambda: self.add_new_ad(station_id)).pack(side=tk.LEFT, padx=2)
         ttk.Button(list_buttons, text="Delete", command=lambda: self.delete_ad(station_id)).pack(side=tk.LEFT, padx=2)
 
@@ -148,7 +159,7 @@ class AdInserterWindow(tk.Toplevel):
         for h in range(24):
             widgets['hour_vars'][h] = tk.BooleanVar()
             cb = ttk.Checkbutton(hours_frame, text=f"{h:02d}", variable=widgets['hour_vars'][h], width=4)
-            cb.grid(row=h//12, column=h%12, padx=1, pady=1, sticky=tk.W)
+            cb.grid(row=h//6, column=h%6, padx=1, pady=1, sticky=tk.W)
 
         # Select All Hours button
         hours_button_frame = ttk.Frame(right_frame)
@@ -233,16 +244,16 @@ class AdInserterWindow(tk.Toplevel):
         """Delete the selected ad for a specific station."""
         station_data = self.stations[station_id]
         widgets = station_data['widgets']
-        
+
         if station_data['current_index'] is None:
             messagebox.showwarning("No Selection", "Please select an ad to delete.")
             return
-        
+
         if messagebox.askyesno("Confirm Delete", "Are you sure you want to delete this ad?"):
             del station_data['ads'][station_data['current_index']]
             station_data['current_index'] = None
             self.populate_ad_list(station_id)
-            
+
             # Clear fields
             widgets['name_var'].set('')
             widgets['enabled_var'].set(True)
@@ -252,6 +263,50 @@ class AdInserterWindow(tk.Toplevel):
                 widgets['day_vars'][day].set(False)
             for h in widgets['hour_vars']:
                 widgets['hour_vars'][h].set(False)
+
+    def move_up_ad(self, station_id):
+        """Move the selected ad up in the list for a specific station."""
+        station_data = self.stations[station_id]
+        widgets = station_data['widgets']
+
+        if station_data['current_index'] is None:
+            messagebox.showwarning("No Selection", "Please select an ad to move.")
+            return
+
+        index = station_data['current_index']
+        if index > 0:
+            # Swap with the previous item
+            station_data['ads'][index], station_data['ads'][index - 1] = station_data['ads'][index - 1], station_data['ads'][index]
+            station_data['current_index'] = index - 1
+            self.populate_ad_list(station_id)
+
+            # Update selection in the listbox
+            listbox = widgets['ad_listbox']
+            listbox.selection_clear(0, tk.END)
+            listbox.selection_set(index - 1)
+            listbox.see(index - 1)
+
+    def move_down_ad(self, station_id):
+        """Move the selected ad down in the list for a specific station."""
+        station_data = self.stations[station_id]
+        widgets = station_data['widgets']
+
+        if station_data['current_index'] is None:
+            messagebox.showwarning("No Selection", "Please select an ad to move.")
+            return
+
+        index = station_data['current_index']
+        if index < len(station_data['ads']) - 1:
+            # Swap with the next item
+            station_data['ads'][index], station_data['ads'][index + 1] = station_data['ads'][index + 1], station_data['ads'][index]
+            station_data['current_index'] = index + 1
+            self.populate_ad_list(station_id)
+
+            # Update selection in the listbox
+            listbox = widgets['ad_listbox']
+            listbox.selection_clear(0, tk.END)
+            listbox.selection_set(index + 1)
+            listbox.see(index + 1)
 
     def save_current_ad(self, station_id):
         """Save changes to the currently selected ad for a specific station."""

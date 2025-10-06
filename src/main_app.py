@@ -38,8 +38,8 @@ class MainApp(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("radioToolsAutomation")
-        self.geometry("1200x700")
-        self.minsize(1100, 600)
+        self.geometry("900x700")
+        self.minsize(800, 600)
         self.themed_style = ttkthemes.ThemedStyle(self)
         self.themed_style.set_theme("arc")  # Modern theme; options: 'arc', 'equilux', etc.
         
@@ -426,7 +426,7 @@ class MainApp(tk.Tk):
                 for msg in messages_1047:
                     self.msg_1047_listbox.insert(tk.END, msg)
             else:
-                self.msg_1047_listbox.insert(tk.END, "(No messages currently scheduled/valid)")
+                self.msg_1047_listbox.insert(tk.END, "(No messages)")
         except Exception as e:
             self.msg_1047_listbox.delete(0, tk.END)
             self.msg_1047_listbox.insert(tk.END, f"(Error: {e})")
@@ -439,7 +439,7 @@ class MainApp(tk.Tk):
                 for msg in messages_887:
                     self.msg_887_listbox.insert(tk.END, msg)
             else:
-                self.msg_887_listbox.insert(tk.END, "(No messages currently scheduled/valid)")
+                self.msg_887_listbox.insert(tk.END, "(No messages)")
         except Exception as e:
             self.msg_887_listbox.delete(0, tk.END)
             self.msg_887_listbox.insert(tk.END, f"(Error: {e})")
