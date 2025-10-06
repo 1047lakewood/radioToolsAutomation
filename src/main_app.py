@@ -163,6 +163,12 @@ class MainApp(tk.Tk):
         menubar = tk.Menu(self)
         self.config(menu=menubar)
 
+        # Tools menu
+        tools_menu = tk.Menu(menubar, tearoff=0)
+        tools_menu.add_command(label="Show Missing Artists", command=self.open_missing_artists_window)
+        tools_menu.add_command(label="Options", command=self.open_options_window)
+        menubar.add_cascade(label="Tools", menu=tools_menu)
+
         # Help menu
         help_menu = tk.Menu(menubar, tearoff=0)
         help_menu.add_command(label="About", command=self.show_about)
@@ -249,8 +255,6 @@ Dual Station RDS and Intro Automation System
         toolbar.pack(fill=tk.X, pady=(0, 10))
 
         ttk.Button(toolbar, text="Configure Messages", command=self.open_config_window).pack(side=tk.LEFT, padx=5)
-        ttk.Button(toolbar, text="Show Missing Artists", command=self.open_missing_artists_window).pack(side=tk.LEFT, padx=5)
-        ttk.Button(toolbar, text="Options", command=self.open_options_window).pack(side=tk.LEFT, padx=5)
         ttk.Button(toolbar, text="Mini Playlist Editor", command=self.open_playlist_editor_window).pack(side=tk.LEFT, padx=5)
         ttk.Button(toolbar, text="Ad Inserter", command=self.open_ad_inserter_window).pack(side=tk.LEFT, padx=5)
         ttk.Button(toolbar, text="Ad Statistics", command=self.open_ad_statistics_window).pack(side=tk.LEFT, padx=5)
