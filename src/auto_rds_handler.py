@@ -42,6 +42,11 @@ class AutoRDSHandler:
         self.current_message_duration = 10 # Default duration
         self.last_sent_text = None
 
+        # XML caching variables
+        self._xml_cache = None
+        self._xml_cache_time = 0
+        self._xml_cache_mtime = 0
+
         # Set up logger based on station_id
         logger_name = f'AutoRDS_{station_id.split("_")[1]}'  # e.g., 'AutoRDS_1047'
         self.logger = logging.getLogger(logger_name)
@@ -67,12 +72,27 @@ class AutoRDSHandler:
         )
 
     def _load_now_playing(self):
-        """Loads now playing information from the XML file."""
+        """Loads now playing information from the XML file with caching."""
+        current_time = time.time()
+
         try:
             if not os.path.exists(self.now_playing_xml):
-                # Use the named logger
-                # self.logger.warning(f"Now playing XML not found: {NOW_PLAYING_XML}")
+                # Clear cache if file doesn't exist
+                self._xml_cache = None
+                self._xml_cache_time = 0
+                self._xml_cache_mtime = 0
                 return {"artist": "", "title": ""}
+
+            # Check if we can use cached result (within 2 seconds and file not modified)
+            try:
+                current_mtime = os.path.getmtime(self.now_playing_xml)
+                if (self._xml_cache is not None and
+                    current_time - self._xml_cache_time < 2.0 and
+                    current_mtime == self._xml_cache_mtime):
+                    return self._xml_cache
+            except OSError:
+                # If we can't get mtime, don't use cache
+                pass
 
             # Add a small delay before parsing, might help with file write completion issues
             time.sleep(0.1)
@@ -82,18 +102,37 @@ class AutoRDSHandler:
             if current_track is not None:
                 artist = current_track.get("ARTIST", "").strip()
                 title = current_track.findtext("TITLE", "").strip()
-                return {"artist": artist, "title": title}
+                result = {"artist": artist, "title": title}
             else:
-                return {"artist": "", "title": ""}
+                result = {"artist": "", "title": ""}
+
+            # Cache the result
+            self._xml_cache = result
+            self._xml_cache_time = current_time
+            self._xml_cache_mtime = current_mtime
+            return result
+
         except ET.ParseError as e:
             self.logger.error(f"Error parsing XML file ({self.now_playing_xml}): {e}. Check if file is valid/complete.")
+            # Clear cache on parse error
+            self._xml_cache = None
+            self._xml_cache_time = 0
+            self._xml_cache_mtime = 0
             return {"artist": "", "title": ""}
         except FileNotFoundError:
              # This might happen if the file disappears between os.path.exists and ET.parse
              self.logger.warning(f"Now playing XML disappeared during read: {self.now_playing_xml}")
+             # Clear cache
+             self._xml_cache = None
+             self._xml_cache_time = 0
+             self._xml_cache_mtime = 0
              return {"artist": "", "title": ""}
         except Exception as e:
             self.logger.exception(f"Error loading now playing data: {e}")
+            # Clear cache on error
+            self._xml_cache = None
+            self._xml_cache_time = 0
+            self._xml_cache_mtime = 0
             return {"artist": "", "title": ""}
 
     def _should_display_message(self, message, now_playing):

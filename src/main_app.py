@@ -4,6 +4,7 @@ import ttkthemes
 import logging
 import os
 import threading
+import time
 from queue import Queue
 from datetime import datetime
 
@@ -158,33 +159,6 @@ class MainApp(tk.Tk):
 
         self.create_widgets()
 
-    def create_menu_bar(self):
-        """Create the application menu bar."""
-        menubar = tk.Menu(self)
-        self.config(menu=menubar)
-
-        # Tools menu
-        tools_menu = tk.Menu(menubar, tearoff=0)
-        tools_menu.add_command(label="Show Missing Artists", command=self.open_missing_artists_window)
-        tools_menu.add_command(label="Options", command=self.open_options_window)
-        tools_menu.add_command(label="Ad Statistics", command=self.open_ad_statistics_window)
-        menubar.add_cascade(label="Tools", menu=tools_menu)
-
-        # Help menu
-        help_menu = tk.Menu(menubar, tearoff=0)
-        help_menu.add_command(label="About", command=self.show_about)
-        menubar.add_cascade(label="Help", menu=help_menu)
-
-    def show_about(self):
-        """Show the about dialog with version information."""
-        about_message = """radioToolsAutomation v2.1
-
-Dual Station RDS and Intro Automation System
-
-© 2025 - Radio Tools Automation
-"""
-        messagebox.showinfo("About radioToolsAutomation", about_message)
-
         # Start all 6 handlers in threads
         try:
             self.rds_1047_thread = threading.Thread(target=self.rds_1047_handler.run, daemon=True, name="RDS_1047")
@@ -215,12 +189,48 @@ Dual Station RDS and Intro Automation System
             return
 
         # Start periodic GUI updates
-        self.after(100, self.process_queues)
-        self.after(5000, self.update_message_cycles)
+        self.after(500, self.process_queues)
+
+        # Start background thread for message cycle updates
+        self.message_update_thread = threading.Thread(target=self._message_update_worker, daemon=True, name="MessageUpdate")
+        self.message_update_running = True
+        self.message_update_thread.start()
+
+    def create_menu_bar(self):
+        """Create the application menu bar."""
+        menubar = tk.Menu(self)
+        self.config(menu=menubar)
+
+        # Tools menu
+        tools_menu = tk.Menu(menubar, tearoff=0)
+        tools_menu.add_command(label="Show Missing Artists", command=self.open_missing_artists_window)
+        tools_menu.add_command(label="Options", command=self.open_options_window)
+        tools_menu.add_command(label="Ad Statistics", command=self.open_ad_statistics_window)
+        menubar.add_cascade(label="Tools", menu=tools_menu)
+
+        # Help menu
+        help_menu = tk.Menu(menubar, tearoff=0)
+        help_menu.add_command(label="About", command=self.show_about)
+        menubar.add_cascade(label="Help", menu=help_menu)
+
+    def show_about(self):
+        """Show the about dialog with version information."""
+        about_message = """radioToolsAutomation v2.1
+
+Dual Station RDS and Intro Automation System
+
+© 2025 - Radio Tools Automation
+"""
+        messagebox.showinfo("About radioToolsAutomation", about_message)
 
     def on_close(self):
         """Handle window close event."""
         try:
+            # Stop message update thread
+            self.message_update_running = False
+            if hasattr(self, 'message_update_thread') and self.message_update_thread.is_alive():
+                self.message_update_thread.join(timeout=2)
+
             # Stop all handlers
             handlers = [
                 ('rds_1047_handler', 'rds_1047_thread'),
@@ -230,13 +240,13 @@ Dual Station RDS and Intro Automation System
                 ('intro_887_handler', 'intro_887_thread'),
                 ('ad_887_handler', 'ad_887_thread')
             ]
-            
+
             for handler_name, thread_name in handlers:
                 if hasattr(self, handler_name):
                     handler = getattr(self, handler_name)
                     if handler:
                         handler.stop()
-                
+
                 if hasattr(self, thread_name):
                     thread = getattr(self, thread_name)
                     if thread and thread.is_alive():
@@ -386,12 +396,22 @@ Dual Station RDS and Intro Automation System
 
     def process_queues(self):
         """Processes messages from all queues to update GUI."""
+        # Collect messages for batch processing
+        log_batches = {
+            self.rds_1047_log_text: [],
+            self.intro_1047_log_text: [],
+            self.ad_1047_log_text: [],
+            self.rds_887_log_text: [],
+            self.intro_887_log_text: [],
+            self.ad_887_log_text: []
+        }
+
         updated = False
-        
+
         # Station 1047 queues
         while not self.rds_1047_queue.empty():
             message = self.rds_1047_queue.get()
-            self._log_message(self.rds_1047_log_text, message)
+            log_batches[self.rds_1047_log_text].append(message)
             if "Sent RDS message" in message:
                 try:
                     sent_msg = message.split("Sent RDS message: ")[1].strip()
@@ -402,18 +422,18 @@ Dual Station RDS and Intro Automation System
 
         while not self.intro_1047_queue.empty():
             message = self.intro_1047_queue.get()
-            self._log_message(self.intro_1047_log_text, message)
+            log_batches[self.intro_1047_log_text].append(message)
             updated = True
 
         while not self.ad_1047_queue.empty():
             message = self.ad_1047_queue.get()
-            self._log_message(self.ad_1047_log_text, message)
+            log_batches[self.ad_1047_log_text].append(message)
             updated = True
 
         # Station 887 queues
         while not self.rds_887_queue.empty():
             message = self.rds_887_queue.get()
-            self._log_message(self.rds_887_log_text, message)
+            log_batches[self.rds_887_log_text].append(message)
             if "Sent RDS message" in message:
                 try:
                     sent_msg = message.split("Sent RDS message: ")[1].strip()
@@ -424,15 +444,20 @@ Dual Station RDS and Intro Automation System
 
         while not self.intro_887_queue.empty():
             message = self.intro_887_queue.get()
-            self._log_message(self.intro_887_log_text, message)
+            log_batches[self.intro_887_log_text].append(message)
             updated = True
 
         while not self.ad_887_queue.empty():
             message = self.ad_887_queue.get()
-            self._log_message(self.ad_887_log_text, message)
+            log_batches[self.ad_887_log_text].append(message)
             updated = True
 
+        # Batch update all log widgets
         if updated:
+            for widget, messages in log_batches.items():
+                if messages:
+                    self._log_messages_batch(widget, messages)
+
             # Auto-scroll all log windows
             self.rds_1047_log_text.see(tk.END)
             self.intro_1047_log_text.see(tk.END)
@@ -441,13 +466,29 @@ Dual Station RDS and Intro Automation System
             self.intro_887_log_text.see(tk.END)
             self.ad_887_log_text.see(tk.END)
 
-        self.after(100, self.process_queues)
+        self.after(500, self.process_queues)
 
-    def update_message_cycles(self):
-        """Refresh the list of messages currently eligible for display for both stations."""
-        # Station 1047
+    def _message_update_worker(self):
+        """Background worker thread that periodically updates message cycles."""
+        while self.message_update_running:
+            try:
+                # Update message cycles for both stations
+                messages_1047 = self.rds_1047_handler.get_current_display_messages()
+                messages_887 = self.rds_887_handler.get_current_display_messages()
+
+                # Schedule UI update on main thread
+                self.after(0, lambda: self._update_message_lists(messages_1047, messages_887))
+
+            except Exception as e:
+                logging.error(f"Error in message update worker: {e}")
+
+            # Sleep for 5 seconds before next update
+            time.sleep(5)
+
+    def _update_message_lists(self, messages_1047, messages_887):
+        """Update the message listboxes on the main thread."""
         try:
-            messages_1047 = self.rds_1047_handler.get_current_display_messages()
+            # Station 1047
             self.msg_1047_listbox.delete(0, tk.END)
             if messages_1047:
                 for msg in messages_1047:
@@ -458,9 +499,8 @@ Dual Station RDS and Intro Automation System
             self.msg_1047_listbox.delete(0, tk.END)
             self.msg_1047_listbox.insert(tk.END, f"(Error: {e})")
 
-        # Station 887
         try:
-            messages_887 = self.rds_887_handler.get_current_display_messages()
+            # Station 887
             self.msg_887_listbox.delete(0, tk.END)
             if messages_887:
                 for msg in messages_887:
@@ -471,14 +511,20 @@ Dual Station RDS and Intro Automation System
             self.msg_887_listbox.delete(0, tk.END)
             self.msg_887_listbox.insert(tk.END, f"(Error: {e})")
 
-        self.after(5000, self.update_message_cycles)
+    def _log_messages_batch(self, widget, messages):
+        """Insert multiple timestamped messages into the given text widget in a single operation."""
+        if not messages:
+            return
+
+        widget.config(state=tk.NORMAL)
+        for message in messages:
+            timestamp = datetime.now().strftime('%H:%M:%S')
+            widget.insert(tk.END, f"[{timestamp}] {message}\n")
+        widget.config(state=tk.DISABLED)
 
     def _log_message(self, widget, message):
         """Insert a timestamped message into the given text widget."""
-        widget.config(state=tk.NORMAL)
-        timestamp = datetime.now().strftime('%H:%M:%S')
-        widget.insert(tk.END, f"[{timestamp}] {message}\n")
-        widget.config(state=tk.DISABLED)
+        self._log_messages_batch(widget, [message])
 
 if __name__ == "__main__":
     app = MainApp()
