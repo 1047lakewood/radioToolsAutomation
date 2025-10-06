@@ -137,7 +137,7 @@
             "Ads": [],
             "settings": {
                 "rds": {
-                    "ip": "50.208.125.85",
+                    "ip": "50.208.125.83",
                     "port": 10001,
                     "now_playing_xml": "G:\\To_RDS\\nowplaying.xml",
                     "default_message": "732.901.7777 to SUPPORT and hear this program!"
