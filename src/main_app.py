@@ -167,6 +167,7 @@ class MainApp(tk.Tk):
         tools_menu = tk.Menu(menubar, tearoff=0)
         tools_menu.add_command(label="Show Missing Artists", command=self.open_missing_artists_window)
         tools_menu.add_command(label="Options", command=self.open_options_window)
+        tools_menu.add_command(label="Ad Statistics", command=self.open_ad_statistics_window)
         menubar.add_cascade(label="Tools", menu=tools_menu)
 
         # Help menu
@@ -257,7 +258,6 @@ Dual Station RDS and Intro Automation System
         ttk.Button(toolbar, text="Configure Messages", command=self.open_config_window).pack(side=tk.LEFT, padx=5)
         ttk.Button(toolbar, text="Mini Playlist Editor", command=self.open_playlist_editor_window).pack(side=tk.LEFT, padx=5)
         ttk.Button(toolbar, text="Ad Inserter", command=self.open_ad_inserter_window).pack(side=tk.LEFT, padx=5)
-        ttk.Button(toolbar, text="Ad Statistics", command=self.open_ad_statistics_window).pack(side=tk.LEFT, padx=5)
 
         # Logs Section with 6 tabs (3 per station)
         log_pane = ttk.PanedWindow(main_frame, orient=tk.VERTICAL)
