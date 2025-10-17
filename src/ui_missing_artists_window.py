@@ -7,14 +7,26 @@ import logging
 
 class MissingArtistsWindow(Toplevel):
     """Window to display and manage the missing artists log."""
-    def __init__(self, parent, intro_loader_handler):
+    def __init__(self, parent, intro_loader_handler_1047, intro_loader_handler_887, config_manager):
+        """
+        Initialize the Missing Artists window.
+
+        Args:
+            parent: Parent tkinter window
+            intro_loader_handler_1047: IntroLoaderHandler for station 1047
+            intro_loader_handler_887: IntroLoaderHandler for station 887
+            config_manager: ConfigManager instance
+        """
         super().__init__(parent)
         self.transient(parent)
         self.grab_set()
         self.title("Missing Artist Intros Log")
         self.geometry("900x500")
 
-        self.intro_loader_handler = intro_loader_handler
+        self.intro_1047_handler = intro_loader_handler_1047
+        self.intro_887_handler = intro_loader_handler_887
+        self.config_manager = config_manager
+        self.current_station = "station_1047"  # Default to 1047
         self.log_entries = [] # Store parsed entries {id, timestamp, artist, filepath, raw_line}
 
         self.create_widgets()
@@ -30,6 +42,20 @@ class MissingArtistsWindow(Toplevel):
         # Toolbar
         toolbar = ttk.Frame(main_frame)
         toolbar.pack(fill=tk.X, pady=(0, 5))
+
+        # Station selector
+        ttk.Label(toolbar, text="Station:").pack(side=tk.LEFT, padx=2)
+        self.station_var = tk.StringVar(value="station_1047")
+        station_combo = ttk.Combobox(
+            toolbar,
+            textvariable=self.station_var,
+            values=["station_1047", "station_887"],
+            state="readonly",
+            width=15
+        )
+        station_combo.pack(side=tk.LEFT, padx=2)
+        station_combo.bind('<<ComboboxSelected>>', self.on_station_changed)
+
         ttk.Button(toolbar, text="Refresh", command=self.load_log_entries).pack(side=tk.LEFT, padx=2)
         ttk.Button(toolbar, text="Delete Selected", command=self.delete_selected_entry).pack(side=tk.LEFT, padx=2)
         ttk.Button(toolbar, text="Close", command=self.destroy).pack(side=tk.RIGHT, padx=2)
@@ -58,11 +84,27 @@ class MissingArtistsWindow(Toplevel):
         tree_frame.rowconfigure(0, weight=1)
         tree_frame.columnconfigure(0, weight=1)
 
+    def on_station_changed(self, event):
+        """Handle station selection change."""
+        self.current_station = self.station_var.get()
+        self.load_log_entries()
+
     def load_log_entries(self):
         """Loads/reloads entries from the handler and populates the treeview."""
         logging.debug("Loading missing artist log entries...")
         try:
-            self.log_entries = self.intro_loader_handler.get_missing_artists()
+            # Get the appropriate handler for the current station
+            if self.current_station == "station_1047":
+                handler = self.intro_1047_handler
+            else:
+                handler = self.intro_887_handler
+
+            if handler:
+                self.log_entries = handler.get_missing_artists()
+            else:
+                self.log_entries = []
+                logging.warning(f"No handler available for station {self.current_station}")
+
             self.tree.delete(*self.tree.get_children())
 
             if not self.log_entries:
@@ -125,7 +167,13 @@ class MissingArtistsWindow(Toplevel):
         try:
             # *** Assuming delete_missing_artist_entry can handle a list ***
             # If not, this call will fail or need modification in the handler
-            success = self.intro_loader_handler.delete_missing_artist_entry(raw_lines_to_delete)
+            # Get the appropriate handler for the current station
+            if self.current_station == "station_1047":
+                handler = self.intro_1047_handler
+            else:
+                handler = self.intro_887_handler
+
+            success = handler.delete_missing_artist_entry(raw_lines_to_delete)
             if success:
                 logging.info(f"{len(raw_lines_to_delete)} log entries deleted successfully.")
                 # Success message removed for quicker workflow

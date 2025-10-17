@@ -17,22 +17,24 @@ class LectureDetector:
         - get_next_track_duration(): Get duration of next track
     """
 
-    def __init__(self, xml_path, config_manager=None, blacklist=None, whitelist=None):
+    def __init__(self, xml_path, config_manager=None, station_id=None, blacklist=None, whitelist=None):
         """Initialize the LectureDetector.
         
         Args:
             xml_path (str): Path to the XML file containing track information
             config_manager (ConfigManager, optional): Configuration manager for blacklist/whitelist
+            station_id (str, optional): Station identifier for station-specific config (not currently used, whitelist/blacklist are shared)
             blacklist (list, optional): List of artists to always classify as lectures
             whitelist (list, optional): List of artists to never classify as lectures
         """
         self.xml_path = xml_path
         self.config_manager = config_manager
+        self.station_id = station_id  # Store for future use, but whitelist/blacklist are shared
         
-        # Initialize blacklist and whitelist (case-insensitive)
+        # Initialize blacklist and whitelist (case-insensitive) - these are shared across stations
         if config_manager:
-            self.blacklist = set(x.lower() for x in config_manager.get_blacklist())
-            self.whitelist = set(x.lower() for x in config_manager.get_whitelist())
+            self.blacklist = set(x.lower() for x in config_manager.get_shared_blacklist())
+            self.whitelist = set(x.lower() for x in config_manager.get_shared_whitelist())
         else:
             self.blacklist = set(x.lower() for x in blacklist) if blacklist else set()
             self.whitelist = set(x.lower() for x in whitelist) if whitelist else set()
@@ -144,8 +146,8 @@ class LectureDetector:
     def update_lists(self):
         """Updates the blacklist and whitelist from the config manager."""
         if self.config_manager:
-            self.blacklist = set(x.lower() for x in self.config_manager.get_blacklist())
-            self.whitelist = set(x.lower() for x in self.config_manager.get_whitelist())
+            self.blacklist = set(x.lower() for x in self.config_manager.get_shared_blacklist())
+            self.whitelist = set(x.lower() for x in self.config_manager.get_shared_whitelist())
 
     def force_refresh(self):
         """Force refresh the XML file reading to avoid caching issues."""
