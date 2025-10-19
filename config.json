@@ -312,8 +312,8 @@
                     "Scheduled": false,
                     "Days": [],
                     "Hours": [],
-                    "PlayCount": 251,
-                    "LastPlayed": "2025-10-16T09:00:41.048687"
+                    "PlayCount": 252,
+                    "LastPlayed": "2025-10-18T20:17:04.059813"
                 }
             ],
             "settings": {
@@ -370,6 +370,12 @@
         },
         "debug": {
             "enable_debug_logs": false
+        },
+        "intro_loader": {
+            "volume": {
+                "intro_db": 0.0,
+                "overlay_db": 0.0
+            }
         }
     }
 }

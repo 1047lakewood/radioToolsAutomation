@@ -103,9 +103,13 @@ class AdInserterWindow(tk.Toplevel):
         list_container = ttk.Frame(left_frame)
         list_container.pack(fill=tk.BOTH, expand=True)
 
-        widgets['ad_listbox'] = tk.Listbox(list_container, width=25, height=15, font=("Segoe UI", 10))
+        widgets['ad_listbox'] = tk.Listbox(
+            list_container, width=25, height=15, font=("Segoe UI", 10), exportselection=False
+        )
         widgets['ad_listbox'].pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
-        widgets['ad_listbox'].bind("<<ListboxSelect>>", lambda e: self.on_ad_select(station_id))
+        widgets['ad_listbox'].bind(
+            "<<ListboxSelect>>", lambda e, s=station_id: self.after(0, lambda: self.on_ad_select(s))
+        )
 
         # Move buttons to the right of the listbox
         move_buttons = ttk.Frame(list_container)
@@ -212,6 +216,8 @@ class AdInserterWindow(tk.Toplevel):
         
         selection = listbox.curselection()
         if not selection:
+            # In rare timing cases, try once more after the event loop cycles
+            self.after(0, lambda: self.on_ad_select(station_id))
             return
         
         index = selection[0]
@@ -304,6 +310,7 @@ class AdInserterWindow(tk.Toplevel):
             listbox.selection_clear(0, tk.END)
             listbox.selection_set(index - 1)
             listbox.see(index - 1)
+            self.on_ad_select(station_id)
 
     def move_down_ad(self, station_id):
         """Move the selected ad down in the list for a specific station."""
@@ -326,6 +333,7 @@ class AdInserterWindow(tk.Toplevel):
             listbox.selection_clear(0, tk.END)
             listbox.selection_set(index + 1)
             listbox.see(index + 1)
+            self.on_ad_select(station_id)
 
     def save_current_ad(self, station_id):
         """Save changes to the currently selected ad for a specific station."""
@@ -346,7 +354,6 @@ class AdInserterWindow(tk.Toplevel):
         
         logging.info(f"Saved ad to memory: {ad}")
         self.populate_ad_list(station_id)
-        messagebox.showinfo("Success", "Ad changes saved to memory! Click 'Save & Close' to persist.")
 
     def browse_mp3(self, station_id):
         """Browse for an MP3 file for a specific station."""
@@ -408,15 +415,19 @@ class AdInserterWindow(tk.Toplevel):
     def save_and_close(self):
         """Save all changes for both stations and close the window."""
         try:
+            # First save any currently edited ad for each station
+            for station_id in self.stations.keys():
+                if self.stations[station_id]['current_index'] is not None:
+                    self.save_current_ad(station_id)
+
             # Save ads for both stations
             for station_id, station_data in self.stations.items():
                 logging.info(f"Saving {len(station_data['ads'])} ads for {station_id}")
                 self.config_manager.set_station_ads(station_id, station_data['ads'])
                 logging.info(f"Ads set for {station_id}: {[ad.get('Name', 'Unnamed') for ad in station_data['ads']]}")
-            
+
             self.config_manager.save_config()
             logging.info("All ad configurations saved successfully for both stations.")
-            messagebox.showinfo("Success", "Ad configurations saved for both stations!")
             self.destroy()
         except Exception as e:
             logging.error(f"Error saving ad configurations: {e}")

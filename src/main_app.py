@@ -32,11 +32,15 @@ from ui_missing_artists_window import MissingArtistsWindow
 from ui_options_window import OptionsWindow
 from ui_playlist_editor_window import PlaylistEditorWindow
 from ui_ad_inserter_window import AdInserterWindow
+from utils import configure_hidden_subprocess
 
 class MainApp(tk.Tk):
     """Main application window with GUI for monitoring and configuration - Dual Station Support."""
 
     def __init__(self):
+        # Configure subprocess to hide windows on Windows before any subprocess usage
+        configure_hidden_subprocess()
+
         super().__init__()
         self.title("radioToolsAutomation")
         self.geometry("900x700")
@@ -215,7 +219,7 @@ class MainApp(tk.Tk):
 
     def show_about(self):
         """Show the about dialog with version information."""
-        about_message = """radioToolsAutomation v2.1
+        about_message = """radioToolsAutomation v2.2
 
 Dual Station RDS and Intro Automation System
 
