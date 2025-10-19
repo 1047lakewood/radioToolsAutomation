@@ -310,8 +310,76 @@ class AdReportGenerator:
             traceback.print_exc()
             return False
 
-    def generate_multi_ad_report(self, ad_names: List[str], start_date: str, 
-                                end_date: str, output_file: str, 
+    def generate_report(self, start_date=None, end_date=None, advertiser_name=None, company_name=None):
+        """
+        Generate both CSV and PDF reports for all ads.
+
+        Args:
+            start_date: Start date in YYYY-MM-DD format (optional)
+            end_date: End date in YYYY-MM-DD format (optional)
+            advertiser_name: Optional advertiser contact name
+            company_name: Optional company name for header
+
+        Returns:
+            tuple: (csv_file_path, pdf_file_path) if successful, (None, None) otherwise
+        """
+        try:
+            # Get all ads that have plays in the date range
+            detailed_stats = self.ad_logger.get_detailed_stats(start_date, end_date)
+            if "error" in detailed_stats:
+                self.logger.error(f"Error getting stats for report generation: {detailed_stats['error']}")
+                return None, None
+
+            daily_plays = detailed_stats.get("daily_plays", {})
+            ad_totals = detailed_stats.get("ad_totals", {})
+
+            # Get ads that have plays in the period
+            played_ads = [ad_name for ad_name, total in ad_totals.items() if total > 0]
+
+            if not played_ads:
+                self.logger.warning("No ads with plays found for the selected period")
+                return None, None
+
+            # Generate timestamp for filenames
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+            # Generate CSV report for each ad
+            csv_files = []
+            for ad_name in played_ads:
+                csv_filename = f"REAL_REPORT_{ad_name.replace(' ', '_').replace('/', '_')}_{timestamp}.csv"
+                csv_path = os.path.join(os.getcwd(), csv_filename)
+
+                if self.generate_csv_report(ad_name, start_date or "2020-01-01", end_date or datetime.now().strftime("%Y-%m-%d"), csv_path):
+                    csv_files.append(csv_path)
+
+            # Generate PDF report for each ad
+            pdf_files = []
+            for ad_name in played_ads:
+                pdf_filename = f"REAL_REPORT_{ad_name.replace(' ', '_').replace('/', '_')}_{timestamp}.pdf"
+                pdf_path = os.path.join(os.getcwd(), pdf_filename)
+
+                if self.generate_pdf_report(ad_name, start_date or "2020-01-01", end_date or datetime.now().strftime("%Y-%m-%d"), pdf_path, advertiser_name, company_name):
+                    pdf_files.append(pdf_path)
+
+            # Return the first CSV and PDF files (for compatibility with existing UI)
+            csv_result = csv_files[0] if csv_files else None
+            pdf_result = pdf_files[0] if pdf_files else None
+
+            if csv_result and pdf_result:
+                self.logger.info(f"Generated reports: CSV={csv_result}, PDF={pdf_result}")
+            else:
+                self.logger.error(f"Failed to generate reports. CSV: {csv_result}, PDF: {pdf_result}")
+
+            return csv_result, pdf_result
+
+        except Exception as e:
+            self.logger.error(f"Error generating reports: {e}")
+            import traceback
+            traceback.print_exc()
+            return None, None
+
+    def generate_multi_ad_report(self, ad_names: List[str], start_date: str,
+                                end_date: str, output_file: str,
                                 format: str = "csv") -> bool:
         """
         Generate a report covering multiple ads.
