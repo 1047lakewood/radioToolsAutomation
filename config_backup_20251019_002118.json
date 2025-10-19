@@ -311,9 +311,6 @@
                 "intro_db": -1.0245614035087698,
                 "overlay_db": -1.1157894736842096
             }
-        },
-        "migration": {
-            "stable_path": "G:\\Misc\\Dev\\radioToolsAutomation - stable"
         }
     }
 }
