@@ -21,6 +21,7 @@ SOCKET_TIMEOUT = 10 # Seconds
 COMMAND_DELAY = 0.2 # Seconds between RDS commands
 LOOP_SLEEP = 1      # Seconds between main loop checks
 ERROR_RETRY_DELAY = 15 # Seconds to wait after a major loop error
+KEEPALIVE_INTERVAL = 60  # Seconds - resend same message to maintain RDS encoder state
 
 class AutoRDSHandler:
     # Accept log_queue in init, though not directly used here (logger config handles it)
@@ -38,7 +39,7 @@ class AutoRDSHandler:
         self.running = False
         self.thread = None
         self.message_index = 0
-        self.last_message_time = 0
+        self.last_send_time = 0.0  # Monotonic time of last RDS send
         self.current_message_duration = 10 # Default duration
         self.last_sent_text = None
 
@@ -318,7 +319,7 @@ class AutoRDSHandler:
         try:
             while self.running:
                 try:
-                    current_time = time.time()
+                    now = time.monotonic()
 
                     # Reload messages and check now playing in each loop iteration
                     messages = self.config_manager.get_station_messages(self.station_id) # Get latest from config manager
@@ -334,18 +335,13 @@ class AutoRDSHandler:
                     display_text = None
                     selected_duration = 10 # Default duration
 
-                    # Determine what to display - send messages every loop iteration for constant updates
+                    # Determine what to display - select message but don't advance index yet
                     if not valid_messages:
                         # No valid custom messages, use default message
-                        if self.last_sent_text != self.default_message:
-                            display_text = self.default_message
-                            selected_duration = 10 # Default duration for default message
-                        else:
-                            # Default is already showing, but send it again for constant updates
-                            display_text = self.default_message
-                            selected_duration = 10
+                        display_text = self.default_message
+                        selected_duration = 10 # Default duration for default message
                     else:
-                        # There are valid custom messages, always send the current one
+                        # There are valid custom messages, select the current one
                         if len(valid_messages) > 0:
                             current_valid_message = valid_messages[self.message_index % len(valid_messages)]
                             formatted_text = self._format_message_text(current_valid_message["Text"], now_playing)
@@ -353,8 +349,6 @@ class AutoRDSHandler:
                             if formatted_text:
                                 display_text = formatted_text
                                 selected_duration = current_valid_message.get("Message Time", 10)
-                                # Increment index for next cycle
-                                self.message_index = (self.message_index + 1) % len(valid_messages)
                             else:
                                 # Message evaluated to empty, skip it and try next
                                 self.logger.debug(
@@ -363,28 +357,41 @@ class AutoRDSHandler:
                                 self.message_index = (self.message_index + 1) % len(valid_messages)
                                 # Don't set display_text, will fall back to default
                         
-                    # Send the message if one was chosen - send every minute for constant updates
+                    # Send the message if one was chosen
                     if display_text is not None:
-                        # Send every minute (60 seconds) to ensure RDS machine stays updated
-                        time_since_last_send = current_time - self.last_message_time
-                        should_send = (time_since_last_send >= 60)
+                        # Check if rotation is due (message duration elapsed)
+                        time_since_last_send = now - self.last_send_time
+                        rotation_due = (time_since_last_send >= self.current_message_duration)
+                        
+                        # Check if keepalive is due (same message, 60s elapsed)
+                        keepalive_due = (display_text == self.last_sent_text) and (time_since_last_send >= KEEPALIVE_INTERVAL)
+                        
+                        should_send = rotation_due or keepalive_due
 
-                        self.logger.debug(f"Time since last send: {time_since_last_send:.1f}s, Should send: {should_send}, Current time: {current_time}, Last send time: {self.last_message_time}")
+                        self.logger.debug(f"Time since last send: {time_since_last_send:.1f}s, Rotation due: {rotation_due}, Keepalive due: {keepalive_due}, Should send: {should_send}")
 
                         if should_send:
-                            self.logger.info(f"Sending RDS message: '{display_text}' for {selected_duration}s (minute update)")
+                            send_type = "keepalive" if keepalive_due and not rotation_due else "rotation"
+                            self.logger.info(f"Sending RDS message ({send_type}): '{display_text}' for {selected_duration}s")
                             try:
                                 self._send_message_to_rds(display_text)
                                 self.logger.info(f"Sent RDS message: {display_text}")
                             except Exception as e:
                                 self.logger.error(f"Failed to send RDS message '{display_text}': {e}")
+                            
                             self.last_sent_text = display_text
-                            self.last_message_time = current_time
+                            self.last_send_time = now
                             self.current_message_duration = selected_duration
-                            self.logger.debug(f"Updated last_message_time to {self.last_message_time}")
+                            
+                            # Only advance message index on rotation sends
+                            if rotation_due and valid_messages:
+                                self.message_index = (self.message_index + 1) % len(valid_messages)
+                                self.logger.debug(f"Advanced message index to {self.message_index}")
+                            
+                            self.logger.debug(f"Updated last_send_time to {self.last_send_time}")
                         else:
-                            # Don't update timer - wait for the 60-second interval to pass
-                            self.logger.debug(f"Not sending yet - only {time_since_last_send:.1f}s since last send")
+                            # Don't update timer - wait for the interval to pass
+                            self.logger.debug(f"Not sending yet - only {time_since_last_send:.1f}s since last send (need {self.current_message_duration}s for rotation, {KEEPALIVE_INTERVAL}s for keepalive)")
 
                     # Wait before the next check
                     time.sleep(LOOP_SLEEP)
