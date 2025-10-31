@@ -2,6 +2,7 @@ import json
 import os
 from datetime import datetime
 import logging
+import threading
 
 class ConfigManager:
     """Manages loading, saving, and accessing configuration from JSON with dual-station support."""
@@ -10,7 +11,10 @@ class ConfigManager:
         self.config_file = config_file
         self.backup_prefix = backup_prefix
         self.config = self.load_config()
-        
+
+        # Thread safety lock
+        self._lock = threading.RLock()
+
         # Station IDs
         self.STATION_1047 = 'station_1047'
         self.STATION_887 = 'station_887'
@@ -168,15 +172,16 @@ class ConfigManager:
 
     def save_config(self, make_backup=False):
         """Saves the current configuration to JSON, optionally creating a backup."""
-        if make_backup:
-            self._backup_config()
+        with self._lock:
+            if make_backup:
+                self._backup_config()
 
-        try:
-            with open(self.config_file, 'w', encoding='utf-8') as f:
-                json.dump(self.config, f, indent=4)
-            logging.info(f"Configuration saved to {self.config_file}.")
-        except Exception as e:
-            logging.error(f"Error saving configuration to {self.config_file}: {e}")
+            try:
+                with open(self.config_file, 'w', encoding='utf-8') as f:
+                    json.dump(self.config, f, indent=4)
+                logging.info(f"Configuration saved to {self.config_file}.")
+            except Exception as e:
+                logging.error(f"Error saving configuration to {self.config_file}: {e}")
 
     def _backup_config(self):
         """Creates a timestamped backup of the current config file."""
@@ -209,11 +214,12 @@ class ConfigManager:
 
     def set_station_ads(self, station_id, ads):
         """Sets the list of ads for a specific station."""
-        if 'stations' not in self.config:
-            self.config['stations'] = {}
-        if station_id not in self.config['stations']:
-            self.config['stations'][station_id] = {}
-        self.config['stations'][station_id]['Ads'] = ads
+        with self._lock:
+            if 'stations' not in self.config:
+                self.config['stations'] = {}
+            if station_id not in self.config['stations']:
+                self.config['stations'][station_id] = {}
+            self.config['stations'][station_id]['Ads'] = ads
 
     def get_station_name(self, station_id):
         """Returns the display name for a station."""

@@ -37,6 +37,7 @@
     },
     "2025-10-16": {
       "asifa": 10
+<<<<<<< HEAD
 <<<<<<< Updated upstream
 =======
     },
@@ -46,15 +47,24 @@
     "2025-10-23": {
       "New Ad": 1
 >>>>>>> Stashed changes
+=======
+    },
+    "2025-10-18": {
+      "asifa": 1
+>>>>>>> 151360ba0568bc35fcdda088e32170c8859c7c89
     }
   },
   "ad_totals": {
     "shuk": 105,
+<<<<<<< HEAD
 <<<<<<< Updated upstream
     "asifa": 235
 =======
     "asifa": 236,
     "New Ad": 1
 >>>>>>> Stashed changes
+=======
+    "asifa": 236
+>>>>>>> 151360ba0568bc35fcdda088e32170c8859c7c89
   }
 }

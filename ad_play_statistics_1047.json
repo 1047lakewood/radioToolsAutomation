@@ -29,6 +29,7 @@
     },
     "2025-10-15": {
       "Bubby and Zaidy": 23
+<<<<<<< HEAD
 <<<<<<< Updated upstream
     }
   },
@@ -71,5 +72,15 @@
     "Ace Restoration": 28,
     "Judaica Plaza": 10
 >>>>>>> Stashed changes
+=======
+    },
+    "2025-10-18": {
+      "516 Aveidah": 1
+    }
+  },
+  "ad_totals": {
+    "Bubby and Zaidy": 226,
+    "516 Aveidah": 1
+>>>>>>> 151360ba0568bc35fcdda088e32170c8859c7c89
   }
 }

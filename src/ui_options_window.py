@@ -2,6 +2,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, Toplevel, filedialog
 import logging
+import os
 import urllib.request
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
@@ -34,7 +35,7 @@ class OptionsWindow(Toplevel):
         self.transient(parent)
         self.grab_set()
         self.title("Options")
-        self.geometry("750x750")  # Balanced height for better visibility
+        self.geometry("800x800")  # Larger to accommodate Migration tab
 
         self.config_manager = config_manager
         self.intro_1047_handler = intro_loader_handler_1047
@@ -55,8 +56,11 @@ class OptionsWindow(Toplevel):
             'station_887': {}
         }
 
+<<<<<<< HEAD
 <<<<<<< Updated upstream
 =======
+=======
+>>>>>>> 151360ba0568bc35fcdda088e32170c8859c7c89
         # Shared volume variables for intro/overlay
         self.volume_vars = {
             'intro_db': tk.DoubleVar(value=self.config_manager.get_shared_setting("intro_loader.volume.intro_db", 0.0)),
@@ -71,11 +75,14 @@ class OptionsWindow(Toplevel):
             'stable_path': tk.StringVar(value=self.config_manager.get_shared_setting("migration.stable_path", default_stable))
         }
 
+<<<<<<< HEAD
         # Hour simulation scheduler state per station
         self._hour_sim_after_ids = {"1047": None, "887": None}
         self._hour_sim_status = {"1047": tk.StringVar(value="None"), "887": tk.StringVar(value="None")}
 
 >>>>>>> Stashed changes
+=======
+>>>>>>> 151360ba0568bc35fcdda088e32170c8859c7c89
         self.create_widgets()
 
         self.protocol("WM_DELETE_WINDOW", self.on_close)
@@ -128,10 +135,20 @@ class OptionsWindow(Toplevel):
         notebook.add(mairlist_frame, text="mAirList Schedule")
         self.create_mairlist_tab(mairlist_frame)
 
+        # --- Intro/Overlay Volume Tab ---
+        volume_frame = ttk.Frame(notebook, padding="10")
+        notebook.add(volume_frame, text="Intro/Overlay Volume")
+        self.create_volume_tab(volume_frame)
+
         # --- Debug Tab ---
         debug_frame = ttk.Frame(notebook, padding="10")
         notebook.add(debug_frame, text="Debug")
         self.create_debug_tab(debug_frame)
+
+        # --- Migration Tab ---
+        migration_frame = ttk.Frame(notebook, padding="10")
+        notebook.add(migration_frame, text="Migration")
+        self.create_migration_tab(migration_frame)
 
     def browse_file(self, var, save=False):
         """Opens a file dialog to select a file path and sets the variable."""
@@ -453,9 +470,8 @@ class OptionsWindow(Toplevel):
         self.clipboard_clear()
         self.clipboard_append(url)
         self.update()  # Required for clipboard to work
-        
+
         logging.info(f"Copied URL for event: {task_name}")
-        messagebox.showinfo("Copied", f"URL copied to clipboard:\n\n{task_name}\n\n{url}", parent=self)
 
     def save_and_close(self):
         """Saves the whitelist/blacklist if changed and closes."""
@@ -470,7 +486,6 @@ class OptionsWindow(Toplevel):
                 self.config_manager.set_blacklist(new_blacklist)
                 self.config_manager.save_config()
                 logging.info("Whitelist/Blacklist changes saved.")
-                messagebox.showinfo("Saved", "Whitelist/Blacklist settings saved.", parent=self)
                 self.changes_pending = False # Reset flag after successful save
             except Exception as e:
                  logging.exception("Failed to save Whitelist/Blacklist.")
@@ -503,6 +518,13 @@ class OptionsWindow(Toplevel):
             # mAirList settings
             self.config_manager.update_station_setting(station_id, "mairlist.server", station_vars['mairlist_server'].get())
             self.config_manager.update_station_setting(station_id, "mairlist.password", station_vars['mairlist_password'].get())
+
+        # Save shared volume settings
+        self.config_manager.update_shared_setting("intro_loader.volume.intro_db", self.volume_vars['intro_db'].get())
+        self.config_manager.update_shared_setting("intro_loader.volume.overlay_db", self.volume_vars['overlay_db'].get())
+
+        # Save migration settings
+        self.config_manager.update_shared_setting("migration.stable_path", self.migration_vars['stable_path'].get())
 
         # Save all settings changes to file
         try:
@@ -662,6 +684,62 @@ class OptionsWindow(Toplevel):
 
         ttk.Button(button_frame, text="Copy URL to Clipboard", command=self.copy_mairlist_event_url).pack(side=tk.LEFT, padx=5)
 
+    def create_volume_tab(self, parent_frame):
+        """Create the intro/overlay volume tab with dB sliders."""
+        title_label = ttk.Label(parent_frame, text="Intro/Overlay Volume Control", font=("Segoe UI", 12, "bold"))
+        title_label.pack(pady=(0, 15))
+
+        # Intro Volume Section
+        intro_frame = ttk.Frame(parent_frame)
+        intro_frame.pack(fill=tk.X, pady=10)
+
+        ttk.Label(intro_frame, text="Intro Volume (dB):", font=("Segoe UI", 10)).grid(row=0, column=0, sticky=tk.W, padx=5)
+        intro_scale = ttk.Scale(
+            intro_frame,
+            from_=-20.0,
+            to=6.0,
+            orient=tk.HORIZONTAL,
+            variable=self.volume_vars['intro_db'],
+            length=300
+        )
+        intro_scale.grid(row=0, column=1, sticky=tk.W, padx=5)
+
+        intro_value_label = ttk.Label(intro_frame, textvariable=self.volume_vars['intro_db'], width=5)
+        intro_value_label.grid(row=0, column=2, sticky=tk.W, padx=5)
+
+        ttk.Label(intro_frame, text="(currentArtist.mp3)", font=("Segoe UI", 9)).grid(row=1, column=1, columnspan=2, sticky=tk.W, padx=5)
+
+        # Overlay Volume Section
+        overlay_frame = ttk.Frame(parent_frame)
+        overlay_frame.pack(fill=tk.X, pady=10)
+
+        ttk.Label(overlay_frame, text="Overlay Volume (dB):", font=("Segoe UI", 10)).grid(row=0, column=0, sticky=tk.W, padx=5)
+        overlay_scale = ttk.Scale(
+            overlay_frame,
+            from_=-20.0,
+            to=6.0,
+            orient=tk.HORIZONTAL,
+            variable=self.volume_vars['overlay_db'],
+            length=300
+        )
+        overlay_scale.grid(row=0, column=1, sticky=tk.W, padx=5)
+
+        overlay_value_label = ttk.Label(overlay_frame, textvariable=self.volume_vars['overlay_db'], width=5)
+        overlay_value_label.grid(row=0, column=2, sticky=tk.W, padx=5)
+
+        ttk.Label(overlay_frame, text="(actualCurrentArtist.mp3)", font=("Segoe UI", 9)).grid(row=1, column=1, columnspan=2, sticky=tk.W, padx=5)
+
+        # Info text
+        info_text = (
+            "Volume adjustments in decibels (dB):\n"
+            "• 0 dB = No change (original volume)\n"
+            "• +6 dB = Approximately double volume\n"
+            "• -20 dB = Approximately 1/10th volume\n\n"
+            "Changes take effect when the intro loader processes the next XML update."
+        )
+        info_label = ttk.Label(parent_frame, text=info_text, justify=tk.LEFT, wraplength=380)
+        info_label.pack(pady=(20, 0), anchor=tk.W)
+
     def create_debug_tab(self, parent_frame):
         """Create the debug tab with testing and logging controls."""
         debug_label = ttk.Label(parent_frame, text="Debug Tools", font=("Segoe UI", 10, "bold"))
@@ -776,12 +854,15 @@ class OptionsWindow(Toplevel):
             logging_frame,
             text="Note: Debug logs provide detailed information useful for troubleshooting.\nDisabling this will only show INFO, WARNING, and ERROR messages.",
             wraplength=380,
-            foreground="gray"
         )
+<<<<<<< HEAD
 <<<<<<< Updated upstream
         debug_note.pack(pady=2)
 =======
         debug_note.pack(pady=(0, 5))
+=======
+        debug_note.pack(pady=(5, 0))
+>>>>>>> 151360ba0568bc35fcdda088e32170c8859c7c89
 
     def create_migration_tab(self, parent_frame):
         """Create the migration tab with stable folder path and migration buttons."""
@@ -977,7 +1058,10 @@ class OptionsWindow(Toplevel):
         # This would require storing references to the buttons, but for simplicity
         # we'll just update the status. In a full implementation, we'd store button refs.
         pass
+<<<<<<< HEAD
 >>>>>>> Stashed changes
+=======
+>>>>>>> 151360ba0568bc35fcdda088e32170c8859c7c89
 
     def create_station_settings_tab(self, parent_frame, station_id):
         """Create a settings tab for a specific station."""

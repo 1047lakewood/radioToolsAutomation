@@ -342,7 +342,6 @@ class PlaylistEditorWindow(tk.Toplevel):
                 f.write("#EXTM3U\n")
                 for file_path in self.playlist_files:
                     f.write(f"{file_path}\n")
-            messagebox.showinfo("Saved", f"Playlist saved to '{playlist_path}'.")
             logging.info(f"Playlist saved to: {playlist_path}")
         except Exception as e:
             logging.exception(f"Error saving playlist '{playlist_path}'.")
@@ -412,8 +411,6 @@ class PlaylistEditorWindow(tk.Toplevel):
         # Update window title
         self.title(f"Playlist Editor - {new_name} ({os.path.basename(playlist_path)})")
 
-        messagebox.showinfo("Renamed", f"Preset '{selected_preset_name}' renamed to '{new_name}'.")
-
     def edit_preset_path(self):
         """Edit the file path of the selected preset."""
         selected_preset_name = self.selected_preset_name_var.get()
@@ -437,7 +434,6 @@ class PlaylistEditorWindow(tk.Toplevel):
         self.playlist_presets[selected_preset_name] = new_path
         self._save_presets()
         self.load_selected_playlist()
-        messagebox.showinfo("Updated", f"Preset '{selected_preset_name}' path updated to '{new_path}'.")
 
     def delete_preset(self):
         """Delete the selected playlist preset."""

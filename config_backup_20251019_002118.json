@@ -96,7 +96,7 @@
                 },
                 {
                     "Text": "ACE RESTORATION 732.364.9123",
-                    "Enabled": true,
+                    "Enabled": false,
                     "Message Time": 20,
                     "Scheduled": {
                         "Enabled": false,
@@ -116,31 +116,12 @@
                 },
                 {
                     "Text": "JUDAICA PLAZA ",
-                    "Enabled": true,
+                    "Enabled": false,
                     "Message Time": 15,
                     "Scheduled": {
                         "Enabled": false,
                         "Days": [],
                         "Times": []
-                    }
-                },
-                {
-                    "Text": "Atzeres Machaa Live from Manhattan",
-                    "Enabled": true,
-                    "Message Time": 10,
-                    "Scheduled": {
-                        "Enabled": true,
-                        "Days": [
-                            "Sunday"
-                        ],
-                        "Times": [
-                            {
-                                "hour": 16
-                            },
-                            {
-                                "hour": 17
-                            }
-                        ]
                     }
                 }
             ],
@@ -154,11 +135,6 @@
                     "Hours": [],
                     "PlayCount": 226,
                     "LastPlayed": "2025-10-15T22:00:58.889533"
-<<<<<<< HEAD
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> 151360ba0568bc35fcdda088e32170c8859c7c89
                 },
                 {
                     "Name": "Ace Restoration",
@@ -182,13 +158,8 @@
                         19,
                         21
                     ],
-<<<<<<< HEAD
-                    "PlayCount": 76,
-                    "LastPlayed": "2025-10-23T21:56:15.555978"
-=======
                     "PlayCount": 46,
                     "LastPlayed": "2025-10-18T21:00:53.797918"
->>>>>>> 151360ba0568bc35fcdda088e32170c8859c7c89
                 },
                 {
                     "Name": "Judaica Plaza",
@@ -208,13 +179,8 @@
                         13,
                         15
                     ],
-<<<<<<< HEAD
-                    "PlayCount": 56,
-                    "LastPlayed": "2025-10-23T15:17:25.483980"
-=======
                     "PlayCount": 46,
                     "LastPlayed": "2025-10-18T21:00:53.850646"
->>>>>>> 151360ba0568bc35fcdda088e32170c8859c7c89
                 },
                 {
                     "Name": "516 Aveidah",
@@ -231,22 +197,12 @@
                         "Saturday"
                     ],
                     "Hours": [
-<<<<<<< HEAD
-                        5,
-                        14,
-                        16
-                    ],
-                    "PlayCount": 13,
-                    "LastPlayed": "2025-10-23T16:33:00.594195"
->>>>>>> Stashed changes
-=======
                         14,
                         16,
                         22
                     ],
                     "PlayCount": 2,
                     "LastPlayed": "2025-10-18T22:09:50.596784"
->>>>>>> 151360ba0568bc35fcdda088e32170c8859c7c89
                 }
             ],
             "settings": {
@@ -284,7 +240,7 @@
             "name": "88.7 FM",
             "Messages": [
                 {
-                    "Text": "{artist} ",
+                    "Text": "{artist}",
                     "Enabled": true,
                     "Message Time": 10,
                     "Scheduled": {
@@ -355,9 +311,6 @@
                 "intro_db": -1.0245614035087698,
                 "overlay_db": -1.1157894736842096
             }
-        },
-        "migration": {
-            "stable_path": "G:\\Misc\\Dev\\radioToolsAutomation - stable"
         }
     }
 }

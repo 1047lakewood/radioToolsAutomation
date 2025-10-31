@@ -2,6 +2,7 @@ import json
 import logging
 import os
 from datetime import datetime
+import threading
 
 # Logger will be set in __init__ based on station_id
 
@@ -18,6 +19,9 @@ class AdPlayLogger:
         """
         self.config_manager = config_manager
         self.station_id = station_id
+
+        # Thread safety lock
+        self._lock = threading.RLock()
 
         # Set up logger based on station_id
         logger_name = f'AdPlayLogger_{station_id.split("_")[1]}'  # e.g., 'AdPlayLogger_1047'
@@ -171,41 +175,42 @@ class AdPlayLogger:
         Args:
             ad_name: Name of the ad that was played
         """
-        try:
-            stats_data = {}
+        with self._lock:
+            try:
+                stats_data = {}
 
-            # Load existing stats if file exists
-            if os.path.exists(self.ad_stats_file):
-                try:
-                    with open(self.ad_stats_file, 'r', encoding='utf-8') as f:
-                        stats_data = json.load(f)
-                except json.JSONDecodeError:
-                    self.logger.warning("Could not load existing ad statistics file")
+                # Load existing stats if file exists
+                if os.path.exists(self.ad_stats_file):
+                    try:
+                        with open(self.ad_stats_file, 'r', encoding='utf-8') as f:
+                            stats_data = json.load(f)
+                    except json.JSONDecodeError:
+                        self.logger.warning("Could not load existing ad statistics file")
 
-            # Ensure structure exists
-            if "daily_plays" not in stats_data:
-                stats_data["daily_plays"] = {}
-            if "ad_totals" not in stats_data:
-                stats_data["ad_totals"] = {}
+                # Ensure structure exists
+                if "daily_plays" not in stats_data:
+                    stats_data["daily_plays"] = {}
+                if "ad_totals" not in stats_data:
+                    stats_data["ad_totals"] = {}
 
-            # Update daily stats
-            today = datetime.now().strftime("%Y-%m-%d")
-            if today not in stats_data["daily_plays"]:
-                stats_data["daily_plays"][today] = {}
+                # Update daily stats
+                today = datetime.now().strftime("%Y-%m-%d")
+                if today not in stats_data["daily_plays"]:
+                    stats_data["daily_plays"][today] = {}
 
-            stats_data["daily_plays"][today][ad_name] = \
-                stats_data["daily_plays"][today].get(ad_name, 0) + 1
+                stats_data["daily_plays"][today][ad_name] = \
+                    stats_data["daily_plays"][today].get(ad_name, 0) + 1
 
-            # Update total stats
-            stats_data["ad_totals"][ad_name] = \
-                stats_data["ad_totals"].get(ad_name, 0) + 1
+                # Update total stats
+                stats_data["ad_totals"][ad_name] = \
+                    stats_data["ad_totals"].get(ad_name, 0) + 1
 
-            # Save updated stats
-            with open(self.ad_stats_file, 'w', encoding='utf-8') as f:
-                json.dump(stats_data, f, indent=2, ensure_ascii=False)
+                # Save updated stats
+                with open(self.ad_stats_file, 'w', encoding='utf-8') as f:
+                    json.dump(stats_data, f, indent=2, ensure_ascii=False)
 
-        except Exception as e:
-            self.logger.error(f"Error saving detailed ad statistics: {e}")
+            except Exception as e:
+                self.logger.error(f"Error saving detailed ad statistics: {e}")
 
     def get_detailed_stats(self, start_date=None, end_date=None):
         """
@@ -280,7 +285,13 @@ class AdPlayLogger:
 
             for ad in ads:
                 ad_name = ad.get("Name", "Unknown")
-                total_count = ad_totals.get(ad_name, 0)
+                # Use detailed stats count as the authoritative source
+                # Detailed stats track all plays since the system was implemented
+                detailed_count = ad_totals.get(ad_name, 0)
+
+                # For date-filtered stats, use detailed stats only
+                # For unfiltered stats, also use detailed stats (they're more accurate)
+                total_count = detailed_count
 
                 if total_count > 0:
                     ads_with_plays += 1

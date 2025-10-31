@@ -6,6 +6,17 @@ import copy
 
 class AdInserterWindow(tk.Toplevel):
     """Dialog for configuring advertisement insertions with tabs for each station."""
+
+    def format_hour_ampm(self, hour):
+        """Convert hour (0-23) to AM/PM format for display."""
+        if hour == 0:
+            return "12 AM"
+        elif hour == 12:
+            return "12 PM"
+        elif hour < 12:
+            return f"{hour} AM"
+        else:
+            return f"{hour - 12} PM"
     def __init__(self, parent, config_manager):
         """
         Initialize the Ad Inserter window.
@@ -92,9 +103,13 @@ class AdInserterWindow(tk.Toplevel):
         list_container = ttk.Frame(left_frame)
         list_container.pack(fill=tk.BOTH, expand=True)
 
-        widgets['ad_listbox'] = tk.Listbox(list_container, width=25, height=15, font=("Segoe UI", 10))
+        widgets['ad_listbox'] = tk.Listbox(
+            list_container, width=25, height=15, font=("Segoe UI", 10), exportselection=False
+        )
         widgets['ad_listbox'].pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
-        widgets['ad_listbox'].bind("<<ListboxSelect>>", lambda e: self.on_ad_select(station_id))
+        widgets['ad_listbox'].bind(
+            "<<ListboxSelect>>", lambda e, s=station_id: self.after(0, lambda: self.on_ad_select(s))
+        )
 
         # Move buttons to the right of the listbox
         move_buttons = ttk.Frame(list_container)
@@ -150,27 +165,35 @@ class AdInserterWindow(tk.Toplevel):
             widgets['day_vars'][day] = tk.BooleanVar()
             ttk.Checkbutton(days_frame, text=day[:3], variable=widgets['day_vars'][day]).pack(side=tk.LEFT, padx=2)
 
+        # Select All Days button
+        days_button_frame = ttk.Frame(right_frame)
+        days_button_frame.grid(row=5, column=1, columnspan=2, sticky=tk.W, pady=(5, 0))
+        widgets['select_all_days_btn'] = ttk.Button(days_button_frame, text="Select All Days",
+                                                   command=lambda: self.toggle_all_days(station_id))
+        widgets['select_all_days_btn'].pack(side=tk.LEFT)
+
         # Hours
         hours_label = ttk.Label(right_frame, text="Hours:", font=("Segoe UI", 10, "bold"))
-        hours_label.grid(row=5, column=0, sticky=tk.NW, pady=5)
+        hours_label.grid(row=6, column=0, sticky=tk.NW, pady=5)
         hours_frame = ttk.Frame(right_frame)
-        hours_frame.grid(row=5, column=1, columnspan=2, sticky=tk.W, pady=5)
+        hours_frame.grid(row=6, column=1, columnspan=2, sticky=tk.W, pady=5)
         widgets['hour_vars'] = {}
         for h in range(24):
             widgets['hour_vars'][h] = tk.BooleanVar()
-            cb = ttk.Checkbutton(hours_frame, text=f"{h:02d}", variable=widgets['hour_vars'][h], width=4)
+            hour_label = self.format_hour_ampm(h)
+            cb = ttk.Checkbutton(hours_frame, text=hour_label, variable=widgets['hour_vars'][h], width=6)
             cb.grid(row=h//6, column=h%6, padx=1, pady=1, sticky=tk.W)
 
         # Select All Hours button
         hours_button_frame = ttk.Frame(right_frame)
-        hours_button_frame.grid(row=6, column=1, columnspan=2, sticky=tk.W, pady=(0, 5))
-        widgets['select_all_hours_var'] = tk.BooleanVar(value=False)
-        ttk.Button(hours_button_frame, text="Select All Hours",
-                  command=lambda: self.toggle_all_hours(station_id)).pack(side=tk.LEFT)
+        hours_button_frame.grid(row=7, column=1, columnspan=2, sticky=tk.W, pady=(0, 5))
+        widgets['select_all_hours_btn'] = ttk.Button(hours_button_frame, text="Select All Hours",
+                                                   command=lambda: self.toggle_all_hours(station_id))
+        widgets['select_all_hours_btn'].pack(side=tk.LEFT)
 
         # Save button (for changes within tab)
         save_frame = ttk.Frame(right_frame)
-        save_frame.grid(row=7, column=0, columnspan=3, pady=10)
+        save_frame.grid(row=8, column=0, columnspan=3, pady=10)
         ttk.Button(save_frame, text="Save Changes", command=lambda: self.save_current_ad(station_id)).pack()
 
     def populate_ad_list(self, station_id):
@@ -193,6 +216,8 @@ class AdInserterWindow(tk.Toplevel):
         
         selection = listbox.curselection()
         if not selection:
+            # In rare timing cases, try once more after the event loop cycles
+            self.after(0, lambda: self.on_ad_select(station_id))
             return
         
         index = selection[0]
@@ -285,6 +310,7 @@ class AdInserterWindow(tk.Toplevel):
             listbox.selection_clear(0, tk.END)
             listbox.selection_set(index - 1)
             listbox.see(index - 1)
+            self.on_ad_select(station_id)
 
     def move_down_ad(self, station_id):
         """Move the selected ad down in the list for a specific station."""
@@ -307,6 +333,7 @@ class AdInserterWindow(tk.Toplevel):
             listbox.selection_clear(0, tk.END)
             listbox.selection_set(index + 1)
             listbox.see(index + 1)
+            self.on_ad_select(station_id)
 
     def save_current_ad(self, station_id):
         """Save changes to the currently selected ad for a specific station."""
@@ -327,7 +354,6 @@ class AdInserterWindow(tk.Toplevel):
         
         logging.info(f"Saved ad to memory: {ad}")
         self.populate_ad_list(station_id)
-        messagebox.showinfo("Success", "Ad changes saved to memory! Click 'Save & Close' to persist.")
 
     def browse_mp3(self, station_id):
         """Browse for an MP3 file for a specific station."""
@@ -344,6 +370,27 @@ class AdInserterWindow(tk.Toplevel):
         # This method can be used to enable/disable schedule fields
         pass
 
+    def toggle_all_days(self, station_id):
+        """Toggle all day checkboxes for a specific station."""
+        station_data = self.stations[station_id]
+        widgets = station_data['widgets']
+        day_vars = widgets['day_vars']
+
+        # Check if all days are currently selected
+        all_selected = all(var.get() for var in day_vars.values())
+
+        # Toggle all days (if all selected, deselect all; otherwise select all)
+        new_state = not all_selected
+        for day_var in day_vars.values():
+            day_var.set(new_state)
+
+        # Update button text
+        select_days_btn = widgets['select_all_days_btn']
+        if new_state:
+            select_days_btn.config(text="Clear All Days")
+        else:
+            select_days_btn.config(text="Select All Days")
+
     def toggle_all_hours(self, station_id):
         """Toggle all hour checkboxes for a specific station."""
         station_data = self.stations[station_id]
@@ -358,18 +405,29 @@ class AdInserterWindow(tk.Toplevel):
         for hour_var in hour_vars.values():
             hour_var.set(new_state)
 
+        # Update button text
+        select_hours_btn = widgets['select_all_hours_btn']
+        if new_state:
+            select_hours_btn.config(text="Clear All Hours")
+        else:
+            select_hours_btn.config(text="Select All Hours")
+
     def save_and_close(self):
         """Save all changes for both stations and close the window."""
         try:
+            # First save any currently edited ad for each station
+            for station_id in self.stations.keys():
+                if self.stations[station_id]['current_index'] is not None:
+                    self.save_current_ad(station_id)
+
             # Save ads for both stations
             for station_id, station_data in self.stations.items():
                 logging.info(f"Saving {len(station_data['ads'])} ads for {station_id}")
                 self.config_manager.set_station_ads(station_id, station_data['ads'])
                 logging.info(f"Ads set for {station_id}: {[ad.get('Name', 'Unnamed') for ad in station_data['ads']]}")
-            
+
             self.config_manager.save_config()
             logging.info("All ad configurations saved successfully for both stations.")
-            messagebox.showinfo("Success", "Ad configurations saved for both stations!")
             self.destroy()
         except Exception as e:
             logging.error(f"Error saving ad configurations: {e}")

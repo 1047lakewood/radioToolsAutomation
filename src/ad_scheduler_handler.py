@@ -149,8 +149,20 @@ class AdSchedulerHandler:
                             # Reset last_track_check to avoid immediate retry
                             self.last_track_check = current_time
 
-                    # Brief sleep between checks
-                    time.sleep(LOOP_SLEEP)
+                    # Calculate sleep time: minimum of time until next hour boundary or track check interval
+                    seconds_until_next_hour = self._seconds_until_next_hour()
+                    # Add a 2-second buffer to ensure we wake up after the hour boundary has been crossed
+                    sleep_until_hour = max(0, seconds_until_next_hour + 2)
+
+                    # Calculate time until next track check
+                    time_until_track_check = max(0, TRACK_CHANGE_CHECK_INTERVAL - time_since_track_check)
+
+                    # Sleep for the minimum of these times, but at least 1 second
+                    sleep_time = min(sleep_until_hour, time_until_track_check, 60)  # Cap at 60 seconds as safety
+                    sleep_time = max(sleep_time, 1)  # Minimum 1 second sleep
+
+                    self.logger.debug(f"Sleeping for {sleep_time:.1f}s (next hour in {seconds_until_next_hour:.1f}s, next track check in {time_until_track_check:.1f}s)")
+                    time.sleep(sleep_time)
 
                 except Exception as e:
                     self.logger.error(f"Error in AdScheduler main loop iteration {iteration_count}: {e}")
@@ -405,7 +417,7 @@ class AdSchedulerHandler:
     def _minutes_remaining_in_hour(self):
         """
         Calculate how many minutes are left in the current hour.
-        
+
         Returns:
             float: Minutes remaining until the end of the current hour
         """
@@ -414,6 +426,18 @@ class AdSchedulerHandler:
         seconds_remaining = (current_hour_end - current_time).total_seconds()
         minutes_remaining = seconds_remaining / 60.0
         return minutes_remaining
+
+    def _seconds_until_next_hour(self):
+        """
+        Calculate how many seconds until the next hour boundary.
+
+        Returns:
+            float: Seconds until the next hour starts (00:00)
+        """
+        current_time = datetime.now()
+        next_hour_start = (current_time + timedelta(hours=1)).replace(minute=0, second=0, microsecond=0)
+        seconds_until_next_hour = (next_hour_start - current_time).total_seconds()
+        return seconds_until_next_hour
 
     def _minutes_remaining_after_current_track(self):
         """
