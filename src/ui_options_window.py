@@ -56,11 +56,6 @@ class OptionsWindow(Toplevel):
             'station_887': {}
         }
 
-<<<<<<< HEAD
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> 151360ba0568bc35fcdda088e32170c8859c7c89
         # Shared volume variables for intro/overlay
         self.volume_vars = {
             'intro_db': tk.DoubleVar(value=self.config_manager.get_shared_setting("intro_loader.volume.intro_db", 0.0)),
@@ -75,14 +70,10 @@ class OptionsWindow(Toplevel):
             'stable_path': tk.StringVar(value=self.config_manager.get_shared_setting("migration.stable_path", default_stable))
         }
 
-<<<<<<< HEAD
         # Hour simulation scheduler state per station
         self._hour_sim_after_ids = {"1047": None, "887": None}
         self._hour_sim_status = {"1047": tk.StringVar(value="None"), "887": tk.StringVar(value="None")}
 
->>>>>>> Stashed changes
-=======
->>>>>>> 151360ba0568bc35fcdda088e32170c8859c7c89
         self.create_widgets()
 
         self.protocol("WM_DELETE_WINDOW", self.on_close)
@@ -855,14 +846,7 @@ class OptionsWindow(Toplevel):
             text="Note: Debug logs provide detailed information useful for troubleshooting.\nDisabling this will only show INFO, WARNING, and ERROR messages.",
             wraplength=380,
         )
-<<<<<<< HEAD
-<<<<<<< Updated upstream
-        debug_note.pack(pady=2)
-=======
         debug_note.pack(pady=(0, 5))
-=======
-        debug_note.pack(pady=(5, 0))
->>>>>>> 151360ba0568bc35fcdda088e32170c8859c7c89
 
     def create_migration_tab(self, parent_frame):
         """Create the migration tab with stable folder path and migration buttons."""
@@ -1058,10 +1042,6 @@ class OptionsWindow(Toplevel):
         # This would require storing references to the buttons, but for simplicity
         # we'll just update the status. In a full implementation, we'd store button refs.
         pass
-<<<<<<< HEAD
->>>>>>> Stashed changes
-=======
->>>>>>> 151360ba0568bc35fcdda088e32170c8859c7c89
 
     def create_station_settings_tab(self, parent_frame, station_id):
         """Create a settings tab for a specific station."""

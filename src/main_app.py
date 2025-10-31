@@ -219,15 +219,7 @@ class MainApp(tk.Tk):
 
     def show_about(self):
         """Show the about dialog with version information."""
-<<<<<<< HEAD
-<<<<<<< Updated upstream
-        about_message = """radioToolsAutomation v2.1
-=======
         about_message = """radioToolsAutomation v2.2.2
->>>>>>> Stashed changes
-=======
-        about_message = """radioToolsAutomation v2.2
->>>>>>> 151360ba0568bc35fcdda088e32170c8859c7c89
 
 Dual Station RDS and Intro Automation System
 

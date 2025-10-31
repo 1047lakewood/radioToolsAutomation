@@ -29,58 +29,67 @@
     },
     "2025-10-15": {
       "Bubby and Zaidy": 23
-<<<<<<< HEAD
-<<<<<<< Updated upstream
-    }
-  },
-  "ad_totals": {
-    "Bubby and Zaidy": 226
-=======
+    },
+    "2025-10-16": {
+      "Ace Restoration": 1,
+      "Judaica Plaza": 1
+    },
+    "2025-10-17": {
+      "Ace Restoration": 24,
+      "Judaica Plaza": 24
     },
     "2025-10-18": {
+      "Ace Restoration": 22,
+      "Judaica Plaza": 22,
       "516 Aveidah": 1
-    },
-    "2025-10-19": {
-      "Ace Restoration": 6,
-      "Judaica Plaza": 2,
-      "516 Aveidah": 2
-    },
-    "2025-10-20": {
-      "Ace Restoration": 6,
-      "Judaica Plaza": 2,
-      "516 Aveidah": 2
-    },
-    "2025-10-21": {
-      "Ace Restoration": 6,
-      "Judaica Plaza": 2,
-      "516 Aveidah": 2
-    },
-    "2025-10-22": {
-      "Ace Restoration": 6,
-      "Judaica Plaza": 2,
-      "516 Aveidah": 2
     },
     "2025-10-23": {
-      "516 Aveidah": 3,
-      "Ace Restoration": 4,
-      "Judaica Plaza": 2
-    }
-  },
-  "ad_totals": {
-    "Bubby and Zaidy": 226,
-    "516 Aveidah": 12,
-    "Ace Restoration": 28,
-    "Judaica Plaza": 10
->>>>>>> Stashed changes
-=======
+      "Ace Restoration": 2
     },
-    "2025-10-18": {
-      "516 Aveidah": 1
+    "2025-10-24": {
+      "Ace Restoration": 6,
+      "Judaica Plaza": 2,
+      "516 Aveidah": 2
+    },
+    "2025-10-25": {
+      "Ace Restoration": 6,
+      "Judaica Plaza": 2,
+      "516 Aveidah": 2
+    },
+    "2025-10-26": {
+      "Ace Restoration": 6,
+      "Judaica Plaza": 2,
+      "516 Aveidah": 2
+    },
+    "2025-10-27": {
+      "Ace Restoration": 6,
+      "Judaica Plaza": 2,
+      "516 Aveidah": 2
+    },
+    "2025-10-28": {
+      "Ace Restoration": 6,
+      "Judaica Plaza": 2,
+      "516 Aveidah": 2
+    },
+    "2025-10-29": {
+      "Ace Restoration": 6,
+      "Judaica Plaza": 2,
+      "516 Aveidah": 2
+    },
+    "2025-10-30": {
+      "Ace Restoration": 6,
+      "Judaica Plaza": 2,
+      "516 Aveidah": 2
+    },
+    "2025-10-31": {
+      "Ace Restoration": 3,
+      "Judaica Plaza": 1
     }
   },
   "ad_totals": {
     "Bubby and Zaidy": 226,
-    "516 Aveidah": 1
->>>>>>> 151360ba0568bc35fcdda088e32170c8859c7c89
+    "Ace Restoration": 94,
+    "Judaica Plaza": 62,
+    "516 Aveidah": 15
   }
 }

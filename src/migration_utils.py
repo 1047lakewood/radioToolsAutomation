@@ -129,7 +129,6 @@ class MigrationUtils:
             # Remove existing stable if it exists
             if stable_path.exists():
                 logging.info(f"Removing existing stable folder: {stable_path}")
-<<<<<<< HEAD
                 # First try to remove .git directory specifically to avoid permission issues
                 git_path = stable_path / '.git'
                 if git_path.exists():
@@ -149,13 +148,6 @@ class MigrationUtils:
             # Create fresh stable directory (this will work even if some files remain)
             stable_path.mkdir(parents=True, exist_ok=True)
             logging.info(f"Created/ensured stable folder exists: {stable_path}")
-=======
-                shutil.rmtree(stable_path)
-
-            # Create fresh stable directory
-            stable_path.mkdir(parents=True, exist_ok=True)
-            logging.info(f"Created stable folder: {stable_path}")
->>>>>>> 151360ba0568bc35fcdda088e32170c8859c7c89
 
             # Copy all files/folders from active to stable, excluding specified items
             total_items = sum(1 for _ in active_path.rglob('*') if _.is_file() or _.is_dir())
@@ -165,13 +157,10 @@ class MigrationUtils:
                 if MigrationUtils._should_exclude(str(item), MigrationUtils.DEPLOY_EXCLUDES):
                     continue
 
-<<<<<<< HEAD
                 # Skip .git directory entirely - don't try to copy it
                 if '.git' in str(item):
                     continue
 
-=======
->>>>>>> 151360ba0568bc35fcdda088e32170c8859c7c89
                 # Calculate relative path
                 rel_path = item.relative_to(active_path)
                 dest_path = stable_path / rel_path

@@ -96,7 +96,7 @@
                 },
                 {
                     "Text": "ACE RESTORATION 732.364.9123",
-                    "Enabled": true,
+                    "Enabled": false,
                     "Message Time": 20,
                     "Scheduled": {
                         "Enabled": false,
@@ -116,31 +116,12 @@
                 },
                 {
                     "Text": "JUDAICA PLAZA ",
-                    "Enabled": true,
+                    "Enabled": false,
                     "Message Time": 15,
                     "Scheduled": {
                         "Enabled": false,
                         "Days": [],
                         "Times": []
-                    }
-                },
-                {
-                    "Text": "Atzeres Machaa Live from Manhattan",
-                    "Enabled": true,
-                    "Message Time": 10,
-                    "Scheduled": {
-                        "Enabled": true,
-                        "Days": [
-                            "Sunday"
-                        ],
-                        "Times": [
-                            {
-                                "hour": 16
-                            },
-                            {
-                                "hour": 17
-                            }
-                        ]
                     }
                 }
             ],
@@ -177,8 +158,8 @@
                         19,
                         21
                     ],
-                    "PlayCount": 121,
-                    "LastPlayed": "2025-10-31T11:31:05.688525"
+                    "PlayCount": 46,
+                    "LastPlayed": "2025-10-18T21:00:53.797918"
                 },
                 {
                     "Name": "Judaica Plaza",
@@ -198,8 +179,8 @@
                         13,
                         15
                     ],
-                    "PlayCount": 71,
-                    "LastPlayed": "2025-10-31T13:16:00.947758"
+                    "PlayCount": 46,
+                    "LastPlayed": "2025-10-18T21:00:53.850646"
                 },
                 {
                     "Name": "516 Aveidah",
@@ -217,10 +198,11 @@
                     ],
                     "Hours": [
                         14,
-                        16
+                        16,
+                        22
                     ],
-                    "PlayCount": 27,
-                    "LastPlayed": "2025-10-30T16:15:40.611008"
+                    "PlayCount": 2,
+                    "LastPlayed": "2025-10-18T22:09:50.596784"
                 }
             ],
             "settings": {
@@ -258,7 +240,7 @@
             "name": "88.7 FM",
             "Messages": [
                 {
-                    "Text": "{artist} ",
+                    "Text": "{artist}",
                     "Enabled": true,
                     "Message Time": 10,
                     "Scheduled": {
@@ -319,8 +301,7 @@
             "will_cont-kosher-cell": "G:\\Misc\\Sponsorships\\will_cont-kosher-cell.m3u8",
             "a": "G:\\Misc\\Sponsorships\\Playlists\\stID-shuk-ace-sirota.m3u8",
             "b": "G:\\Misc\\Sponsorships\\Playlists\\stID-shuk-koCell-sirota.m3u8",
-            "d": "G:\\Misc\\Sponsorships\\Playlists\\stID-jp.m3u8",
-            "STID-AD_ROLL_1047": "G:\\Misc\\Sponsorships\\Playlists\\stID-AD_ROLL_1047.m3u8"
+            "d": "G:\\Misc\\Sponsorships\\Playlists\\stID-jp.m3u8"
         },
         "debug": {
             "enable_debug_logs": false
@@ -330,9 +311,6 @@
                 "intro_db": -1.0245614035087698,
                 "overlay_db": -1.1157894736842096
             }
-        },
-        "migration": {
-            "stable_path": "G:\\Misc\\Dev\\radioToolsAutomation - stable"
         }
     }
 }
