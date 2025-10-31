@@ -24,39 +24,6 @@ except ImportError:
     # Use the named logger
     # Logger will be available in instances
 
-def _configure_pydub_for_windows():
-    """Configure pydub to hide subprocess windows on Windows."""
-    if platform.system() == "Windows" and PYDUB_AVAILABLE:
-        try:
-            # Patch subprocess.Popen to hide windows for all subprocess calls
-            import subprocess
-            original_popen = subprocess.Popen
-            
-            class HiddenPopen(original_popen):
-                def __init__(self, *args, **kwargs):
-                    # Add Windows-specific flags to hide the window
-                    if 'startupinfo' not in kwargs:
-                        startupinfo = subprocess.STARTUPINFO()
-                        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-                        startupinfo.wShowWindow = subprocess.SW_HIDE
-                        kwargs['startupinfo'] = startupinfo
-                    
-                    if 'creationflags' not in kwargs:
-                        kwargs['creationflags'] = subprocess.CREATE_NO_WINDOW
-                    
-                    super().__init__(*args, **kwargs)
-            
-            # Replace subprocess.Popen with our hidden version
-            subprocess.Popen = HiddenPopen
-            
-            # Logger not available at module level
-            # logging.debug("Configured subprocess to hide CMD windows on Windows")
-            
-        except Exception as e:
-            # Logger not available at module level
-            # logging.warning(f"Failed to configure subprocess window hiding: {e}")
-            pass
-
 try:
     import setproctitle
     SETPROCTITLE_AVAILABLE = True
@@ -135,15 +102,16 @@ class IntroLoaderHandler:
         self.blank_mp3_file = os.path.join(self.mp3_directory, self.blank_mp3_filename)
         self.silent_mp3_file = os.path.join(self.mp3_directory, self.silent_mp3_filename)
 
+        # Read shared volume settings
+        self.intro_volume_db = self.config_manager.get_shared_setting("intro_loader.volume.intro_db", 0.0)
+        self.overlay_volume_db = self.config_manager.get_shared_setting("intro_loader.volume.overlay_db", 0.0)
+
         # Log the actual filenames being used
         self.logger.info(f"Intro loader {self.station_id} using filenames:")
         self.logger.info(f"  current_artist_file: {self.current_artist_file}")
         self.logger.info(f"  actual_current_artist_file: {self.actual_current_artist_file}")
         self.logger.info(f"  blank_mp3_file: {self.blank_mp3_file}")
         self.logger.info(f"  silent_mp3_file: {self.silent_mp3_file}")
-
-        # Configure pydub to hide subprocess windows on Windows
-        _configure_pydub_for_windows()
 
         # Keep setproctitle commented out/removed
         # if SETPROCTITLE_AVAILABLE:
@@ -266,6 +234,11 @@ class IntroLoaderHandler:
                     self.logger.error(f"Error loading MP3 for concatenation ({os.path.basename(file_path)}): {e_load}")
                     return False
 
+            # Apply intro volume gain if configured
+            if self.intro_volume_db != 0.0:
+                self.logger.debug(f"Applying intro volume gain: {self.intro_volume_db} dB")
+                combined = combined.apply_gain(self.intro_volume_db)
+
             self.logger.debug(f"Exporting combined MP3 to: {output_path}")
             combined.export(output_path, format="mp3")
             self.logger.debug(f"Successfully concatenated files to {os.path.basename(output_path)}")
@@ -299,10 +272,20 @@ class IntroLoaderHandler:
                 current_artist_file_path = os.path.join(self.mp3_directory, chosen_file)
                 self.logger.info(f"{context}: Found current artist intro: {chosen_file}")
                 try:
-                    self.logger.debug(f"Copying '{current_artist_file_path}' to '{self.actual_current_artist_file}'")
-                    shutil.copy2(current_artist_file_path, self.actual_current_artist_file)
+                    self.logger.debug(f"Processing '{current_artist_file_path}' to '{self.actual_current_artist_file}'")
+                    if PYDUB_AVAILABLE and self.overlay_volume_db != 0.0:
+                        # Apply overlay volume gain
+                        self.logger.debug(f"Applying overlay volume gain: {self.overlay_volume_db} dB")
+                        sound = AudioSegment.from_mp3(current_artist_file_path)
+                        sound = sound.apply_gain(self.overlay_volume_db)
+                        sound.export(self.actual_current_artist_file, format="mp3")
+                    else:
+                        # Fallback to direct copy if pydub not available or no gain needed
+                        if not PYDUB_AVAILABLE and self.overlay_volume_db != 0.0:
+                            self.logger.warning("pydub not available, cannot apply overlay volume gain - using direct copy")
+                        shutil.copy2(current_artist_file_path, self.actual_current_artist_file)
                     actual_filename = os.path.basename(self.actual_current_artist_file)
-                    self.logger.info(f"{context}: Copied {chosen_file} to {actual_filename}")
+                    self.logger.info(f"{context}: Processed {chosen_file} to {actual_filename}")
                     actual_success = True
                 except Exception as e:
                     actual_filename = os.path.basename(self.actual_current_artist_file)
@@ -354,11 +337,21 @@ class IntroLoaderHandler:
                         # Pass no_next_artist=False (default)
                         next_success = self._copy_blank_to_target(self.current_artist_file, context, f"{current_filename} (concat fallback)")
                 else:
-                    self.logger.warning(f"{context}: Silent MP3 missing ({self.silent_mp3_file}), copying next artist directly.")
+                    self.logger.warning(f"{context}: Silent MP3 missing ({self.silent_mp3_file}), processing next artist directly.")
                     try:
-                        self.logger.debug(f"Copying '{next_artist_file_path}' directly to '{self.current_artist_file}'")
-                        shutil.copy2(next_artist_file_path, self.current_artist_file)
-                        self.logger.info(f"{context}: Copied {chosen_file} directly to {current_filename}")
+                        self.logger.debug(f"Processing '{next_artist_file_path}' directly to '{self.current_artist_file}'")
+                        if PYDUB_AVAILABLE and self.intro_volume_db != 0.0:
+                            # Apply intro volume gain
+                            self.logger.debug(f"Applying intro volume gain: {self.intro_volume_db} dB")
+                            sound = AudioSegment.from_mp3(next_artist_file_path)
+                            sound = sound.apply_gain(self.intro_volume_db)
+                            sound.export(self.current_artist_file, format="mp3")
+                        else:
+                            # Fallback to direct copy if pydub not available or no gain needed
+                            if not PYDUB_AVAILABLE and self.intro_volume_db != 0.0:
+                                self.logger.warning("pydub not available, cannot apply intro volume gain - using direct copy")
+                            shutil.copy2(next_artist_file_path, self.current_artist_file)
+                        self.logger.info(f"{context}: Processed {chosen_file} directly to {current_filename}")
                         next_success = True
                     except Exception as e:
                         self.logger.error(f"Error copying next artist file directly: {e}")

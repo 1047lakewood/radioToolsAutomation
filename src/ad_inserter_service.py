@@ -69,14 +69,20 @@ class AdInserterService:
         valid_files = []
         now = datetime.now()
         for ad in ads:
+            ad_name = ad.get("Name", "Unknown")
+            
             if not ad.get("Enabled", True):
+                self.logger.debug(f"Ad '{ad_name}' excluded: not enabled")
                 continue
             if not self._is_scheduled(ad, now):
+                self.logger.debug(f"Ad '{ad_name}' excluded: not scheduled for current time")
                 continue
             mp3 = ad.get("MP3File")
             if not mp3 or not os.path.exists(mp3):
-                self.logger.warning(f"Ad MP3 not found: {mp3}")
+                self.logger.warning(f"Ad '{ad_name}' excluded: MP3 not found: {mp3}")
                 continue
+            
+            self.logger.info(f"Ad '{ad_name}' included in roll")
             valid_files.append(mp3)
 
         if not valid_files:
@@ -92,12 +98,33 @@ class AdInserterService:
         return self._concatenate_mp3_files(valid_files, self.output_mp3)
 
     def _is_scheduled(self, ad, now):
+        ad_name = ad.get("Name", "Unknown")
+        
+        # If not scheduled, always play (when enabled)
         if not ad.get("Scheduled", False):
+            self.logger.debug(f"Ad '{ad_name}': unscheduled, allowing at any time")
             return True
+        
+        # Check day schedule
         day_name = now.strftime("%A")
         days = ad.get("Days", [])
         if days and day_name not in days:
+            self.logger.debug(f"Ad '{ad_name}': scheduled but not for {day_name} (only {days})")
             return False
+        
+        # Check hour schedule - prioritize Hours (list of ints) over legacy Times (list of dicts)
+        hours = ad.get("Hours", [])
+        
+        if hours:
+            # New format: Hours is a list of integers [0, 1, 2, ..., 23]
+            if now.hour in hours:
+                self.logger.debug(f"Ad '{ad_name}': scheduled and current hour {now.hour} is in Hours list")
+                return True
+            else:
+                self.logger.debug(f"Ad '{ad_name}': scheduled but hour {now.hour} not in Hours list {hours}")
+                return False
+        
+        # Fallback to legacy Times format for backward compatibility
         times = ad.get("Times", [])
         if times:
             hour_match = False
@@ -109,8 +136,15 @@ class AdInserterService:
                             break
                     except (ValueError, TypeError):
                         continue
-            if not hour_match:
+            if hour_match:
+                self.logger.debug(f"Ad '{ad_name}': scheduled and current hour {now.hour} matches Times (legacy)")
+                return True
+            else:
+                self.logger.debug(f"Ad '{ad_name}': scheduled but hour {now.hour} not in Times list")
                 return False
+        
+        # If scheduled but no hours/times specified, allow at any time
+        self.logger.debug(f"Ad '{ad_name}': scheduled with no specific hours, allowing")
         return True
 
     def _concatenate_mp3_files(self, files, output_path):

@@ -289,7 +289,6 @@ class AdStatisticsWindow:
 
         if messagebox.askyesno("Confirm Reset", "Are you sure you want to reset all play counts? This cannot be undone.", parent=self.window):
             if ad_logger.reset_all_play_counts():
-                messagebox.showinfo("Success", "All play counts have been reset.", parent=self.window)
                 self.refresh_stats(station_id)
             else:
                 messagebox.showerror("Error", "Failed to reset play counts.", parent=self.window)
@@ -313,7 +312,6 @@ class AdStatisticsWindow:
                 stats = ad_logger.get_ad_statistics()
                 with open(filename, 'w') as f:
                     json.dump(stats, f, indent=2)
-                messagebox.showinfo("Success", f"Statistics exported to {filename}", parent=self.window)
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to export statistics: {e}", parent=self.window)
 
@@ -340,11 +338,6 @@ class AdStatisticsWindow:
 
         try:
             csv_path, pdf_path = report_generator.generate_report(start_date, end_date)
-            messagebox.showinfo(
-                "Success",
-                f"Report generated:\nCSV: {csv_path}\nPDF: {pdf_path}",
-                parent=self.window
-            )
         except Exception as e:
             logging.error(f"Error generating report for {station_id}: {e}")
             messagebox.showerror("Error", f"Failed to generate report: {e}", parent=self.window)

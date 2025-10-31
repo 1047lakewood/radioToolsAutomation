@@ -46,6 +46,9 @@ class ConfigWindow(Toplevel):
         self.station_duration_vars = {}
         self.station_use_schedule_vars = {}
         self.station_days_vars = {}
+        self.station_hour_vars = {}
+        self.station_days_btn_frames = {}
+        self.station_hours_btn_frames = {}
         self.station_char_count_vars = {}
         self.station_time_entries = {}
         self.station_schedule_containers = {}
@@ -58,6 +61,89 @@ class ConfigWindow(Toplevel):
 
         # Handle closing the window
         self.protocol("WM_DELETE_WINDOW", self.on_close)
+
+    def format_hour_ampm(self, hour):
+        """Convert hour (0-23) to AM/PM format for display."""
+        if hour == 0:
+            return "12 AM"
+        elif hour == 12:
+            return "12 PM"
+        elif hour < 12:
+            return f"{hour} AM"
+        else:
+            return f"{hour - 12} PM"
+
+    def toggle_all_days(self, station_id):
+        """Toggle all day checkboxes for a station."""
+        if station_id not in self.station_days_vars:
+            return
+
+        day_vars = self.station_days_vars[station_id]
+        # Check if all days are currently selected
+        all_selected = all(var.get() for var in day_vars.values())
+
+        # Toggle all days (if all selected, deselect all; otherwise select all)
+        new_state = not all_selected
+        for day_var in day_vars.values():
+            day_var.set(new_state)
+
+        # Update button text
+        days_button_frame = self.station_days_btn_frames[station_id]
+        select_days_btn = days_button_frame.winfo_children()[0]
+        if new_state:
+            select_days_btn.config(text="Clear All Days")
+        else:
+            select_days_btn.config(text="Select All Days")
+
+        self.mark_station_changes(station_id)
+
+    def toggle_all_hours(self, station_id):
+        """Toggle all hour checkboxes for a station."""
+        if station_id not in self.station_hour_vars:
+            return
+
+        hour_vars = self.station_hour_vars[station_id]
+        # Check if all hours are currently selected
+        all_selected = all(var.get() for var in hour_vars.values())
+
+        # Toggle all hours (if all selected, deselect all; otherwise select all)
+        new_state = not all_selected
+        for hour_var in hour_vars.values():
+            hour_var.set(new_state)
+
+        # Update button text
+        hours_button_frame = self.station_hours_btn_frames[station_id]
+        select_hours_btn = hours_button_frame.winfo_children()[0]
+        if new_state:
+            select_hours_btn.config(text="Clear All Hours")
+        else:
+            select_hours_btn.config(text="Select All Hours")
+
+        self.mark_station_changes(station_id)
+
+    def update_toggle_button_texts(self, station_id):
+        """Update the toggle button texts based on current selections."""
+        # Update days button
+        if station_id in self.station_days_btn_frames:
+            days_button_frame = self.station_days_btn_frames[station_id]
+            select_days_btn = days_button_frame.winfo_children()[0]
+            day_vars = self.station_days_vars[station_id]
+            all_days_selected = all(var.get() for var in day_vars.values())
+            if all_days_selected:
+                select_days_btn.config(text="Clear All Days")
+            else:
+                select_days_btn.config(text="Select All Days")
+
+        # Update hours button
+        if station_id in self.station_hours_btn_frames:
+            hours_button_frame = self.station_hours_btn_frames[station_id]
+            select_hours_btn = hours_button_frame.winfo_children()[0]
+            hour_vars = self.station_hour_vars[station_id]
+            all_hours_selected = all(var.get() for var in hour_vars.values())
+            if all_hours_selected:
+                select_hours_btn.config(text="Clear All Hours")
+            else:
+                select_hours_btn.config(text="Select All Hours")
 
     def create_widgets(self):
         # Main container with padding
@@ -224,16 +310,42 @@ class ConfigWindow(Toplevel):
             row, col = divmod(i, 4)
             check.grid(row=row, column=col, sticky=tk.W, padx=5, pady=2)
 
-        times_frame = ttk.Frame(schedule_container)
-        times_frame.pack(fill=tk.X, pady=5)
-        times_label = ttk.Label(times_frame, text="Schedule Hours (24h format, comma-separated):")
-        times_label.pack(anchor=tk.W)
-        example_label = ttk.Label(times_frame, text="Examples: '9, 14, 23' (specific hours) or '13-16' (range)", font=("Segoe UI", 9), foreground="#666666")
-        example_label.pack(anchor=tk.W, pady=(0, 5))
-        time_entry = ttk.Entry(times_frame, font=("Segoe UI", 10))
-        self.station_time_entries[station_id] = time_entry
-        time_entry.pack(fill=tk.X, pady=2)
-        time_entry.bind("<KeyRelease>", lambda e, sid=station_id: self.mark_station_changes(sid))
+        # Select All Days button
+        days_button_frame = ttk.Frame(days_frame)
+        days_button_frame.grid(row=2, column=0, sticky=tk.W, pady=(5, 0))
+        self.station_days_btn_frames[station_id] = days_button_frame
+        select_days_btn = ttk.Button(days_button_frame, text="Select All Days",
+                                    command=lambda sid=station_id: self.toggle_all_days(sid))
+        select_days_btn.pack(side=tk.LEFT)
+
+        # Hours of the day checkboxes
+        hours_frame = ttk.Frame(schedule_container)
+        hours_frame.pack(fill=tk.X, pady=5)
+        ttk.Label(hours_frame, text="Schedule Hours:").grid(row=0, column=0, sticky=tk.W)
+
+        hours_checks_frame = ttk.Frame(hours_frame)
+        hours_checks_frame.grid(row=1, column=0, sticky=tk.W)
+
+        hour_vars = {}
+        self.station_hour_vars[station_id] = hour_vars
+
+        # Create 4 rows of 6 hours each (24 hours total)
+        for h in range(24):
+            var = tk.BooleanVar()
+            hour_vars[h] = var
+            hour_label = self.format_hour_ampm(h)
+            check = ttk.Checkbutton(hours_checks_frame, text=hour_label, variable=var,
+                                  command=lambda sid=station_id: self.mark_station_changes(sid))
+            row, col = divmod(h, 6)
+            check.grid(row=row, column=col, sticky=tk.W, padx=2, pady=1)
+
+        # Select All Hours button
+        hours_button_frame = ttk.Frame(hours_frame)
+        hours_button_frame.grid(row=2, column=0, sticky=tk.W, pady=(5, 0))
+        self.station_hours_btn_frames[station_id] = hours_button_frame
+        select_hours_btn = ttk.Button(hours_button_frame, text="Select All Hours",
+                                     command=lambda sid=station_id: self.toggle_all_hours(sid))
+        select_hours_btn.pack(side=tk.LEFT)
 
         button_frame = ttk.Frame(parent_frame)
         button_frame.pack(fill=tk.X, pady=(10, 0))
@@ -297,7 +409,7 @@ class ConfigWindow(Toplevel):
                 current_msg["Message Time"] = duration if 1 <= duration <= 60 else 10
             except ValueError: current_msg["Message Time"] = 10
             use_schedule = self.station_use_schedule_vars[station_id].get()
-            current_msg["Scheduled"] = {"Enabled": use_schedule, "Days": [day for day, var in self.station_days_vars[station_id].items() if var.get()] if use_schedule else [], "Times": self.parse_station_times(station_id) if use_schedule else []}
+            current_msg["Scheduled"] = {"Enabled": use_schedule, "Days": [day for day, var in self.station_days_vars[station_id].items() if var.get()] if use_schedule else [], "Times": self.get_station_times(station_id) if use_schedule else []}
             self.update_treeview_item(selected_index)
         except IndexError:
              logging.error(f"Selected index {selected_index} out of bounds.")
@@ -344,8 +456,10 @@ class ConfigWindow(Toplevel):
             time_list = msg.get("Scheduled", {}).get("Times", [])
             formatted_times = []
             for time_item in time_list:
-                if isinstance(time_item, dict) and "hour" in time_item: formatted_times.append(f"{time_item['hour']}")
-                elif isinstance(time_item, (int, float)): formatted_times.append(f"{int(time_item)}")
+                if isinstance(time_item, dict) and "hour" in time_item:
+                    formatted_times.append(self.format_hour_ampm(time_item['hour']))
+                elif isinstance(time_item, (int, float)):
+                    formatted_times.append(self.format_hour_ampm(int(time_item)))
             times = ", ".join(formatted_times)
             enabled = "Yes" if msg.get("Enabled", False) else "No"
             scheduled = "Yes" if msg.get("Scheduled", {}).get("Enabled", False) else "No"
@@ -374,7 +488,7 @@ class ConfigWindow(Toplevel):
             msg = current_messages[index]
             days = ", ".join(msg.get("Scheduled", {}).get("Days", []))
             time_list = msg.get("Scheduled", {}).get("Times", [])
-            formatted_times = [f"{t['hour']}" for t in time_list if isinstance(t, dict) and 'hour' in t]
+            formatted_times = [self.format_hour_ampm(t['hour']) for t in time_list if isinstance(t, dict) and 'hour' in t]
             times = ", ".join(formatted_times)
             enabled = "Yes" if msg.get("Enabled", False) else "No"
             scheduled = "Yes" if msg.get("Scheduled", {}).get("Enabled", False) else "No"
@@ -384,8 +498,17 @@ class ConfigWindow(Toplevel):
         except IndexError: logging.warning(f"Update treeview invalid index {index}")
         except Exception as e: logging.exception(f"Error updating treeview item {index}: {e}")
 
+    def get_station_times(self, station_id):
+        """Get the hours from the station-specific hour checkboxes."""
+        if station_id not in self.station_hour_vars:
+            return []
+        hour_vars = self.station_hour_vars[station_id]
+        return [{"hour": h} for h, var in hour_vars.items() if var.get()]
+
     def parse_station_times(self, station_id):
-        """Parse the hours from the station-specific time entry widget."""
+        """Parse the hours from the station-specific time entry widget (legacy support)."""
+        if station_id not in self.station_time_entries:
+            return []
         time_str = self.station_time_entries[station_id].get().strip()
         return utils.parse_time_string(time_str)
 
@@ -434,18 +557,21 @@ class ConfigWindow(Toplevel):
         scheduled_days = message.get("Scheduled", {}).get("Days", [])
         logging.info(f"Scheduled Days Before Loading: {scheduled_days}")
         for day, var in self.station_days_vars[station_id].items(): var.set(day in scheduled_days)
+
         time_list = message.get("Scheduled", {}).get("Times", [])
         logging.info(f"Scheduled Times Before Loading: {time_list}")
-        formatted_times = []
-        if isinstance(time_list, list):
-            formatted_times = [str(t['hour']) for t in time_list if isinstance(t, dict) and 'hour' in t]
-        self.station_time_entries[station_id].delete(0, tk.END)
-        self.station_time_entries[station_id].insert(0, ", ".join(formatted_times))
+        # Set hour checkboxes
+        if station_id in self.station_hour_vars:
+            for h, var in self.station_hour_vars[station_id].items():
+                var.set(any(t.get('hour') == h for t in time_list if isinstance(t, dict) and 'hour' in t))
+
+        # Update button texts based on current selections
+        self.update_toggle_button_texts(station_id)
         # Keep is_loading_selection = True while toggle_schedule_controls() runs to prevent unintended mark_changes()
         self.toggle_station_schedule_controls(station_id)
         logging.info(f"Days After Loading: {[day for day, var in self.station_days_vars[station_id].items() if var.get()]}")
-        logging.info(f"Times After Loading: {formatted_times}")
-        logging.info(f"Time Entry Field Content: '{self.station_time_entries[station_id].get()}'")
+        selected_hours = [h for h, var in self.station_hour_vars[station_id].items() if var.get()]
+        logging.info(f"Hours After Loading: {selected_hours}")
         self.is_loading_selection = False
 
     def add_message(self):
