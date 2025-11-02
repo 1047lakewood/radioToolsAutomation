@@ -238,6 +238,7 @@ class AdSchedulerHandler:
         PRIORITY: Ads scheduled for this hour MUST play this hour.
         
         Logic:
+        0. Check if playlist has ended: If NO next track → Skip ad insertion
         1. Check safety margin: If < 3 min left in hour → Play instantly NOW
         2. Check if current track ends in THIS hour:
            - If NO (ends next hour) → Play instantly
@@ -258,6 +259,23 @@ class AdSchedulerHandler:
 
             if not self.ad_service:
                 self.logger.warning("Ad service not available - skipping lecture check.")
+                return
+
+            # CHECK 0: Is there a next track? (If playlist ended, don't insert ads)
+            try:
+                has_next = self.lecture_detector.has_next_track()
+                if not has_next:
+                    self.logger.info("Playlist has ended (no next track) - skipping ad insertion.")
+                    self.waiting_for_track_boundary = False
+                    self.pending_lecture_check = False
+                    return
+                self.logger.debug("Next track exists - playlist continues.")
+            except Exception as e:
+                self.logger.error(f"Error checking for next track: {e}")
+                # If we can't determine, err on the side of caution and skip ads
+                self.logger.warning("Cannot determine if playlist has ended - skipping ad insertion to be safe.")
+                self.waiting_for_track_boundary = False
+                self.pending_lecture_check = False
                 return
 
             # SAFETY CHECK: Do we have at least 3 minutes left in this hour?

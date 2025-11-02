@@ -15,6 +15,7 @@ class LectureDetector:
         - get_current_track_info(): Get artist and title of current track
         - get_current_track_duration(): Get duration of current track
         - get_next_track_duration(): Get duration of next track
+        - has_next_track(): Check if there is a next track (False when playlist ends)
     """
 
     def __init__(self, xml_path, config_manager=None, station_id=None, blacklist=None, whitelist=None):
@@ -198,6 +199,40 @@ class LectureDetector:
             str: The duration as a string (e.g., '3:45') or empty string if not found
         """
         return self._get_track_duration(['NEXTTRACK', 'TRACK'])
+
+    def has_next_track(self):
+        """Check if there is a next track in the playlist.
+        
+        When the playlist ends, the NEXTTRACK element is missing from the XML file.
+        This method detects that condition.
+        
+        Returns:
+            bool: True if there is a next track, False if playlist has ended
+        """
+        try:
+            if not os.path.exists(self.xml_path):
+                logging.warning(f"XML file not found: {self.xml_path}")
+                return False
+
+            tree = ET.parse(self.xml_path)
+            root = tree.getroot()
+            
+            # Check if NEXTTRACK element exists
+            next_track_element = root.find('NEXTTRACK')
+            
+            if next_track_element is None:
+                logging.debug("NEXTTRACK element not found - playlist has ended")
+                return False
+            
+            logging.debug("NEXTTRACK element found - playlist continues")
+            return True
+
+        except ET.ParseError as e:
+            logging.error(f"Error parsing XML file ({self.xml_path}): {e}")
+            return False
+        except Exception as e:
+            logging.exception(f"Error checking for next track: {e}")
+            return False
 
     def _get_track_duration(self, xml_path):
         """Internal method to extract duration from a track at the given XML path.

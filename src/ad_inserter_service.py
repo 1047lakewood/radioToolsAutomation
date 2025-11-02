@@ -52,6 +52,23 @@ class AdInserterService:
             self.logger.error("AdPlayLogger not available - ad play tracking disabled")
             self.ad_logger = None
 
+        # Initialize lecture detector for playlist-end detection
+        try:
+            from lecture_detector import LectureDetector
+            xml_path = self.config_manager.get_station_setting(
+                station_id, 
+                "settings.intro_loader.now_playing_xml", 
+                r"G:\To_RDS\nowplaying.xml"
+            )
+            self.lecture_detector = LectureDetector(xml_path, config_manager, station_id)
+            self.logger.debug("LectureDetector initialized for playlist-end detection")
+        except ImportError:
+            self.logger.warning("LectureDetector not available - playlist-end detection disabled")
+            self.lecture_detector = None
+        except Exception as e:
+            self.logger.error(f"Error initializing LectureDetector: {e}")
+            self.lecture_detector = None
+
     def run(self):
         """Combine ads and call the scheduled insertion URL."""
         if self._combine_ads():
@@ -65,6 +82,19 @@ class AdInserterService:
         return False
 
     def _combine_ads(self):
+        # Safety check: Don't insert ads if playlist has ended
+        if self.lecture_detector:
+            try:
+                has_next = self.lecture_detector.has_next_track()
+                if not has_next:
+                    self.logger.warning("Playlist has ended (no next track) - skipping ad insertion (safety check).")
+                    return False
+                self.logger.debug("Playlist continues - proceeding with ad insertion.")
+            except Exception as e:
+                self.logger.error(f"Error checking for next track in safety check: {e}")
+                # If we can't determine, proceed cautiously but log the issue
+                self.logger.warning("Unable to verify playlist status - proceeding with ad insertion.")
+        
         ads = self.config_manager.get_station_ads(self.station_id) or []
         valid_files = []
         now = datetime.now()
