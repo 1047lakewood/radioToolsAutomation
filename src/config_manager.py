@@ -32,6 +32,18 @@ class ConfigManager:
             except json.JSONDecodeError as e:
                 logging.error(f"Error decoding JSON from {self.config_file}: {e}")
                 return self._default_config()
+
+        # Try config.json in parent directory
+        parent_config_file = os.path.join('..', self.config_file)
+        if os.path.exists(parent_config_file):
+            try:
+                with open(parent_config_file, 'r', encoding='utf-8') as f:
+                    config = json.load(f)
+                logging.info(f"Configuration loaded from {parent_config_file}.")
+                return config
+            except json.JSONDecodeError as e:
+                logging.error(f"Error decoding JSON from {parent_config_file}: {e}")
+                return self._default_config()
         
         # Try legacy messages.json for backward compatibility
         legacy_file = 'messages.json'
