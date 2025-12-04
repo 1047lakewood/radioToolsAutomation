@@ -157,13 +157,13 @@ class AdInserterWindow(tk.Toplevel):
         # Days
         days_label = ttk.Label(right_frame, text="Days:", font=("Segoe UI", 10, "bold"))
         days_label.grid(row=4, column=0, sticky=tk.W, pady=5)
-        days_frame = ttk.Frame(right_frame)
-        days_frame.grid(row=4, column=1, columnspan=2, sticky=tk.W, pady=5)
+        widgets['days_frame'] = ttk.Frame(right_frame)
+        widgets['days_frame'].grid(row=4, column=1, columnspan=2, sticky=tk.W, pady=5)
         widgets['day_vars'] = {}
         days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
         for i, day in enumerate(days):
             widgets['day_vars'][day] = tk.BooleanVar()
-            ttk.Checkbutton(days_frame, text=day[:3], variable=widgets['day_vars'][day]).pack(side=tk.LEFT, padx=2)
+            ttk.Checkbutton(widgets['days_frame'], text=day[:3], variable=widgets['day_vars'][day]).pack(side=tk.LEFT, padx=2)
 
         # Select All Days button
         days_button_frame = ttk.Frame(right_frame)
@@ -175,13 +175,13 @@ class AdInserterWindow(tk.Toplevel):
         # Hours
         hours_label = ttk.Label(right_frame, text="Hours:", font=("Segoe UI", 10, "bold"))
         hours_label.grid(row=6, column=0, sticky=tk.NW, pady=5)
-        hours_frame = ttk.Frame(right_frame)
-        hours_frame.grid(row=6, column=1, columnspan=2, sticky=tk.W, pady=5)
+        widgets['hours_frame'] = ttk.Frame(right_frame)
+        widgets['hours_frame'].grid(row=6, column=1, columnspan=2, sticky=tk.W, pady=5)
         widgets['hour_vars'] = {}
         for h in range(24):
             widgets['hour_vars'][h] = tk.BooleanVar()
             hour_label = self.format_hour_ampm(h)
-            cb = ttk.Checkbutton(hours_frame, text=hour_label, variable=widgets['hour_vars'][h], width=6)
+            cb = ttk.Checkbutton(widgets['hours_frame'], text=hour_label, variable=widgets['hour_vars'][h], width=6)
             cb.grid(row=h//6, column=h%6, padx=1, pady=1, sticky=tk.W)
 
         # Select All Hours button
@@ -367,8 +367,31 @@ class AdInserterWindow(tk.Toplevel):
 
     def toggle_schedule(self, station_id):
         """Toggle schedule-related fields for a specific station."""
-        # This method can be used to enable/disable schedule fields
-        pass
+        widgets = self.stations[station_id]['widgets']
+        is_scheduled = widgets['scheduled_var'].get()
+        state = tk.NORMAL if is_scheduled else tk.DISABLED
+        
+        # Enable/disable day checkboxes
+        days_frame = widgets['days_frame']
+        for child in days_frame.winfo_children():
+            try:
+                child.configure(state=state)
+            except tk.TclError:
+                pass
+        
+        # Enable/disable the "Select All Days" button
+        widgets['select_all_days_btn'].configure(state=state)
+        
+        # Enable/disable hour checkboxes
+        hours_frame = widgets['hours_frame']
+        for child in hours_frame.winfo_children():
+            try:
+                child.configure(state=state)
+            except tk.TclError:
+                pass
+        
+        # Enable/disable the "Select All Hours" button
+        widgets['select_all_hours_btn'].configure(state=state)
 
     def toggle_all_days(self, station_id):
         """Toggle all day checkboxes for a specific station."""

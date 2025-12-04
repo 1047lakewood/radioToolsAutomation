@@ -248,8 +248,8 @@
                         19,
                         21
                     ],
-                    "PlayCount": 293,
-                    "LastPlayed": "2025-12-04T11:28:35.869735"
+                    "PlayCount": 292,
+                    "LastPlayed": "2025-12-04T08:11:40.745586"
                 },
                 {
                     "Name": "Judaica Plaza",
@@ -276,7 +276,7 @@
                     "Name": "stonebrook",
                     "Enabled": true,
                     "MP3File": "G:/Misc/Sponsorships/Audio Files/stonebrook finale.mp3",
-                    "Scheduled": true,
+                    "Scheduled": false,
                     "Days": [
                         "Sunday",
                         "Monday",
@@ -290,14 +290,14 @@
                         9,
                         14
                     ],
-                    "PlayCount": 85,
-                    "LastPlayed": "2025-12-04T11:28:35.916188"
+                    "PlayCount": 84,
+                    "LastPlayed": "2025-12-04T10:00:00.275189"
                 },
                 {
                     "Name": "SPONSORSHIP",
                     "Enabled": true,
                     "MP3File": "G:/Misc/Sponsorships/sponsership and dedication ad final.mp3",
-                    "Scheduled": true,
+                    "Scheduled": false,
                     "Days": [
                         "Sunday",
                         "Tuesday",
@@ -310,8 +310,8 @@
                         18,
                         22
                     ],
-                    "PlayCount": 12,
-                    "LastPlayed": "2025-12-04T11:28:35.935233"
+                    "PlayCount": 11,
+                    "LastPlayed": "2025-12-04T10:00:00.325144"
                 }
             ],
             "settings": {

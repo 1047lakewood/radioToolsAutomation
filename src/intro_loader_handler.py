@@ -438,6 +438,11 @@ class IntroLoaderHandler:
         next_artist_name = next_artist_info[0] if next_artist_info[0] else 'None'
         self.logger.info(f"Initial check: Current artist='{current_artist_name}', Next artist='{next_artist_name}'")
 
+        # Skip processing if current artist is adRoll (ad insertion in progress)
+        if current_artist_info[0] and current_artist_info[0].lower() == 'adroll':
+            self.logger.info("Initial check: Skipping - current artist is 'adRoll' (ad insertion in progress)")
+            return
+
         self._update_artist_files(current_artist_info, next_artist_info, context="Initial Update")
         # Update last known state after initial check
         self.last_known_current_artist = current_artist_info[0]
@@ -550,6 +555,12 @@ class IntroLoaderHandler:
                     self.last_modified_time = current_modified_time # Update regardless of data change
 
                     if parsing_ok:
+                        # Skip processing if current artist is adRoll (ad insertion in progress)
+                        if current_artist and current_artist.lower() == 'adroll':
+                            self.logger.info("Skipping update - current artist is 'adRoll' (ad insertion in progress)")
+                            # Still update mod time but skip file processing
+                            continue
+
                         # Log if data actually changed and perform update
                         if data_changed:
                             current_artist_name = current_artist if current_artist else 'None'

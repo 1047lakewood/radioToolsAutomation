@@ -15,7 +15,7 @@
                 },
                 {
                     "Text": "Lizchus that Ahron Meir should find a shidduch",
-                    "Enabled": false,
+                    "Enabled": true,
                     "Message Time": 20,
                     "Scheduled": {
                         "Enabled": true,
@@ -44,43 +44,11 @@
                     "Scheduled": {
                         "Enabled": true,
                         "Days": [
-                            "Sunday",
                             "Monday",
-                            "Tuesday",
-                            "Wednesday",
                             "Thursday",
-                            "Friday",
-                            "Saturday"
+                            "Friday"
                         ],
-                        "Times": [
-                            {
-                                "hour": 0
-                            },
-                            {
-                                "hour": 1
-                            },
-                            {
-                                "hour": 2
-                            },
-                            {
-                                "hour": 3
-                            },
-                            {
-                                "hour": 4
-                            },
-                            {
-                                "hour": 5
-                            },
-                            {
-                                "hour": 21
-                            },
-                            {
-                                "hour": 22
-                            },
-                            {
-                                "hour": 23
-                            }
-                        ]
+                        "Times": []
                     }
                 },
                 {
@@ -131,39 +99,9 @@
                     "Enabled": true,
                     "Message Time": 20,
                     "Scheduled": {
-                        "Enabled": true,
-                        "Days": [
-                            "Sunday",
-                            "Monday",
-                            "Tuesday",
-                            "Wednesday",
-                            "Thursday",
-                            "Friday",
-                            "Saturday"
-                        ],
-                        "Times": [
-                            {
-                                "hour": 8
-                            },
-                            {
-                                "hour": 9
-                            },
-                            {
-                                "hour": 10
-                            },
-                            {
-                                "hour": 11
-                            },
-                            {
-                                "hour": 12
-                            },
-                            {
-                                "hour": 13
-                            },
-                            {
-                                "hour": 18
-                            }
-                        ]
+                        "Enabled": false,
+                        "Days": [],
+                        "Times": []
                     }
                 },
                 {
@@ -181,37 +119,28 @@
                     "Enabled": true,
                     "Message Time": 15,
                     "Scheduled": {
-                        "Enabled": true,
-                        "Days": [
-                            "Sunday",
-                            "Monday",
-                            "Tuesday",
-                            "Wednesday",
-                            "Thursday",
-                            "Friday",
-                            "Saturday"
-                        ],
-                        "Times": [
-                            {
-                                "hour": 14
-                            },
-                            {
-                                "hour": 15
-                            },
-                            {
-                                "hour": 16
-                            }
-                        ]
-                    }
-                },
-                {
-                    "Text": "STONEBROOK INS. ",
-                    "Enabled": true,
-                    "Message Time": 10,
-                    "Scheduled": {
                         "Enabled": false,
                         "Days": [],
                         "Times": []
+                    }
+                },
+                {
+                    "Text": "Atzeres Machaa Live from Manhattan",
+                    "Enabled": true,
+                    "Message Time": 10,
+                    "Scheduled": {
+                        "Enabled": true,
+                        "Days": [
+                            "Sunday"
+                        ],
+                        "Times": [
+                            {
+                                "hour": 16
+                            },
+                            {
+                                "hour": 17
+                            }
+                        ]
                     }
                 }
             ],
@@ -229,7 +158,7 @@
                 {
                     "Name": "Ace Restoration",
                     "Enabled": true,
-                    "MP3File": "G:/Misc/Sponsorships/Audio Files/final ace restoration new edited.mp3",
+                    "MP3File": "G:/Misc/Sponsorships/final ace restoration.mp3",
                     "Scheduled": true,
                     "Days": [
                         "Sunday",
@@ -242,14 +171,14 @@
                     ],
                     "Hours": [
                         7,
-                        8,
+                        9,
                         11,
                         17,
                         19,
                         21
                     ],
-                    "PlayCount": 293,
-                    "LastPlayed": "2025-12-04T11:28:35.869735"
+                    "PlayCount": 121,
+                    "LastPlayed": "2025-10-31T11:31:05.688525"
                 },
                 {
                     "Name": "Judaica Plaza",
@@ -269,13 +198,13 @@
                         13,
                         15
                     ],
-                    "PlayCount": 128,
-                    "LastPlayed": "2025-12-03T15:00:00.320771"
+                    "PlayCount": 71,
+                    "LastPlayed": "2025-10-31T13:16:00.947758"
                 },
                 {
-                    "Name": "stonebrook",
+                    "Name": "516 Aveidah",
                     "Enabled": true,
-                    "MP3File": "G:/Misc/Sponsorships/Audio Files/stonebrook finale.mp3",
+                    "MP3File": "G:/Misc/Sponsorships/Audio Files/516 Aveidah.mp3",
                     "Scheduled": true,
                     "Days": [
                         "Sunday",
@@ -287,37 +216,17 @@
                         "Saturday"
                     ],
                     "Hours": [
-                        9,
-                        14
+                        14,
+                        16
                     ],
-                    "PlayCount": 85,
-                    "LastPlayed": "2025-12-04T11:28:35.916188"
-                },
-                {
-                    "Name": "SPONSORSHIP",
-                    "Enabled": true,
-                    "MP3File": "G:/Misc/Sponsorships/sponsership and dedication ad final.mp3",
-                    "Scheduled": true,
-                    "Days": [
-                        "Sunday",
-                        "Tuesday",
-                        "Thursday"
-                    ],
-                    "Hours": [
-                        7,
-                        10,
-                        16,
-                        18,
-                        22
-                    ],
-                    "PlayCount": 12,
-                    "LastPlayed": "2025-12-04T11:28:35.935233"
+                    "PlayCount": 27,
+                    "LastPlayed": "2025-10-30T16:15:40.611008"
                 }
             ],
             "settings": {
                 "rds": {
-                    "ip": "50.208.125.86",
-                    "port": 8053,
+                    "ip": "50.208.125.83",
+                    "port": 10001,
                     "now_playing_xml": "G:\\To_RDS\\nowplaying.xml",
                     "default_message": "732.901.7777 to SUPPORT and hear this program!"
                 },
@@ -418,8 +327,8 @@
         },
         "intro_loader": {
             "volume": {
-                "intro_db": -0.38596491228070207,
-                "overlay_db": -0.38596491228070207
+                "intro_db": -1.0245614035087698,
+                "overlay_db": -1.1157894736842096
             }
         },
         "migration": {

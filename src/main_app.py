@@ -163,6 +163,9 @@ class MainApp(tk.Tk):
 
         self.create_widgets()
 
+        # Initialize auto-scroll tracking (enabled by default)
+        self.auto_scroll_enabled = True
+
         # Start all 6 handlers in threads
         try:
             self.rds_1047_thread = threading.Thread(target=self.rds_1047_handler.run, daemon=True, name="RDS_1047")
@@ -219,7 +222,7 @@ class MainApp(tk.Tk):
 
     def show_about(self):
         """Show the about dialog with version information."""
-        about_message = """radioToolsAutomation v2.2.3
+        about_message = """radioToolsAutomation v2.2.5
 
 Dual Station RDS and Intro Automation System
 
@@ -272,6 +275,8 @@ Dual Station RDS and Intro Automation System
         ttk.Button(toolbar, text="Configure Messages", command=self.open_config_window).pack(side=tk.LEFT, padx=5)
         ttk.Button(toolbar, text="Mini Playlist Editor", command=self.open_playlist_editor_window).pack(side=tk.LEFT, padx=5)
         ttk.Button(toolbar, text="Ad Inserter", command=self.open_ad_inserter_window).pack(side=tk.LEFT, padx=5)
+        ttk.Button(toolbar, text="Pause Scroll", command=self._pause_scroll).pack(side=tk.LEFT, padx=5)
+        ttk.Button(toolbar, text="Jump to Bottom", command=self._jump_to_bottom).pack(side=tk.LEFT, padx=5)
 
         # Logs Section with 6 tabs (3 per station)
         log_pane = ttk.PanedWindow(main_frame, orient=tk.VERTICAL)
@@ -462,13 +467,11 @@ Dual Station RDS and Intro Automation System
                 if messages:
                     self._log_messages_batch(widget, messages)
 
-            # Auto-scroll all log windows
-            self.rds_1047_log_text.see(tk.END)
-            self.intro_1047_log_text.see(tk.END)
-            self.ad_1047_log_text.see(tk.END)
-            self.rds_887_log_text.see(tk.END)
-            self.intro_887_log_text.see(tk.END)
-            self.ad_887_log_text.see(tk.END)
+            # Only auto-scroll if enabled (not paused by user scrolling)
+            if self.auto_scroll_enabled:
+                for widget in [self.rds_1047_log_text, self.intro_1047_log_text, self.ad_1047_log_text,
+                               self.rds_887_log_text, self.intro_887_log_text, self.ad_887_log_text]:
+                    widget.see(tk.END)
 
         self.after(500, self.process_queues)
 
@@ -529,6 +532,17 @@ Dual Station RDS and Intro Automation System
     def _log_message(self, widget, message):
         """Insert a timestamped message into the given text widget."""
         self._log_messages_batch(widget, [message])
+
+    def _pause_scroll(self):
+        """Pause auto-scrolling of log widgets."""
+        self.auto_scroll_enabled = False
+
+    def _jump_to_bottom(self):
+        """Scroll all log widgets to the bottom and re-enable auto-scroll."""
+        self.auto_scroll_enabled = True
+        for widget in [self.rds_1047_log_text, self.intro_1047_log_text, self.ad_1047_log_text,
+                       self.rds_887_log_text, self.intro_887_log_text, self.ad_887_log_text]:
+            widget.see(tk.END)
 
 if __name__ == "__main__":
     app = MainApp()

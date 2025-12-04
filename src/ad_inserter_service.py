@@ -189,7 +189,7 @@ class AdInserterService:
                     self.logger.error(f"File not found: {fp}")
                     return False
                 combined += AudioSegment.from_mp3(fp)
-            combined.export(output_path, format="mp3")
+            combined.export(output_path, format="mp3", tags={"artist": "adRoll"})
             return True
         except Exception as e:  # pragma: no cover - runtime safety
             self.logger.exception(f"Error concatenating ads: {e}")
