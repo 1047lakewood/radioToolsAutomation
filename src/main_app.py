@@ -225,7 +225,7 @@ class MainApp(tk.Tk):
 
     def show_about(self):
         """Show the about dialog with version information."""
-        about_message = """radioToolsAutomation v2.2.5
+        about_message = """radioToolsAutomation v2.3.1
 
 Dual Station RDS and Intro Automation System
 

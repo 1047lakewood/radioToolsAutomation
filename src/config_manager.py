@@ -8,8 +8,15 @@ class ConfigManager:
     """Manages loading, saving, and accessing configuration from JSON with dual-station support."""
 
     def __init__(self, config_file='config.json', backup_prefix='config_backup_'):
-        self.config_file = config_file
-        self.backup_prefix = backup_prefix
+        # IMPORTANT: Always use the project root directory (parent of src/) for config files
+        # This ensures consistent behavior regardless of where the app is started from
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.dirname(script_dir)  # Go up from src/ to project root
+        
+        self.config_file = os.path.join(project_root, config_file)
+        self.backup_prefix = os.path.join(project_root, backup_prefix)
+        
+        logging.info(f"ConfigManager initialized with config path: {self.config_file}")
         self.config = self.load_config()
 
         # Thread safety lock
@@ -22,7 +29,7 @@ class ConfigManager:
 
     def load_config(self):
         """Loads the JSON configuration or returns a default structure if file doesn't exist."""
-        # Try new config.json first
+        # Config path is already absolute (set in __init__)
         if os.path.exists(self.config_file):
             try:
                 with open(self.config_file, 'r', encoding='utf-8') as f:
@@ -32,21 +39,9 @@ class ConfigManager:
             except json.JSONDecodeError as e:
                 logging.error(f"Error decoding JSON from {self.config_file}: {e}")
                 return self._default_config()
-
-        # Try config.json in parent directory
-        parent_config_file = os.path.join('..', self.config_file)
-        if os.path.exists(parent_config_file):
-            try:
-                with open(parent_config_file, 'r', encoding='utf-8') as f:
-                    config = json.load(f)
-                logging.info(f"Configuration loaded from {parent_config_file}.")
-                return config
-            except json.JSONDecodeError as e:
-                logging.error(f"Error decoding JSON from {parent_config_file}: {e}")
-                return self._default_config()
         
-        # Try legacy messages.json for backward compatibility
-        legacy_file = 'messages.json'
+        # Try legacy messages.json in project root for backward compatibility
+        legacy_file = os.path.join(os.path.dirname(self.config_file), 'messages.json')
         if os.path.exists(legacy_file):
             try:
                 logging.info(f"Migrating from legacy {legacy_file} to {self.config_file}")
