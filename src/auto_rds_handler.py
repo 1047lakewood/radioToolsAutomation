@@ -42,6 +42,7 @@ class AutoRDSHandler:
         self.last_send_time = 0.0  # Monotonic time of last RDS send
         self.current_message_duration = 10 # Default duration
         self.last_sent_text = None
+        self.last_send_status = None  # 'success', 'timeout', or None
 
         # XML caching variables
         self._xml_cache = None
@@ -235,6 +236,7 @@ class AutoRDSHandler:
     def _send_command(self, command):
         """Sends a command to the RDS encoder and logs SEND and RECV."""
         response = "Error: Not Sent" # Default error response
+        success = False
         self.logger.info(f"SEND: {command}") # Log command being sent
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -248,6 +250,9 @@ class AutoRDSHandler:
                 response = response_bytes.decode('utf-8', errors='ignore').strip()
                 # Log successful receive
                 self.logger.info(f"RECV: {response}")
+                # Check if response indicates success - be conservative
+                # Only explicit success indicators should be green
+                success = response.upper().startswith(('OK', 'SUCCESS', 'ACK'))
 
         except socket.timeout:
             response = "Error: Timeout"
@@ -266,7 +271,7 @@ class AutoRDSHandler:
             self.logger.exception(f"SEND/RECV Error: Unexpected exception for command: {command}")
             self.logger.info(f"RECV: {response}")
 
-        return response
+        return response, success
 
     def _send_message_to_rds(self, text):
         """Formats and sends the text message to the RDS encoder."""
@@ -285,7 +290,8 @@ class AutoRDSHandler:
             sanitized_text = self.default_message[:max_len] # Ensure default is also truncated if needed
 
         # Send the command - logging happens within _send_command
-        self._send_command(f"DPSTEXT={sanitized_text}")
+        response, success = self._send_command(f"DPSTEXT={sanitized_text}")
+        self.last_send_status = 'success' if success else 'timeout'
         time.sleep(COMMAND_DELAY) # Small delay between commands
 
     def get_current_display_messages(self):
@@ -294,20 +300,28 @@ class AutoRDSHandler:
             messages = self.config_manager.get_station_messages(self.station_id)
             now_playing = self._load_now_playing()
             valid_messages = [m for m in messages if self._should_display_message(m, now_playing)]
-            
+
             formatted_list = []
             for msg in valid_messages:
                  text = self._format_message_text(msg["Text"], now_playing)
                  if text: # Only include if formatting doesn't result in empty string
-                     formatted_list.append(text)
+                     duration = msg.get("Message Time", 10)  # Get the message time, default to 10
+                     formatted_list.append(f"{text} ({duration}s)")
 
             if not formatted_list and self.default_message:
-                 return [self.default_message] # Return default if no valid messages
+                 return [f"{self.default_message} (10s)"] # Return default if no valid messages
 
             return formatted_list
         except Exception as e:
             self.logger.exception(f"Error getting current display messages: {e}")
             return [f"Error: {e}"]
+
+    def get_current_message_status(self):
+        """Returns the current message and its send status."""
+        return {
+            'message': self.last_sent_text,
+            'status': self.last_send_status
+        }
 
 
     def run(self):
