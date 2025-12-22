@@ -213,6 +213,16 @@
                         "Days": [],
                         "Times": []
                     }
+                },
+                {
+                    "Text": "New Message",
+                    "Enabled": true,
+                    "Message Time": 10,
+                    "Scheduled": {
+                        "Enabled": false,
+                        "Days": [],
+                        "Times": []
+                    }
                 }
             ],
             "Ads": [
@@ -248,8 +258,8 @@
                         19,
                         21
                     ],
-                    "PlayCount": 374,
-                    "LastPlayed": "2025-12-22T08:16:40.711228"
+                    "PlayCount": 355,
+                    "LastPlayed": "2025-12-17T21:23:15.639739"
                 },
                 {
                     "Name": "Judaica Plaza",
@@ -269,8 +279,8 @@
                         13,
                         15
                     ],
-                    "PlayCount": 155,
-                    "LastPlayed": "2025-12-21T15:31:55.952109"
+                    "PlayCount": 150,
+                    "LastPlayed": "2025-12-17T15:16:30.403630"
                 },
                 {
                     "Name": "stonebrook",
@@ -290,8 +300,8 @@
                         9,
                         14
                     ],
-                    "PlayCount": 114,
-                    "LastPlayed": "2025-12-22T09:23:50.903637"
+                    "PlayCount": 107,
+                    "LastPlayed": "2025-12-17T14:05:25.991343"
                 },
                 {
                     "Name": "SPONSORSHIP",
@@ -310,8 +320,8 @@
                         18,
                         22
                     ],
-                    "PlayCount": 46,
-                    "LastPlayed": "2025-12-21T18:20:40.301244"
+                    "PlayCount": 37,
+                    "LastPlayed": "2025-12-16T22:56:10.946202"
                 }
             ],
             "settings": {
@@ -321,24 +331,24 @@
                     "now_playing_xml": "G:\\To_RDS\\nowplaying.xml",
                     "default_message": "732.901.7777 to SUPPORT and hear this program!"
                 },
-                "radioboss": {
-                    "server": "http://192.168.3.12:9000",
-                    "password": "bmas220"
-                },
                 "intro_loader": {
                     "now_playing_xml": "G:\\To_RDS\\nowplaying.xml",
                     "mp3_directory": "G:\\Shiurim\\introsCleanedUp",
                     "missing_artists_log": "G:\\Misc\\Dev\\CombinedRDSApp\\missing_artists.log",
-                    "schedule_event_id": "TBACFNBGJKOMETDYSQYR",
+                    "schedule_url": "http://192.168.3.11:9000/?pass=bmas220&action=schedule&type=run&id=TBACFNBGJKOMETDYSQYR",
                     "current_artist_filename": "currentArtist_1047.mp3",
                     "actual_current_artist_filename": "actualCurrentArtist_1047.mp3",
                     "blank_mp3_filename": "blank.mp3",
                     "silent_mp3_filename": "near_silent.mp3"
                 },
                 "ad_inserter": {
-                    "insertion_event_id": "YGRWYYYHNWXPEHUGUAHB",
-                    "instant_event_id": "UHEWRUVGPMLEZYTKODHW",
+                    "insertion_url": "http://192.168.3.11:9000/?pass=bmas220&action=schedule&type=run&id=YGRWYYYHNWXPEHUGUAHB",
+                    "instant_url": "http://192.168.3.11:9000/?pass=bmas220&action=schedule&type=run&id=UHEWRUVGPMLEZYTKODHW",
                     "output_mp3": "G:\\\\Ads\\\\adRoll_1047.mp3"
+                },
+                "mairlist": {
+                    "server": "http://192.168.3.11:9000",
+                    "password": "bmas220"
                 },
                 "debug": {
                     "enable_debug_logs": false
@@ -367,24 +377,24 @@
                     "now_playing_xml": "G:/To_RDS/nowplaying_test.xml",
                     "default_message": "Ein Od Milvado"
                 },
-                "radioboss": {
-                    "server": "http://localhost:9000",
-                    "password": "bmas220"
-                },
                 "intro_loader": {
                     "now_playing_xml": "G:\\To_RDS\\nowplaying_test.xml",
                     "mp3_directory": "G:\\Shiurim\\introsCleanedUp",
                     "missing_artists_log": "missing_artists_887.log",
-                    "schedule_event_id": "TBACFNBGJKOMETDYSQYR",
+                    "schedule_url": "http://localhost:9000/?pass=bmas220&action=schedule&type=run&id=TBACFNBGJKOMETDYSQYR",
                     "current_artist_filename": "currentArtist_887.mp3",
                     "actual_current_artist_filename": "actualCurrentArtist_887.mp3",
                     "blank_mp3_filename": "blank.mp3",
                     "silent_mp3_filename": "near_silent.mp3"
                 },
                 "ad_inserter": {
-                    "insertion_event_id": "IZVRTKXNHAHFUHXVPCGY",
-                    "instant_event_id": "NDCKWHGTOQWWGYPRVEKT",
+                    "insertion_url": "http://localhost:9000/?pass=bmas220&action=schedule&type=run&id=IZVRTKXNHAHFUHXVPCGY",
+                    "instant_url": "http://localhost:9000/?pass=bmas220&action=schedule&type=run&id=NDCKWHGTOQWWGYPRVEKT",
                     "output_mp3": "G:\\Ads\\adRoll_887.mp3"
+                },
+                "mairlist": {
+                    "server": "http://localhost:9000",
+                    "password": "bmas220"
                 }
             }
         }

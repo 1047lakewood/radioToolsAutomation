@@ -28,16 +28,8 @@ class AdInserterService:
         # Set up logger based on station_id
         logger_name = f'AdService_{station_id.split("_")[1]}'  # e.g., 'AdService_1047'
         self.logger = logging.getLogger(logger_name)
-        self.insertion_url = self.config_manager.get_station_setting(
-            station_id,
-            "settings.ad_inserter.insertion_url",
-            "http://localhost:8000/insert",
-        )
-        self.instant_url = self.config_manager.get_station_setting(
-            station_id,
-            "settings.ad_inserter.instant_url",
-            "http://localhost:8000/play",
-        )
+        self.insertion_url = self.config_manager.get_ad_inserter_insertion_url(station_id)
+        self.instant_url = self.config_manager.get_ad_inserter_instant_url(station_id)
         self.output_mp3 = self.config_manager.get_station_setting(
             station_id,
             "settings.ad_inserter.output_mp3",

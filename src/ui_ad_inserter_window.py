@@ -67,6 +67,13 @@ class AdInserterWindow(tk.Toplevel):
         # Populate ad lists for both stations
         for station_id in self.stations.keys():
             self.populate_ad_list(station_id)
+            # Ensure details and toolbar buttons are disabled initially (no selection)
+            self.clear_ad_details(station_id)
+            self.set_ad_details_state(station_id, False)
+            widgets = self.stations[station_id]['widgets']
+            widgets['move_up_btn'].configure(state=tk.DISABLED)
+            widgets['move_down_btn'].configure(state=tk.DISABLED)
+            widgets['delete_btn'].configure(state=tk.DISABLED)
 
         self.protocol("WM_DELETE_WINDOW", self.on_close)
 
@@ -115,14 +122,18 @@ class AdInserterWindow(tk.Toplevel):
         move_buttons = ttk.Frame(list_container)
         move_buttons.pack(side=tk.RIGHT, fill=tk.Y, padx=(5, 0))
 
-        ttk.Button(move_buttons, text="↑", width=3, command=lambda: self.move_up_ad(station_id)).pack(pady=2)
-        ttk.Button(move_buttons, text="↓", width=3, command=lambda: self.move_down_ad(station_id)).pack(pady=2)
+        widgets['move_up_btn'] = ttk.Button(move_buttons, text="↑", width=3, command=lambda: self.move_up_ad(station_id))
+        widgets['move_up_btn'].pack(pady=2)
+        widgets['move_down_btn'] = ttk.Button(move_buttons, text="↓", width=3, command=lambda: self.move_down_ad(station_id))
+        widgets['move_down_btn'].pack(pady=2)
 
         # Buttons for list management (Add New, Delete)
         list_buttons = ttk.Frame(left_frame)
         list_buttons.pack(fill=tk.X, pady=(5, 0))
-        ttk.Button(list_buttons, text="Add New", command=lambda: self.add_new_ad(station_id)).pack(side=tk.LEFT, padx=2)
-        ttk.Button(list_buttons, text="Delete", command=lambda: self.delete_ad(station_id)).pack(side=tk.LEFT, padx=2)
+        widgets['add_new_btn'] = ttk.Button(list_buttons, text="Add New", command=lambda: self.add_new_ad(station_id))
+        widgets['add_new_btn'].pack(side=tk.LEFT, padx=2)
+        widgets['delete_btn'] = ttk.Button(list_buttons, text="Delete", command=lambda: self.delete_ad(station_id))
+        widgets['delete_btn'].pack(side=tk.LEFT, padx=2)
 
         # Right: Options
         right_frame = ttk.LabelFrame(parent_frame, text="Ad Details", padding="5")
@@ -132,16 +143,16 @@ class AdInserterWindow(tk.Toplevel):
         name_label = ttk.Label(right_frame, text="Name:", font=("Segoe UI", 10, "bold"))
         name_label.grid(row=0, column=0, sticky=tk.W, pady=5)
         widgets['name_var'] = tk.StringVar()
-        name_entry = ttk.Entry(right_frame, textvariable=widgets['name_var'], width=50, font=("Segoe UI", 10))
-        name_entry.grid(row=0, column=1, sticky=tk.W, pady=5, padx=5)
-        name_entry.bind('<FocusOut>', lambda e, s=station_id: self.auto_save_current_ad(s))
-        name_entry.bind('<KeyRelease>', lambda e, s=station_id: self.delayed_auto_save(s))
+        widgets['name_entry'] = ttk.Entry(right_frame, textvariable=widgets['name_var'], width=50, font=("Segoe UI", 10))
+        widgets['name_entry'].grid(row=0, column=1, sticky=tk.W, pady=5, padx=5)
+        widgets['name_entry'].bind('<FocusOut>', lambda e, s=station_id: self.auto_save_current_ad(s))
+        widgets['name_entry'].bind('<KeyRelease>', lambda e, s=station_id: self.delayed_auto_save(s))
 
         # Enabled
         widgets['enabled_var'] = tk.BooleanVar(value=True)
-        enabled_cb = ttk.Checkbutton(right_frame, text="Enabled", variable=widgets['enabled_var'],
+        widgets['enabled_cb'] = ttk.Checkbutton(right_frame, text="Enabled", variable=widgets['enabled_var'],
                                    style="Toggle.TCheckbutton", command=lambda s=station_id: self.auto_save_current_ad(s))
-        enabled_cb.grid(row=1, column=0, columnspan=2, sticky=tk.W, pady=5)
+        widgets['enabled_cb'].grid(row=1, column=0, columnspan=2, sticky=tk.W, pady=5)
 
         # MP3 File
         mp3_label = ttk.Label(right_frame, text="MP3 File:", font=("Segoe UI", 10, "bold"))
@@ -152,17 +163,18 @@ class AdInserterWindow(tk.Toplevel):
         mp3_frame = ttk.Frame(right_frame)
         mp3_frame.grid(row=2, column=1, columnspan=2, sticky=tk.W, pady=5)
 
-        mp3_entry = ttk.Entry(mp3_frame, textvariable=widgets['mp3_var'], width=35, font=("Segoe UI", 10))
-        mp3_entry.pack(side=tk.LEFT)
-        mp3_entry.bind('<FocusOut>', lambda e, s=station_id: self.auto_save_current_ad(s))
-        ttk.Button(mp3_frame, text="Browse", command=lambda: self.browse_mp3(station_id), width=8).pack(side=tk.LEFT, padx=(5, 0))
+        widgets['mp3_entry'] = ttk.Entry(mp3_frame, textvariable=widgets['mp3_var'], width=35, font=("Segoe UI", 10))
+        widgets['mp3_entry'].pack(side=tk.LEFT)
+        widgets['mp3_entry'].bind('<FocusOut>', lambda e, s=station_id: self.auto_save_current_ad(s))
+        widgets['browse_btn'] = ttk.Button(mp3_frame, text="Browse", command=lambda: self.browse_mp3(station_id), width=8)
+        widgets['browse_btn'].pack(side=tk.LEFT, padx=(5, 0))
 
         # Scheduled
         widgets['scheduled_var'] = tk.BooleanVar(value=False)
-        scheduled_cb = ttk.Checkbutton(right_frame, text="Scheduled", variable=widgets['scheduled_var'],
+        widgets['scheduled_cb'] = ttk.Checkbutton(right_frame, text="Scheduled", variable=widgets['scheduled_var'],
                                      command=lambda s=station_id: (self.toggle_schedule(s), self.auto_save_current_ad(s)),
                                      style="Toggle.TCheckbutton")
-        scheduled_cb.grid(row=3, column=0, columnspan=2, sticky=tk.W, pady=5)
+        widgets['scheduled_cb'].grid(row=3, column=0, columnspan=2, sticky=tk.W, pady=5)
 
         # Days
         days_label = ttk.Label(right_frame, text="Days:", font=("Segoe UI", 10, "bold"))
@@ -224,8 +236,14 @@ class AdInserterWindow(tk.Toplevel):
 
         selection = listbox.curselection()
         if not selection:
-            # In rare timing cases, try once more after the event loop cycles
-            self.after(0, lambda: self.on_ad_select(station_id))
+            # No selection - clear and disable detail controls and toolbar buttons
+            station_data['current_index'] = None
+            self.clear_ad_details(station_id)
+            self.set_ad_details_state(station_id, False)
+            # Disable selection-dependent buttons
+            widgets['move_up_btn'].configure(state=tk.DISABLED)
+            widgets['move_down_btn'].configure(state=tk.DISABLED)
+            widgets['delete_btn'].configure(state=tk.DISABLED)
             return
 
         index = selection[0]
@@ -248,6 +266,99 @@ class AdInserterWindow(tk.Toplevel):
             widgets['hour_vars'][h].set(h in ad.get('Hours', []))
 
         self.toggle_schedule(station_id)
+        self.set_ad_details_state(station_id, True)
+        # Enable selection-dependent buttons
+        widgets['move_up_btn'].configure(state=tk.NORMAL)
+        widgets['move_down_btn'].configure(state=tk.NORMAL)
+        widgets['delete_btn'].configure(state=tk.NORMAL)
+
+    def clear_ad_details(self, station_id):
+        """Clear all ad detail fields for a specific station."""
+        widgets = self.stations[station_id]['widgets']
+        widgets['name_var'].set('')
+        widgets['enabled_var'].set(True)
+        widgets['mp3_var'].set('')
+        widgets['scheduled_var'].set(False)
+        for day in widgets['day_vars']:
+            widgets['day_vars'][day].set(False)
+        for h in widgets['hour_vars']:
+            widgets['hour_vars'][h].set(False)
+
+    def set_ad_details_state(self, station_id, enabled):
+        """Enable/disable all ad detail controls for a specific station."""
+        widgets = self.stations[station_id]['widgets']
+        state = tk.NORMAL if enabled else tk.DISABLED
+
+        # Enable/disable name entry
+        if 'name_entry' in widgets:
+            try:
+                widgets['name_entry'].configure(state=state)
+            except tk.TclError:
+                pass
+
+        # Enable/disable enabled checkbox
+        if 'enabled_cb' in widgets:
+            try:
+                widgets['enabled_cb'].configure(state=state)
+            except tk.TclError:
+                pass
+
+        # Enable/disable MP3 entry
+        if 'mp3_entry' in widgets:
+            try:
+                widgets['mp3_entry'].configure(state=state)
+            except tk.TclError:
+                pass
+
+        # Enable/disable browse button
+        if 'browse_btn' in widgets:
+            try:
+                widgets['browse_btn'].configure(state=state)
+            except tk.TclError:
+                pass
+
+        # Enable/disable scheduled checkbox
+        if 'scheduled_cb' in widgets:
+            try:
+                widgets['scheduled_cb'].configure(state=state)
+            except tk.TclError:
+                pass
+
+        # Handle days and hours - these should respect the scheduled state
+        scheduled_enabled = enabled and widgets['scheduled_var'].get()
+        schedule_state = tk.NORMAL if scheduled_enabled else tk.DISABLED
+
+        # Enable/disable day checkboxes and select all button
+        days_frame = widgets.get('days_frame')
+        if days_frame:
+            for child in days_frame.winfo_children():
+                try:
+                    child.configure(state=schedule_state)
+                except tk.TclError:
+                    pass
+
+        # Enable/disable select all days button
+        if 'select_all_days_btn' in widgets:
+            try:
+                widgets['select_all_days_btn'].configure(state=schedule_state)
+            except tk.TclError:
+                pass
+
+        # Enable/disable hour checkboxes
+        hours_frame = widgets.get('hours_frame')
+        if hours_frame:
+            for child in hours_frame.winfo_children():
+                try:
+                    child.configure(state=schedule_state)
+                except tk.TclError:
+                    pass
+
+        # Enable/disable select all hours button
+        if 'select_all_hours_btn' in widgets:
+            try:
+                widgets['select_all_hours_btn'].configure(state=schedule_state)
+            except tk.TclError:
+                pass
 
     def auto_save_current_ad(self, station_id):
         """Auto-save the current ad changes."""

@@ -52,9 +52,14 @@ class ConfigWindow(Toplevel):
         self.station_char_count_vars = {}
         self.station_time_entries = {}
         self.station_schedule_containers = {}
+        self.station_toolbar_buttons = {}  # Store toolbar buttons per station
+        self.station_detail_widgets = {}  # Store detail widgets per station for fast enable/disable
 
         # Use parent's theme settings if possible (ttkthemes applies globally)
         self.style = ttk.Style() # Inherit style from parent
+
+        # Initialize loading state flag
+        self.is_loading_selection = False
 
         self.create_widgets()
         self.load_messages_into_tree()
@@ -187,10 +192,18 @@ class ConfigWindow(Toplevel):
         list_toolbar = ttk.Frame(list_frame)
         list_toolbar.pack(fill=tk.X, pady=(5, 5))
 
-        ttk.Button(list_toolbar, text="Add New", command=self.add_message).pack(side=tk.LEFT, padx=2)
-        ttk.Button(list_toolbar, text="Delete", command=self.delete_message).pack(side=tk.LEFT, padx=2)
-        ttk.Button(list_toolbar, text="Move Up", command=self.move_message_up).pack(side=tk.LEFT, padx=2)
-        ttk.Button(list_toolbar, text="Move Down", command=self.move_message_down).pack(side=tk.LEFT, padx=2)
+        # Store toolbar buttons for this station
+        station_buttons = {}
+        station_buttons['add'] = ttk.Button(list_toolbar, text="Add New", command=self.add_message)
+        station_buttons['add'].pack(side=tk.LEFT, padx=2)
+        station_buttons['delete'] = ttk.Button(list_toolbar, text="Delete", command=self.delete_message)
+        station_buttons['delete'].pack(side=tk.LEFT, padx=2)
+        station_buttons['move_up'] = ttk.Button(list_toolbar, text="Move Up", command=self.move_message_up)
+        station_buttons['move_up'].pack(side=tk.LEFT, padx=2)
+        station_buttons['move_down'] = ttk.Button(list_toolbar, text="Move Down", command=self.move_message_down)
+        station_buttons['move_down'].pack(side=tk.LEFT, padx=2)
+
+        self.station_toolbar_buttons[station_id] = station_buttons
 
         # Treeview with scrollbars
         tree_frame = ttk.Frame(list_frame)
@@ -242,13 +255,17 @@ class ConfigWindow(Toplevel):
 
     def create_station_details_widgets(self, parent_frame, station_id):
         """Create the message details editing widgets for a specific station."""
+        # Initialize storage for this station's detail widgets
+        detail_widgets = {}
+        self.station_detail_widgets[station_id] = detail_widgets
+
         message_frame = ttk.LabelFrame(parent_frame, text="Message Content (64 char max)")
         message_frame.pack(fill=tk.X, pady=(0, 10))
 
         message_var = tk.StringVar()
         self.station_message_vars[station_id] = message_var
-        message_entry = ttk.Entry(message_frame, textvariable=message_var, font=("Segoe UI", 10), width=64)
-        message_entry.pack(fill=tk.X, padx=5, pady=5)
+        detail_widgets['message_entry'] = ttk.Entry(message_frame, textvariable=message_var, font=("Segoe UI", 10), width=64)
+        detail_widgets['message_entry'].pack(fill=tk.X, padx=5, pady=5)
 
         char_count_var = tk.StringVar(value="0/64")
         self.station_char_count_vars[station_id] = char_count_var
@@ -263,16 +280,16 @@ class ConfigWindow(Toplevel):
 
         enable_var = tk.BooleanVar()
         self.station_enable_vars[station_id] = enable_var
-        enable_check = ttk.Checkbutton(settings_grid, text="Message Enabled", variable=enable_var,
+        detail_widgets['enable_check'] = ttk.Checkbutton(settings_grid, text="Message Enabled", variable=enable_var,
                                      command=lambda sid=station_id: self.mark_station_changes(sid))
-        enable_check.grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
+        detail_widgets['enable_check'].grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
 
         ttk.Label(settings_grid, text="Duration (seconds):").grid(row=0, column=1, sticky=tk.W, padx=(20, 5), pady=5)
         duration_var = tk.StringVar()
         self.station_duration_vars[station_id] = duration_var
         vcmd = (self.register(self.validate_duration), '%P')
-        duration_spin = ttk.Spinbox(settings_grid, from_=1, to=60, width=5, textvariable=duration_var, validate='key', validatecommand=vcmd)
-        duration_spin.grid(row=0, column=2, sticky=tk.W, padx=5, pady=5)
+        detail_widgets['duration_spin'] = ttk.Spinbox(settings_grid, from_=1, to=60, width=5, textvariable=duration_var, validate='key', validatecommand=vcmd)
+        detail_widgets['duration_spin'].grid(row=0, column=2, sticky=tk.W, padx=5, pady=5)
         duration_var.trace_add("write", lambda *args, sid=station_id: self.mark_station_changes(sid))
 
         schedule_frame = ttk.LabelFrame(parent_frame, text="Message Schedule")
@@ -282,9 +299,9 @@ class ConfigWindow(Toplevel):
 
         use_schedule_var = tk.BooleanVar()
         self.station_use_schedule_vars[station_id] = use_schedule_var
-        schedule_check = ttk.Checkbutton(schedule_options, text="Use Scheduling", variable=use_schedule_var,
+        detail_widgets['schedule_check'] = ttk.Checkbutton(schedule_options, text="Use Scheduling", variable=use_schedule_var,
                                        command=lambda sid=station_id: self.toggle_station_schedule_controls(sid))
-        schedule_check.pack(anchor=tk.W)
+        detail_widgets['schedule_check'].pack(anchor=tk.W)
         schedule_help = ttk.Label(schedule_options, text="If unchecked, message will always display when enabled (subject to artist filters)", font=("Segoe UI", 9), foreground="#666666")
         schedule_help.pack(anchor=tk.W, pady=(0, 5))
 
@@ -301,6 +318,7 @@ class ConfigWindow(Toplevel):
 
         days_vars = {}
         self.station_days_vars[station_id] = days_vars
+        detail_widgets['day_checks'] = []
         day_labels = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
         for i, day in enumerate(day_labels):
             var = tk.BooleanVar()
@@ -309,14 +327,15 @@ class ConfigWindow(Toplevel):
                                   command=lambda sid=station_id: self.mark_station_changes(sid))
             row, col = divmod(i, 4)
             check.grid(row=row, column=col, sticky=tk.W, padx=5, pady=2)
+            detail_widgets['day_checks'].append(check)
 
         # Select All Days button
         days_button_frame = ttk.Frame(days_frame)
         days_button_frame.grid(row=2, column=0, sticky=tk.W, pady=(5, 0))
         self.station_days_btn_frames[station_id] = days_button_frame
-        select_days_btn = ttk.Button(days_button_frame, text="Select All Days",
+        detail_widgets['select_days_btn'] = ttk.Button(days_button_frame, text="Select All Days",
                                     command=lambda sid=station_id: self.toggle_all_days(sid))
-        select_days_btn.pack(side=tk.LEFT)
+        detail_widgets['select_days_btn'].pack(side=tk.LEFT)
 
         # Hours of the day checkboxes
         hours_frame = ttk.Frame(schedule_container)
@@ -328,6 +347,7 @@ class ConfigWindow(Toplevel):
 
         hour_vars = {}
         self.station_hour_vars[station_id] = hour_vars
+        detail_widgets['hour_checks'] = []
 
         # Create 4 rows of 6 hours each (24 hours total)
         for h in range(24):
@@ -338,14 +358,15 @@ class ConfigWindow(Toplevel):
                                   command=lambda sid=station_id: self.mark_station_changes(sid))
             row, col = divmod(h, 6)
             check.grid(row=row, column=col, sticky=tk.W, padx=2, pady=1)
+            detail_widgets['hour_checks'].append(check)
 
         # Select All Hours button
         hours_button_frame = ttk.Frame(hours_frame)
         hours_button_frame.grid(row=2, column=0, sticky=tk.W, pady=(5, 0))
         self.station_hours_btn_frames[station_id] = hours_button_frame
-        select_hours_btn = ttk.Button(hours_button_frame, text="Select All Hours",
+        detail_widgets['select_hours_btn'] = ttk.Button(hours_button_frame, text="Select All Hours",
                                      command=lambda sid=station_id: self.toggle_all_hours(sid))
-        select_hours_btn.pack(side=tk.LEFT)
+        detail_widgets['select_hours_btn'].pack(side=tk.LEFT)
 
         button_frame = ttk.Frame(parent_frame)
         button_frame.pack(fill=tk.X, pady=(10, 0))
@@ -353,6 +374,16 @@ class ConfigWindow(Toplevel):
         ttk.Button(button_frame, text="Cancel", command=self.on_close).pack(side=tk.RIGHT, padx=5)
 
         self.set_details_state(tk.DISABLED)
+
+        # Also disable selection-dependent toolbar buttons initially
+        if station_id in self.station_toolbar_buttons:
+            buttons = self.station_toolbar_buttons[station_id]
+            for btn_name in ['delete', 'move_up', 'move_down']:
+                if btn_name in buttons:
+                    try:
+                        buttons[btn_name].configure(state=tk.DISABLED)
+                    except tk.TclError:
+                        pass
 
     def on_tab_changed(self, event):
         """Handle tab change event."""
@@ -421,29 +452,87 @@ class ConfigWindow(Toplevel):
 
     def toggle_station_schedule_controls(self, station_id):
         """Toggle schedule controls for a specific station."""
-        if self.is_loading_selection: return
-        new_state = tk.NORMAL if self.station_use_schedule_vars[station_id].get() else tk.DISABLED
-        logging.info(f"Toggle schedule controls for {station_id}: use_schedule={self.station_use_schedule_vars[station_id].get()}, new_state={new_state}")
-        def recursive_configure(widget, state):
+        # Schedule controls should only be enabled if there's a selection AND scheduling is enabled
+        has_selection = self.station_selected_indices.get(station_id) is not None
+        use_schedule = self.station_use_schedule_vars.get(station_id, tk.BooleanVar()).get()
+        new_state = tk.NORMAL if (has_selection and use_schedule) else tk.DISABLED
+
+        if station_id not in self.station_detail_widgets:
+            return
+
+        widgets = self.station_detail_widgets[station_id]
+
+        # Enable/disable day checkboxes
+        for check in widgets.get('day_checks', []):
             try:
-                if isinstance(widget, (ttk.Checkbutton, ttk.Entry, ttk.Spinbox, ttk.Button)):
-                     widget.configure(state=state)
-                for child in widget.winfo_children():
-                    recursive_configure(child, state)
-            except tk.TclError: pass
-        # Configure the schedule container for this station
-        if station_id in self.station_schedule_containers:
-            recursive_configure(self.station_schedule_containers[station_id], new_state)
-        else:
-            logging.warning(f"No schedule container found for {station_id}")
-        self.mark_station_changes(station_id)
+                check.configure(state=new_state)
+            except tk.TclError:
+                pass
+
+        # Enable/disable select all days button
+        if 'select_days_btn' in widgets:
+            try:
+                widgets['select_days_btn'].configure(state=new_state)
+            except tk.TclError:
+                pass
+
+        # Enable/disable hour checkboxes
+        for check in widgets.get('hour_checks', []):
+            try:
+                check.configure(state=new_state)
+            except tk.TclError:
+                pass
+
+        # Enable/disable select all hours button
+        if 'select_hours_btn' in widgets:
+            try:
+                widgets['select_hours_btn'].configure(state=new_state)
+            except tk.TclError:
+                pass
+
+        # Only mark changes if not loading selection to avoid unintended change tracking
+        if not self.is_loading_selection:
+            self.mark_station_changes(station_id)
 
     def set_details_state(self, state):
         """Set the state of details widgets for the current station."""
-        # Since we now have station-specific widgets, this method is simplified
-        # The actual widget state management is handled by the station-specific logic
-        # and the toggle_station_schedule_controls method
-        pass
+        station_id = self.current_station
+
+        if station_id not in self.station_detail_widgets:
+            return
+
+        widgets = self.station_detail_widgets[station_id]
+
+        # Enable/disable message entry
+        if 'message_entry' in widgets:
+            try:
+                widgets['message_entry'].configure(state=state)
+            except tk.TclError:
+                pass
+
+        # Enable/disable enabled checkbox
+        if 'enable_check' in widgets:
+            try:
+                widgets['enable_check'].configure(state=state)
+            except tk.TclError:
+                pass
+
+        # Enable/disable duration spinbox
+        if 'duration_spin' in widgets:
+            try:
+                widgets['duration_spin'].configure(state=state)
+            except tk.TclError:
+                pass
+
+        # Enable/disable "Use Scheduling" checkbox
+        if 'schedule_check' in widgets:
+            try:
+                widgets['schedule_check'].configure(state=state)
+            except tk.TclError:
+                pass
+
+        # Handle schedule controls (days/hours) based on both selection state and scheduling checkbox
+        self.toggle_station_schedule_controls(station_id)
 
     def load_messages_into_tree(self):
         # Get the current tree and messages for the current station
@@ -473,6 +562,9 @@ class ConfigWindow(Toplevel):
             current_tree.selection_set(f"item{selected_index}")
             current_tree.see(f"item{selected_index}")
             self.on_message_select(None)
+        else:
+            # No valid selection, ensure details are disabled
+            self.set_details_state(tk.DISABLED)
 
     def mark_changes(self, *args):
         if self.station_selected_indices[self.current_station] is not None and not self.is_loading_selection:
@@ -525,6 +617,15 @@ class ConfigWindow(Toplevel):
         if not selected_items:
             self.station_selected_indices[self.current_station] = None
             self.set_details_state(tk.DISABLED)
+            # Disable selection-dependent toolbar buttons
+            if self.current_station in self.station_toolbar_buttons:
+                buttons = self.station_toolbar_buttons[self.current_station]
+                for btn_name in ['delete', 'move_up', 'move_down']:
+                    if btn_name in buttons:
+                        try:
+                            buttons[btn_name].configure(state=tk.DISABLED)
+                        except tk.TclError:
+                            pass
             return
 
         selected_item_id = selected_items[0]
@@ -533,6 +634,15 @@ class ConfigWindow(Toplevel):
             logging.error(f"Bad index from ID: {selected_item_id}")
             self.station_selected_indices[self.current_station] = None
             self.set_details_state(tk.DISABLED)
+            # Disable selection-dependent toolbar buttons
+            if self.current_station in self.station_toolbar_buttons:
+                buttons = self.station_toolbar_buttons[self.current_station]
+                for btn_name in ['delete', 'move_up', 'move_down']:
+                    if btn_name in buttons:
+                        try:
+                            buttons[btn_name].configure(state=tk.DISABLED)
+                        except tk.TclError:
+                            pass
             return
 
         self.station_selected_indices[self.current_station] = item_index
@@ -541,6 +651,15 @@ class ConfigWindow(Toplevel):
             logging.error(f"Index {item_index} out of range.")
             self.station_selected_indices[self.current_station] = None
             self.set_details_state(tk.DISABLED)
+            # Disable selection-dependent toolbar buttons
+            if self.current_station in self.station_toolbar_buttons:
+                buttons = self.station_toolbar_buttons[self.current_station]
+                for btn_name in ['delete', 'move_up', 'move_down']:
+                    if btn_name in buttons:
+                        try:
+                            buttons[btn_name].configure(state=tk.DISABLED)
+                        except tk.TclError:
+                            pass
             return
         self.is_loading_selection = True
         logging.info(f"Selecting item index: {item_index}, Text: {message.get('Text', '')}")
@@ -554,6 +673,15 @@ class ConfigWindow(Toplevel):
         self.station_use_schedule_vars[station_id].set(use_schedule)
         # Now set the details state after schedule variables are set
         self.set_details_state(tk.NORMAL)
+        # Enable selection-dependent toolbar buttons
+        if self.current_station in self.station_toolbar_buttons:
+            buttons = self.station_toolbar_buttons[self.current_station]
+            for btn_name in ['delete', 'move_up', 'move_down']:
+                if btn_name in buttons:
+                    try:
+                        buttons[btn_name].configure(state=tk.NORMAL)
+                    except tk.TclError:
+                        pass
         scheduled_days = message.get("Scheduled", {}).get("Days", [])
         logging.info(f"Scheduled Days Before Loading: {scheduled_days}")
         for day, var in self.station_days_vars[station_id].items(): var.set(day in scheduled_days)

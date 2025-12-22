@@ -417,13 +417,13 @@ class OptionsWindow(Toplevel):
             
             logging.info(f"Successfully fetched {event_count} events from mAirList for {station_id}")
 
-            # Update the station's mAirList settings and save to config
-            self.station_vars[station_id]['mairlist_server'].set(server)
-            self.station_vars[station_id]['mairlist_password'].set(password)
+            # Update the station's RadioBoss settings and save to config
+            self.station_vars[station_id]['radioboss_server'].set(server)
+            self.station_vars[station_id]['radioboss_password'].set(password)
 
-            # Save the mAirList settings to config for this station
-            self.config_manager.update_station_setting(station_id, "mairlist.server", server)
-            self.config_manager.update_station_setting(station_id, "mairlist.password", password)
+            # Save the RadioBoss settings to config for this station
+            self.config_manager.update_station_setting(station_id, "radioboss.server", server)
+            self.config_manager.update_station_setting(station_id, "radioboss.password", password)
             self.config_manager.save_config()
             
         except urllib.error.URLError as e:
@@ -436,33 +436,24 @@ class OptionsWindow(Toplevel):
             logging.exception("Error fetching mAirList events")
             messagebox.showerror("Error", f"An error occurred:\n{e}", parent=self)
 
-    def copy_mairlist_event_url(self):
-        """Copy the selected event URL to clipboard."""
+    def copy_mairlist_event_id(self):
+        """Copy the selected event ID to clipboard."""
         selection = self.mairlist_events_tree.selection()
         if not selection:
             messagebox.showwarning("No Selection", "Please select an event from the list.", parent=self)
             return
-        
+
         item = self.mairlist_events_tree.item(selection[0])
         values = item['values']
         event_id = values[1]  # Event ID is in column 1
         task_name = values[0]  # Task name is in column 0
-        
-        # Build URL using current settings
-        server = self.mairlist_server_entry_var.get().strip()
-        password = self.mairlist_password_entry_var.get().strip()
-        
-        if not server.startswith("http://") and not server.startswith("https://"):
-            server = f"http://{server}"
-        
-        url = f"{server}/?pass={password}&action=schedule&type=run&id={event_id}"
-        
-        # Copy to clipboard
+
+        # Copy just the event ID to clipboard
         self.clipboard_clear()
-        self.clipboard_append(url)
+        self.clipboard_append(event_id)
         self.update()  # Required for clipboard to work
 
-        logging.info(f"Copied URL for event: {task_name}")
+        logging.info(f"Copied Event ID for event: {task_name}")
 
     def save_and_close(self):
         """Saves the whitelist/blacklist if changed and closes."""
@@ -485,6 +476,10 @@ class OptionsWindow(Toplevel):
 
         # Save settings from both station tabs
         for station_id, station_vars in self.station_vars.items():
+            # RadioBoss API settings
+            self.config_manager.update_station_setting(station_id, "radioboss.server", station_vars['radioboss_server'].get())
+            self.config_manager.update_station_setting(station_id, "radioboss.password", station_vars['radioboss_password'].get())
+
             # RDS settings
             self.config_manager.update_station_setting(station_id, "rds.ip", station_vars['rds_ip'].get())
             self.config_manager.update_station_setting(station_id, "rds.port", station_vars['rds_port'].get())
@@ -495,20 +490,16 @@ class OptionsWindow(Toplevel):
             self.config_manager.update_station_setting(station_id, "intro_loader.now_playing_xml", station_vars['loader_xml'].get())
             self.config_manager.update_station_setting(station_id, "intro_loader.mp3_directory", station_vars['loader_mp3_dir'].get())
             self.config_manager.update_station_setting(station_id, "intro_loader.missing_artists_log", station_vars['loader_log'].get())
-            self.config_manager.update_station_setting(station_id, "intro_loader.schedule_url", station_vars['loader_url'].get())
+            self.config_manager.update_station_setting(station_id, "intro_loader.schedule_event_id", station_vars['loader_event_id'].get())
             self.config_manager.update_station_setting(station_id, "intro_loader.current_artist_filename", station_vars['current_artist_filename'].get())
             self.config_manager.update_station_setting(station_id, "intro_loader.actual_current_artist_filename", station_vars['actual_current_artist_filename'].get())
             self.config_manager.update_station_setting(station_id, "intro_loader.blank_mp3_filename", station_vars['blank_mp3_filename'].get())
             self.config_manager.update_station_setting(station_id, "intro_loader.silent_mp3_filename", station_vars['silent_mp3_filename'].get())
 
             # Ad Inserter settings
-            self.config_manager.update_station_setting(station_id, "ad_inserter.insertion_url", station_vars['ad_url'].get())
-            self.config_manager.update_station_setting(station_id, "ad_inserter.instant_url", station_vars['ad_instant_url'].get())
+            self.config_manager.update_station_setting(station_id, "ad_inserter.insertion_event_id", station_vars['ad_insertion_event_id'].get())
+            self.config_manager.update_station_setting(station_id, "ad_inserter.instant_event_id", station_vars['ad_instant_event_id'].get())
             self.config_manager.update_station_setting(station_id, "ad_inserter.output_mp3", station_vars['ad_mp3'].get())
-
-            # mAirList settings
-            self.config_manager.update_station_setting(station_id, "mairlist.server", station_vars['mairlist_server'].get())
-            self.config_manager.update_station_setting(station_id, "mairlist.password", station_vars['mairlist_password'].get())
 
         # Save shared volume settings
         self.config_manager.update_shared_setting("intro_loader.volume.intro_db", self.volume_vars['intro_db'].get())
@@ -627,17 +618,17 @@ class OptionsWindow(Toplevel):
         # Update server/password fields when station changes
         def on_station_change(*args):
             station_id = self.mairlist_station_var.get()
-            self.mairlist_server_entry_var.set(self.station_vars[station_id]['mairlist_server'].get())
-            self.mairlist_password_entry_var.set(self.station_vars[station_id]['mairlist_password'].get())
+            self.mairlist_server_entry_var.set(self.station_vars[station_id]['radioboss_server'].get())
+            self.mairlist_password_entry_var.set(self.station_vars[station_id]['radioboss_password'].get())
 
         # Update station variables when mAirList fields change
         def on_server_change(*args):
             station_id = self.mairlist_station_var.get()
-            self.station_vars[station_id]['mairlist_server'].set(self.mairlist_server_entry_var.get())
+            self.station_vars[station_id]['radioboss_server'].set(self.mairlist_server_entry_var.get())
 
         def on_password_change(*args):
             station_id = self.mairlist_station_var.get()
-            self.station_vars[station_id]['mairlist_password'].set(self.mairlist_password_entry_var.get())
+            self.station_vars[station_id]['radioboss_password'].set(self.mairlist_password_entry_var.get())
 
         self.mairlist_station_var.trace('w', on_station_change)
         self.mairlist_server_entry_var.trace('w', on_server_change)
@@ -673,7 +664,7 @@ class OptionsWindow(Toplevel):
         button_frame = ttk.Frame(parent_frame)
         button_frame.pack(fill=tk.X, pady=10)
 
-        ttk.Button(button_frame, text="Copy URL to Clipboard", command=self.copy_mairlist_event_url).pack(side=tk.LEFT, padx=5)
+        ttk.Button(button_frame, text="Copy Event ID to Clipboard", command=self.copy_mairlist_event_id).pack(side=tk.LEFT, padx=5)
 
     def create_volume_tab(self, parent_frame):
         """Create the intro/overlay volume tab with dB sliders."""
@@ -1047,10 +1038,27 @@ class OptionsWindow(Toplevel):
         """Create a settings tab for a specific station."""
         # Store variables for this station
         station_vars = self.station_vars[station_id]
-        
+
+        # RadioBoss API Settings Section
+        radioboss_label = ttk.Label(parent_frame, text="RadioBoss API Settings", font=("Segoe UI", 10, "bold"))
+        radioboss_label.pack(anchor=tk.W, pady=(0,5))
+
+        radioboss_frame = ttk.Frame(parent_frame)
+        radioboss_frame.pack(fill=tk.X, pady=5)
+
+        # RadioBoss Server
+        ttk.Label(radioboss_frame, text="Server:").grid(row=0, column=0, sticky=tk.W, padx=5)
+        station_vars['radioboss_server'] = tk.StringVar(value=self.config_manager.get_station_setting(station_id, "radioboss.server", "http://192.168.3.12:9000"))
+        ttk.Entry(radioboss_frame, textvariable=station_vars['radioboss_server'], width=40).grid(row=0, column=1, sticky=tk.W, padx=5)
+
+        # RadioBoss Password
+        ttk.Label(radioboss_frame, text="Password:").grid(row=1, column=0, sticky=tk.W, padx=5)
+        station_vars['radioboss_password'] = tk.StringVar(value=self.config_manager.get_station_setting(station_id, "radioboss.password", "bmas220"))
+        ttk.Entry(radioboss_frame, textvariable=station_vars['radioboss_password'], width=40, show="*").grid(row=1, column=1, sticky=tk.W, padx=5)
+
         # RDS Settings Section
         rds_label = ttk.Label(parent_frame, text="RDS Settings", font=("Segoe UI", 10, "bold"))
-        rds_label.pack(anchor=tk.W, pady=(0,5))
+        rds_label.pack(anchor=tk.W, pady=(10,5))
 
         rds_frame = ttk.Frame(parent_frame)
         rds_frame.pack(fill=tk.X, pady=5)
@@ -1101,16 +1109,16 @@ class OptionsWindow(Toplevel):
         ttk.Entry(loader_frame, textvariable=station_vars['loader_log'], width=40).grid(row=2, column=1, sticky=tk.W, padx=5)
         ttk.Button(loader_frame, text="Browse", command=lambda: self.browse_file(station_vars['loader_log'], save=True)).grid(row=2, column=2, padx=5)
 
-        # Schedule URL
-        ttk.Label(loader_frame, text="Schedule URL:").grid(row=3, column=0, sticky=tk.W, padx=5)
-        station_vars['loader_url'] = tk.StringVar(
+        # Schedule Event ID
+        ttk.Label(loader_frame, text="Schedule Event ID:").grid(row=3, column=0, sticky=tk.W, padx=5)
+        station_vars['loader_event_id'] = tk.StringVar(
             value=self.config_manager.get_station_setting(
                 station_id,
-                "settings.intro_loader.schedule_url",
-                "http://192.168.3.11:9000/?pass=bmas220&action=schedule&type=run&id=TBACFNBGJKOMETDYSQYR",
+                "intro_loader.schedule_event_id",
+                "TBACFNBGJKOMETDYSQYR"
             )
         )
-        ttk.Entry(loader_frame, textvariable=station_vars['loader_url'], width=40).grid(row=3, column=1, sticky=tk.W, padx=5)
+        ttk.Entry(loader_frame, textvariable=station_vars['loader_event_id'], width=40).grid(row=3, column=1, sticky=tk.W, padx=5)
 
         # Current Artist Filename
         ttk.Label(loader_frame, text="Current Artist Filename:").grid(row=4, column=0, sticky=tk.W, padx=5)
@@ -1164,22 +1172,20 @@ class OptionsWindow(Toplevel):
         ad_frame = ttk.Frame(parent_frame)
         ad_frame.pack(fill=tk.X, pady=5)
 
-        ttk.Label(ad_frame, text="Schedule URL:").grid(row=0, column=0, sticky=tk.W, padx=5)
-        station_vars['ad_url'] = tk.StringVar(value=self.config_manager.get_station_setting(station_id, "settings.ad_inserter.insertion_url", "http://localhost:8000/insert"))
-        ttk.Entry(ad_frame, textvariable=station_vars['ad_url'], width=40).grid(row=0, column=1, sticky=tk.W, padx=5)
+        ttk.Label(ad_frame, text="Schedule Event ID:").grid(row=0, column=0, sticky=tk.W, padx=5)
+        station_vars['ad_insertion_event_id'] = tk.StringVar(value=self.config_manager.get_station_setting(station_id, "ad_inserter.insertion_event_id", "YGRWYYYHNWXPEHUGUAHB"))
+        ttk.Entry(ad_frame, textvariable=station_vars['ad_insertion_event_id'], width=40).grid(row=0, column=1, sticky=tk.W, padx=5)
 
-        ttk.Label(ad_frame, text="Instant URL:").grid(row=1, column=0, sticky=tk.W, padx=5)
-        station_vars['ad_instant_url'] = tk.StringVar(value=self.config_manager.get_station_setting(station_id, "settings.ad_inserter.instant_url", "http://localhost:8000/play"))
-        ttk.Entry(ad_frame, textvariable=station_vars['ad_instant_url'], width=40).grid(row=1, column=1, sticky=tk.W, padx=5)
+        ttk.Label(ad_frame, text="Instant Event ID:").grid(row=1, column=0, sticky=tk.W, padx=5)
+        station_vars['ad_instant_event_id'] = tk.StringVar(value=self.config_manager.get_station_setting(station_id, "ad_inserter.instant_event_id", "UHEWRUVGPMLEZYTKODHW"))
+        ttk.Entry(ad_frame, textvariable=station_vars['ad_instant_event_id'], width=40).grid(row=1, column=1, sticky=tk.W, padx=5)
 
         ttk.Label(ad_frame, text="New Ad MP3:").grid(row=2, column=0, sticky=tk.W, padx=5)
         station_vars['ad_mp3'] = tk.StringVar(value=self.config_manager.get_station_setting(station_id, "settings.ad_inserter.output_mp3", r"G:\\Ads\\newAd.mp3"))
         ttk.Entry(ad_frame, textvariable=station_vars['ad_mp3'], width=40).grid(row=2, column=1, sticky=tk.W, padx=5)
         ttk.Button(ad_frame, text="Browse", command=lambda: self.browse_file(station_vars['ad_mp3'])).grid(row=2, column=2, padx=5)
 
-        # mAirList server settings (just server info, no UI)
-        station_vars['mairlist_server'] = tk.StringVar(value=self.config_manager.get_station_setting(station_id, "mairlist.server", "localhost:9000"))
-        station_vars['mairlist_password'] = tk.StringVar(value=self.config_manager.get_station_setting(station_id, "mairlist.password", "bmas220"))
+        # Note: mAirList server settings are now handled by RadioBoss API settings above
 
 # Example usage for testing
 if __name__ == "__main__":

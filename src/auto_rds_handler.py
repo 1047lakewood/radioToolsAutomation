@@ -250,9 +250,9 @@ class AutoRDSHandler:
                 response = response_bytes.decode('utf-8', errors='ignore').strip()
                 # Log successful receive
                 self.logger.info(f"RECV: {response}")
-                # Check if response indicates success - be conservative
-                # Only explicit success indicators should be green
-                success = response.upper().startswith(('OK', 'SUCCESS', 'ACK'))
+                # Consider any non-empty, non-error response as success
+                # Different RDS encoders respond differently (OK, echo command, etc.)
+                success = bool(response) and not response.startswith('Error:')
 
         except socket.timeout:
             response = "Error: Timeout"

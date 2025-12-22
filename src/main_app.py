@@ -371,7 +371,7 @@ Dual Station RDS and Intro Automation System
         rds_1047_frame = ttk.LabelFrame(rds_container, text="104.7 FM - Current RDS", padding="5")
         rds_1047_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
 
-        # Status indicator frame
+        # RDS Status indicator frame
         rds_1047_status_frame = ttk.Frame(rds_1047_frame)
         rds_1047_status_frame.pack(fill=tk.X, pady=(0, 2))
 
@@ -379,15 +379,27 @@ Dual Station RDS and Intro Automation System
         self.rds_1047_status_canvas.pack(side=tk.LEFT, padx=(0, 5))
         self.rds_1047_status_canvas.create_oval(2, 2, 14, 14, fill='gray', outline='')
 
+        ttk.Label(rds_1047_status_frame, text="RDS:", font=("Segoe UI", 9)).pack(side=tk.LEFT)
         self.current_rds_1047_var = tk.StringVar(value="Waiting for first message...")
         rds_1047_label = ttk.Label(rds_1047_status_frame, textvariable=self.current_rds_1047_var, font=("Segoe UI", 10, "bold"), anchor=tk.W)
         rds_1047_label.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+        # RadioBoss connectivity indicator frame
+        radioboss_1047_status_frame = ttk.Frame(rds_1047_frame)
+        radioboss_1047_status_frame.pack(fill=tk.X, pady=(2, 0))
+
+        self.radioboss_1047_status_canvas = tk.Canvas(radioboss_1047_status_frame, width=16, height=16, bg=self.cget('bg'), highlightthickness=0)
+        self.radioboss_1047_status_canvas.pack(side=tk.LEFT, padx=(0, 5))
+        self.radioboss_1047_status_canvas.create_oval(2, 2, 14, 14, fill='gray', outline='')
+
+        ttk.Label(radioboss_1047_status_frame, text="RadioBoss:", font=("Segoe UI", 9)).pack(side=tk.LEFT)
+        ttk.Label(radioboss_1047_status_frame, text="Connection Status", font=("Segoe UI", 9, "bold")).pack(side=tk.LEFT, fill=tk.X, expand=True)
 
         # 88.7 FM Current Message
         rds_887_frame = ttk.LabelFrame(rds_container, text="88.7 FM - Current RDS", padding="5")
         rds_887_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(5, 0))
 
-        # Status indicator frame
+        # RDS Status indicator frame
         rds_887_status_frame = ttk.Frame(rds_887_frame)
         rds_887_status_frame.pack(fill=tk.X, pady=(0, 2))
 
@@ -395,9 +407,21 @@ Dual Station RDS and Intro Automation System
         self.rds_887_status_canvas.pack(side=tk.LEFT, padx=(0, 5))
         self.rds_887_status_canvas.create_oval(2, 2, 14, 14, fill='gray', outline='')
 
+        ttk.Label(rds_887_status_frame, text="RDS:", font=("Segoe UI", 9)).pack(side=tk.LEFT)
         self.current_rds_887_var = tk.StringVar(value="Waiting for first message...")
         rds_887_label = ttk.Label(rds_887_status_frame, textvariable=self.current_rds_887_var, font=("Segoe UI", 10, "bold"), anchor=tk.W)
         rds_887_label.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+        # RadioBoss connectivity indicator frame
+        radioboss_887_status_frame = ttk.Frame(rds_887_frame)
+        radioboss_887_status_frame.pack(fill=tk.X, pady=(2, 0))
+
+        self.radioboss_887_status_canvas = tk.Canvas(radioboss_887_status_frame, width=16, height=16, bg=self.cget('bg'), highlightthickness=0)
+        self.radioboss_887_status_canvas.pack(side=tk.LEFT, padx=(0, 5))
+        self.radioboss_887_status_canvas.create_oval(2, 2, 14, 14, fill='gray', outline='')
+
+        ttk.Label(radioboss_887_status_frame, text="RadioBoss:", font=("Segoe UI", 9)).pack(side=tk.LEFT)
+        ttk.Label(radioboss_887_status_frame, text="Connection Status", font=("Segoe UI", 9, "bold")).pack(side=tk.LEFT, fill=tk.X, expand=True)
 
     def open_config_window(self):
         """Open the message configuration window."""
@@ -504,6 +528,29 @@ Dual Station RDS and Intro Automation System
             # Sleep for 5 seconds before next update
             time.sleep(5)
 
+    def _check_radioboss_connectivity(self, station_id):
+        """Check if we can connect to the RadioBoss API server for the given station."""
+        try:
+            # Get the RadioBoss API server URL (e.g., "http://192.168.3.12:9000")
+            server_url = self.config_manager.get_station_setting(station_id, "radioboss.server")
+
+            # Parse the URL to extract IP and port
+            from urllib.parse import urlparse
+            parsed = urlparse(server_url)
+            host = parsed.hostname
+            port = parsed.port or 80  # Default to port 80 if not specified
+
+            import socket
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(5)  # 5 second timeout
+            result = sock.connect_ex((host, port))
+            sock.close()
+
+            return result == 0  # 0 means connection successful
+        except Exception as e:
+            logging.error(f"Error checking RadioBoss connectivity for {station_id}: {e}")
+            return False
+
     def _update_status_indicators(self):
         """Update the status indicator circles for both stations."""
         try:
@@ -529,6 +576,23 @@ Dual Station RDS and Intro Automation System
         except Exception as e:
             self.rds_887_status_canvas.itemconfig(1, fill='gray')
             self.logger.error(f"Error updating 887 status indicator: {e}")
+
+        # Update RadioBoss connectivity indicators
+        try:
+            radioboss_1047_connected = self._check_radioboss_connectivity('station_1047')
+            radioboss_1047_color = 'green' if radioboss_1047_connected else 'red'
+            self.radioboss_1047_status_canvas.itemconfig(1, fill=radioboss_1047_color)
+        except Exception as e:
+            self.radioboss_1047_status_canvas.itemconfig(1, fill='gray')
+            self.logger.error(f"Error updating RadioBoss 1047 connectivity indicator: {e}")
+
+        try:
+            radioboss_887_connected = self._check_radioboss_connectivity('station_887')
+            radioboss_887_color = 'green' if radioboss_887_connected else 'red'
+            self.radioboss_887_status_canvas.itemconfig(1, fill=radioboss_887_color)
+        except Exception as e:
+            self.radioboss_887_status_canvas.itemconfig(1, fill='gray')
+            self.logger.error(f"Error updating RadioBoss 887 connectivity indicator: {e}")
 
     def _update_message_lists(self, messages_1047, messages_887):
         """Update the message listboxes on the main thread."""

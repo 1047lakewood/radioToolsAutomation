@@ -35,7 +35,7 @@ class ConfigManager:
                 with open(self.config_file, 'r', encoding='utf-8') as f:
                     config = json.load(f)
                 logging.info(f"Configuration loaded from {self.config_file}.")
-                return config
+                return self._migrate_config_if_needed(config)
             except json.JSONDecodeError as e:
                 logging.error(f"Error decoding JSON from {self.config_file}: {e}")
                 return self._default_config()
@@ -53,7 +53,7 @@ class ConfigManager:
                 with open(self.config_file, 'w', encoding='utf-8') as f:
                     json.dump(migrated_config, f, indent=4)
                 logging.info(f"Migration complete. Configuration saved to {self.config_file}.")
-                return migrated_config
+                return self._migrate_config_if_needed(migrated_config)
             except Exception as e:
                 logging.error(f"Error migrating from {legacy_file}: {e}")
                 return self._default_config()
@@ -76,6 +76,10 @@ class ConfigManager:
                     "Messages": [],
                     "Ads": [],
                     "settings": {
+                        "radioboss": {
+                            "server": "http://localhost:9000",
+                            "password": "password"
+                        },
                         "rds": {
                             "ip": "192.168.1.100",
                             "port": 10002,
@@ -86,11 +90,15 @@ class ConfigManager:
                             "now_playing_xml": r"G:\To_RDS\nowplaying_887.xml",
                             "mp3_directory": r"G:\Shiurim\introsCleanedUp",
                             "missing_artists_log": r"missing_artists_887.log",
-                            "schedule_url": "http://192.168.1.100:9000/?pass=password&action=schedule&type=run&id=INTRO"
+                            "schedule_event_id": "INTRO",
+                            "current_artist_filename": "currentArtist_887.mp3",
+                            "actual_current_artist_filename": "actualCurrentArtist_887.mp3",
+                            "blank_mp3_filename": "blank_887.mp3",
+                            "silent_mp3_filename": "near_silent_887.mp3"
                         },
                         "ad_inserter": {
-                            "insertion_url": "http://192.168.1.100:8000/insert",
-                            "instant_url": "http://192.168.1.100:8000/play",
+                            "insertion_event_id": "INSERT",
+                            "instant_event_id": "PLAY",
                             "output_mp3": r"G:\Ads\adRoll_887.mp3"
                         }
                     }
@@ -106,6 +114,97 @@ class ConfigManager:
             }
         }
 
+    def _migrate_config_if_needed(self, config):
+        """Migrate config from old URL format to new RadioBoss server + event ID format if needed."""
+        migrated = False
+
+        if 'stations' in config:
+            for station_id, station_data in config['stations'].items():
+                if 'settings' in station_data:
+                    settings = station_data['settings']
+
+                    # Create radioboss section if it doesn't exist
+                    if 'radioboss' not in settings:
+                        # Try to get server/password from mairlist section if it exists
+                        if 'mairlist' in settings:
+                            mairlist = settings['mairlist']
+                            server = mairlist.get('server', 'http://localhost:9000')
+                            password = mairlist.get('password', 'password')
+                        else:
+                            # Try to extract from existing URLs
+                            server = 'http://localhost:9000'
+                            password = 'password'
+                            # Try intro_loader URL first
+                            if 'intro_loader' in settings and 'schedule_url' in settings['intro_loader']:
+                                url = settings['intro_loader']['schedule_url']
+                                try:
+                                    # Extract server from URL like "http://192.168.3.12:9000/?pass=..."
+                                    from urllib.parse import urlparse, parse_qs
+                                    parsed = urlparse(url)
+                                    server = f"{parsed.scheme}://{parsed.netloc}"
+                                    query_params = parse_qs(parsed.query)
+                                    if 'pass' in query_params:
+                                        password = query_params['pass'][0]
+                                except Exception:
+                                    pass
+
+                        settings['radioboss'] = {
+                            'server': server,
+                            'password': password
+                        }
+                        migrated = True
+                        logging.info(f"Created RadioBoss server settings for {station_id}")
+
+                    # Migrate intro_loader.schedule_url to schedule_event_id
+                    if 'intro_loader' in settings:
+                        intro_loader = settings['intro_loader']
+                        if 'schedule_url' in intro_loader and 'schedule_event_id' not in intro_loader:
+                            schedule_url = intro_loader['schedule_url']
+                            # Extract event ID from URL (last parameter after 'id=')
+                            try:
+                                event_id = schedule_url.split('id=')[-1]
+                                intro_loader['schedule_event_id'] = event_id
+                                del intro_loader['schedule_url']
+                                migrated = True
+                                logging.info(f"Migrated intro_loader schedule URL to event ID for {station_id}")
+                            except (IndexError, AttributeError):
+                                logging.warning(f"Could not extract event ID from intro_loader URL for {station_id}: {schedule_url}")
+
+                    # Migrate ad_inserter URLs to event IDs
+                    if 'ad_inserter' in settings:
+                        ad_inserter = settings['ad_inserter']
+                        if 'insertion_url' in ad_inserter and 'insertion_event_id' not in ad_inserter:
+                            try:
+                                event_id = ad_inserter['insertion_url'].split('id=')[-1]
+                                ad_inserter['insertion_event_id'] = event_id
+                                del ad_inserter['insertion_url']
+                                migrated = True
+                                logging.info(f"Migrated ad_inserter insertion URL to event ID for {station_id}")
+                            except (IndexError, AttributeError):
+                                logging.warning(f"Could not extract event ID from insertion URL for {station_id}: {ad_inserter.get('insertion_url', '')}")
+
+                        if 'instant_url' in ad_inserter and 'instant_event_id' not in ad_inserter:
+                            try:
+                                event_id = ad_inserter['instant_url'].split('id=')[-1]
+                                ad_inserter['instant_event_id'] = event_id
+                                del ad_inserter['instant_url']
+                                migrated = True
+                                logging.info(f"Migrated ad_inserter instant URL to event ID for {station_id}")
+                            except (IndexError, AttributeError):
+                                logging.warning(f"Could not extract event ID from instant URL for {station_id}: {ad_inserter.get('instant_url', '')}")
+
+        if migrated:
+            logging.info("Configuration migration completed. Saving migrated config.")
+            # Save the migrated config
+            try:
+                with open(self.config_file, 'w', encoding='utf-8') as f:
+                    json.dump(config, f, indent=4)
+                logging.info(f"Migrated configuration saved to {self.config_file}")
+            except Exception as e:
+                logging.error(f"Error saving migrated configuration: {e}")
+
+        return config
+
     def _default_config(self):
         """Returns the default configuration structure."""
         return {
@@ -115,6 +214,10 @@ class ConfigManager:
                     "Messages": [],
                     "Ads": [],
                     "settings": {
+                        "radioboss": {
+                            "server": "http://192.168.3.12:9000",
+                            "password": "bmas220"
+                        },
                         "rds": {
                             "ip": "50.208.125.83",
                             "port": 10001,
@@ -125,15 +228,15 @@ class ConfigManager:
                             "now_playing_xml": r"G:\To_RDS\nowplaying.xml",
                             "mp3_directory": r"G:\Shiurim\introsCleanedUp",
                             "missing_artists_log": r"missing_artists_1047.log",
-                            "schedule_url": "http://192.168.3.11:9000/?pass=bmas220&action=schedule&type=run&id=TBACFNBGJKOMETDYSQYR",
+                            "schedule_event_id": "TBACFNBGJKOMETDYSQYR",
                             "current_artist_filename": "currentArtist_1047.mp3",
                             "actual_current_artist_filename": "actualCurrentArtist_1047.mp3",
                             "blank_mp3_filename": "blank_1047.mp3",
                             "silent_mp3_filename": "near_silent_1047.mp3"
                         },
                         "ad_inserter": {
-                            "insertion_url": "http://localhost:8000/insert",
-                            "instant_url": "http://localhost:8000/play",
+                            "insertion_event_id": "INSERT",
+                            "instant_event_id": "PLAY",
                             "output_mp3": r"G:\Ads\adRoll_1047.mp3"
                         }
                     }
@@ -143,6 +246,10 @@ class ConfigManager:
                     "Messages": [],
                     "Ads": [],
                     "settings": {
+                        "radioboss": {
+                            "server": "http://localhost:9000",
+                            "password": "password"
+                        },
                         "rds": {
                             "ip": "192.168.1.100",
                             "port": 10002,
@@ -153,15 +260,15 @@ class ConfigManager:
                             "now_playing_xml": r"G:\To_RDS\nowplaying_887.xml",
                             "mp3_directory": r"G:\Shiurim\introsCleanedUp",
                             "missing_artists_log": r"missing_artists_887.log",
-                            "schedule_url": "http://192.168.1.100:9000/?pass=password&action=schedule&type=run&id=INTRO",
+                            "schedule_event_id": "INTRO",
                             "current_artist_filename": "currentArtist_887.mp3",
                             "actual_current_artist_filename": "actualCurrentArtist_887.mp3",
                             "blank_mp3_filename": "blank_887.mp3",
                             "silent_mp3_filename": "near_silent_887.mp3"
                         },
                         "ad_inserter": {
-                            "insertion_url": "http://192.168.1.100:8000/insert",
-                            "instant_url": "http://192.168.1.100:8000/play",
+                            "insertion_event_id": "INSERT",
+                            "instant_event_id": "PLAY",
                             "output_mp3": r"G:\Ads\adRoll_887.mp3"
                         }
                     }
@@ -257,7 +364,7 @@ class ConfigManager:
                 self.config['stations'][station_id] = {}
             if 'settings' not in self.config['stations'][station_id]:
                 self.config['stations'][station_id]['settings'] = {}
-            
+
             keys = key.split('.')
             d = self.config['stations'][station_id]['settings']
             for k in keys[:-1]:
@@ -268,6 +375,56 @@ class ConfigManager:
             logging.info(f"Updated station '{station_id}' setting '{key}' to {value}")
         except Exception as e:
             logging.error(f"Error updating station '{station_id}' setting '{key}': {e}")
+
+    # ==================== RADIOBOSS URL HELPER METHODS ====================
+
+    def get_radioboss_server(self, station_id):
+        """Get the RadioBoss server URL for a station."""
+        return self.get_station_setting(station_id, "radioboss.server", "http://localhost:9000")
+
+    def get_radioboss_password(self, station_id):
+        """Get the RadioBoss password for a station."""
+        return self.get_station_setting(station_id, "radioboss.password", "password")
+
+    def get_intro_loader_schedule_url(self, station_id):
+        """Construct the full Intro Loader schedule URL from server + event ID."""
+        server = self.get_radioboss_server(station_id)
+        password = self.get_radioboss_password(station_id)
+        event_id = self.get_station_setting(station_id, "intro_loader.schedule_event_id", "INTRO")
+
+        # Ensure server URL has proper format
+        if not server.startswith("http://") and not server.startswith("https://"):
+            server = f"http://{server}"
+
+        return f"{server}/?pass={password}&action=schedule&type=run&id={event_id}"
+
+    def get_ad_inserter_insertion_url(self, station_id):
+        """Construct the full Ad Inserter insertion URL from server + event ID."""
+        server = self.get_radioboss_server(station_id)
+        password = self.get_radioboss_password(station_id)
+        event_id = self.get_station_setting(station_id, "ad_inserter.insertion_event_id", "INSERT")
+
+        # Ensure server URL has proper format
+        if not server.startswith("http://") and not server.startswith("https://"):
+            server = f"http://{server}"
+
+        return f"{server}/?pass={password}&action=schedule&type=run&id={event_id}"
+
+    def get_ad_inserter_instant_url(self, station_id):
+        """Construct the full Ad Inserter instant URL from server + event ID."""
+        server = self.get_radioboss_server(station_id)
+        password = self.get_radioboss_password(station_id)
+        event_id = self.get_station_setting(station_id, "ad_inserter.instant_event_id", "PLAY")
+
+        # Ensure server URL has proper format
+        if not server.startswith("http://") and not server.startswith("https://"):
+            server = f"http://{server}"
+
+        return f"{server}/?pass={password}&action=schedule&type=run&id={event_id}"
+
+    def get_mairlist_server_url(self, station_id):
+        """Get the mAirList server URL (same as RadioBoss server for compatibility)."""
+        return self.get_radioboss_server(station_id)
 
     # ==================== SHARED METHODS ====================
     

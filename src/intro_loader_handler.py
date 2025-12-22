@@ -87,7 +87,7 @@ class IntroLoaderHandler:
         self.now_playing_xml = self.config_manager.get_station_setting(self.station_id, "settings.intro_loader.now_playing_xml", r"G:\To_RDS\nowplaying.xml")
         self.mp3_directory = self.config_manager.get_station_setting(self.station_id, "settings.intro_loader.mp3_directory", r"G:\Shiurim\introsCleanedUp")
         self.missing_artist_log = self.config_manager.get_station_setting(self.station_id, "settings.intro_loader.missing_artists_log", r"G:\Misc\Dev\CombinedRDSApp\missing_artists.log")
-        self.schedule_url = self.config_manager.get_station_setting(self.station_id, "settings.intro_loader.schedule_url", "http://192.168.3.11:9000/?pass=bmas220&action=schedule&type=run&id=TBACFNBGJKOMETDYSQYR")
+        self.schedule_url = self.config_manager.get_intro_loader_schedule_url(self.station_id)
         
         # Get station-specific filenames (defaults include station suffix for uniqueness)
         station_suffix = "_1047" if self.station_id == "station_1047" else "_887"
