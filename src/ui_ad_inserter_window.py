@@ -132,11 +132,16 @@ class AdInserterWindow(tk.Toplevel):
         name_label = ttk.Label(right_frame, text="Name:", font=("Segoe UI", 10, "bold"))
         name_label.grid(row=0, column=0, sticky=tk.W, pady=5)
         widgets['name_var'] = tk.StringVar()
-        ttk.Entry(right_frame, textvariable=widgets['name_var'], width=50, font=("Segoe UI", 10)).grid(row=0, column=1, sticky=tk.W, pady=5, padx=5)
+        name_entry = ttk.Entry(right_frame, textvariable=widgets['name_var'], width=50, font=("Segoe UI", 10))
+        name_entry.grid(row=0, column=1, sticky=tk.W, pady=5, padx=5)
+        name_entry.bind('<FocusOut>', lambda e, s=station_id: self.auto_save_current_ad(s))
+        name_entry.bind('<KeyRelease>', lambda e, s=station_id: self.delayed_auto_save(s))
 
         # Enabled
         widgets['enabled_var'] = tk.BooleanVar(value=True)
-        ttk.Checkbutton(right_frame, text="Enabled", variable=widgets['enabled_var'], style="Toggle.TCheckbutton").grid(row=1, column=0, columnspan=2, sticky=tk.W, pady=5)
+        enabled_cb = ttk.Checkbutton(right_frame, text="Enabled", variable=widgets['enabled_var'],
+                                   style="Toggle.TCheckbutton", command=lambda s=station_id: self.auto_save_current_ad(s))
+        enabled_cb.grid(row=1, column=0, columnspan=2, sticky=tk.W, pady=5)
 
         # MP3 File
         mp3_label = ttk.Label(right_frame, text="MP3 File:", font=("Segoe UI", 10, "bold"))
@@ -147,12 +152,17 @@ class AdInserterWindow(tk.Toplevel):
         mp3_frame = ttk.Frame(right_frame)
         mp3_frame.grid(row=2, column=1, columnspan=2, sticky=tk.W, pady=5)
 
-        ttk.Entry(mp3_frame, textvariable=widgets['mp3_var'], width=35, font=("Segoe UI", 10)).pack(side=tk.LEFT)
+        mp3_entry = ttk.Entry(mp3_frame, textvariable=widgets['mp3_var'], width=35, font=("Segoe UI", 10))
+        mp3_entry.pack(side=tk.LEFT)
+        mp3_entry.bind('<FocusOut>', lambda e, s=station_id: self.auto_save_current_ad(s))
         ttk.Button(mp3_frame, text="Browse", command=lambda: self.browse_mp3(station_id), width=8).pack(side=tk.LEFT, padx=(5, 0))
 
         # Scheduled
         widgets['scheduled_var'] = tk.BooleanVar(value=False)
-        ttk.Checkbutton(right_frame, text="Scheduled", variable=widgets['scheduled_var'], command=lambda: self.toggle_schedule(station_id), style="Toggle.TCheckbutton").grid(row=3, column=0, columnspan=2, sticky=tk.W, pady=5)
+        scheduled_cb = ttk.Checkbutton(right_frame, text="Scheduled", variable=widgets['scheduled_var'],
+                                     command=lambda s=station_id: (self.toggle_schedule(s), self.auto_save_current_ad(s)),
+                                     style="Toggle.TCheckbutton")
+        scheduled_cb.grid(row=3, column=0, columnspan=2, sticky=tk.W, pady=5)
 
         # Days
         days_label = ttk.Label(right_frame, text="Days:", font=("Segoe UI", 10, "bold"))
@@ -163,7 +173,9 @@ class AdInserterWindow(tk.Toplevel):
         days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
         for i, day in enumerate(days):
             widgets['day_vars'][day] = tk.BooleanVar()
-            ttk.Checkbutton(widgets['days_frame'], text=day[:3], variable=widgets['day_vars'][day]).pack(side=tk.LEFT, padx=2)
+            cb = ttk.Checkbutton(widgets['days_frame'], text=day[:3], variable=widgets['day_vars'][day])
+            cb.pack(side=tk.LEFT, padx=2)
+            cb.config(command=lambda s=station_id: self.auto_save_current_ad(s))
 
         # Select All Days button
         days_button_frame = ttk.Frame(right_frame)
@@ -183,6 +195,7 @@ class AdInserterWindow(tk.Toplevel):
             hour_label = self.format_hour_ampm(h)
             cb = ttk.Checkbutton(widgets['hours_frame'], text=hour_label, variable=widgets['hour_vars'][h], width=6)
             cb.grid(row=h//6, column=h%6, padx=1, pady=1, sticky=tk.W)
+            cb.config(command=lambda s=station_id: self.auto_save_current_ad(s))
 
         # Select All Hours button
         hours_button_frame = ttk.Frame(right_frame)
@@ -190,11 +203,6 @@ class AdInserterWindow(tk.Toplevel):
         widgets['select_all_hours_btn'] = ttk.Button(hours_button_frame, text="Select All Hours",
                                                    command=lambda: self.toggle_all_hours(station_id))
         widgets['select_all_hours_btn'].pack(side=tk.LEFT)
-
-        # Save button (for changes within tab)
-        save_frame = ttk.Frame(right_frame)
-        save_frame.grid(row=8, column=0, columnspan=3, pady=10)
-        ttk.Button(save_frame, text="Save Changes", command=lambda: self.save_current_ad(station_id)).pack()
 
     def populate_ad_list(self, station_id):
         """Populate the ad list for a specific station."""
@@ -213,32 +221,50 @@ class AdInserterWindow(tk.Toplevel):
         station_data = self.stations[station_id]
         widgets = station_data['widgets']
         listbox = widgets['ad_listbox']
-        
+
         selection = listbox.curselection()
         if not selection:
             # In rare timing cases, try once more after the event loop cycles
             self.after(0, lambda: self.on_ad_select(station_id))
             return
-        
+
         index = selection[0]
+
         station_data['current_index'] = index
         ad = station_data['ads'][index]
-        
+
         # Populate fields
         widgets['name_var'].set(ad.get('Name', ''))
         widgets['enabled_var'].set(ad.get('Enabled', True))
         widgets['mp3_var'].set(ad.get('MP3File', ''))
         widgets['scheduled_var'].set(ad.get('Scheduled', False))
-        
+
         # Days
         for day in widgets['day_vars']:
             widgets['day_vars'][day].set(day in ad.get('Days', []))
-        
+
         # Hours
         for h in widgets['hour_vars']:
             widgets['hour_vars'][h].set(h in ad.get('Hours', []))
-        
+
         self.toggle_schedule(station_id)
+
+    def auto_save_current_ad(self, station_id):
+        """Auto-save the current ad changes."""
+        station_data = self.stations[station_id]
+        if station_data['current_index'] is not None:
+            try:
+                self.save_current_ad(station_id)
+                logging.debug(f"Auto-saved ad at index {station_data['current_index']} for {station_id}")
+            except Exception as e:
+                logging.error(f"Failed to auto-save ad: {e}")
+
+    def delayed_auto_save(self, station_id):
+        """Schedule a delayed auto-save to avoid too frequent saves while typing."""
+        station_data = self.stations[station_id]
+        if hasattr(station_data, '_auto_save_id'):
+            self.after_cancel(station_data['_auto_save_id'])
+        station_data['_auto_save_id'] = self.after(1000, lambda: self.auto_save_current_ad(station_id))  # Save after 1 second of no typing
 
     def add_new_ad(self, station_id):
         """Add a new ad for a specific station."""
