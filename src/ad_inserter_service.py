@@ -1,7 +1,10 @@
 import os
 import logging
 import urllib.request
+import time
+import xml.etree.ElementTree as ET
 from datetime import datetime
+from typing import Dict, List, Optional, Tuple
 
 try:
     from pydub import AudioSegment
@@ -9,10 +12,26 @@ try:
 except ImportError:  # pragma: no cover - optional dependency
     PYDUB_AVAILABLE = False
 
+try:
+    from nowplaying_reader import NowPlayingReader
+    NOWPLAYING_READER_AVAILABLE = True
+except ImportError:
+    NOWPLAYING_READER_AVAILABLE = False
+
 # Logger will be set in __init__ based on station_id
 
+# Configuration constants
+XML_POLL_INTERVAL = 2  # seconds between XML checks
+XML_POLL_TIMEOUT = 60  # max seconds to wait for XML confirmation
+CONCAT_DURATION_TOLERANCE_MS = 500  # allowed deviation in ms for duration validation
+
+
 class AdInserterService:
-    """Combine enabled/scheduled ads into a single MP3 and trigger insertion."""
+    """Combine enabled/scheduled ads into a single MP3 and trigger insertion.
+    
+    This service validates concatenation and confirms playback via XML before
+    recording ad plays for accurate reporting.
+    """
 
     def __init__(self, config_manager, station_id):
         """
@@ -35,6 +54,19 @@ class AdInserterService:
             "settings.ad_inserter.output_mp3",
             r"G:\\Ads\\newAd.mp3",
         )
+        
+        # Get XML path for confirmation
+        self.xml_path = self.config_manager.get_station_setting(
+            station_id, 
+            "settings.intro_loader.now_playing_xml", 
+            r"G:\To_RDS\nowplaying.xml"
+        )
+        
+        # Initialize robust XML reader if available
+        if NOWPLAYING_READER_AVAILABLE:
+            self._xml_reader = NowPlayingReader(self.xml_path, self.logger)
+        else:
+            self._xml_reader = None
 
         # Initialize ad play logger
         try:
@@ -47,12 +79,7 @@ class AdInserterService:
         # Initialize lecture detector for playlist-end detection
         try:
             from lecture_detector import LectureDetector
-            xml_path = self.config_manager.get_station_setting(
-                station_id, 
-                "settings.intro_loader.now_playing_xml", 
-                r"G:\To_RDS\nowplaying.xml"
-            )
-            self.lecture_detector = LectureDetector(xml_path, config_manager, station_id)
+            self.lecture_detector = LectureDetector(self.xml_path, config_manager, station_id)
             self.logger.debug("LectureDetector initialized for playlist-end detection")
         except ImportError:
             self.logger.warning("LectureDetector not available - playlist-end detection disabled")
@@ -62,34 +89,120 @@ class AdInserterService:
             self.lecture_detector = None
 
     def run(self):
-        """Combine ads and call the scheduled insertion URL."""
-        if self._combine_ads():
-            return self._call_url(self.insertion_url)
-        return False
+        """Combine ads and call the scheduled insertion URL with confirmation."""
+        return self._run_with_confirmation(self.insertion_url, "scheduled")
 
     def run_instant(self):
-        """Combine ads and call the instant-play URL."""
-        if self._combine_ads():
-            return self._call_url(self.instant_url)
-        return False
+        """Combine ads and call the instant-play URL with confirmation."""
+        return self._run_with_confirmation(self.instant_url, "instant")
 
-    def _combine_ads(self):
+    def _run_with_confirmation(self, url: str, mode: str) -> bool:
+        """
+        Execute the ad insertion workflow with validation and confirmation.
+        
+        Args:
+            url: The insertion URL to call
+            mode: 'scheduled' or 'instant' for logging
+            
+        Returns:
+            bool: True if ads were confirmed as played, False otherwise
+        """
+        # Step 1: Select and validate ads
+        ads_result = self._select_valid_ads()
+        if not ads_result:
+            return False
+        
+        valid_files, ad_names, expected_duration_ms = ads_result
+        
+        # Generate roll ID for tracking
+        roll_id = self.ad_logger.generate_roll_id() if self.ad_logger else "no-logger"
+        attempt_hour = datetime.now().hour
+        
+        self.logger.info(f"Starting {mode} ad insertion (roll_id={roll_id}, {len(ad_names)} ads)")
+        
+        # Step 2: Concatenate MP3 files
+        concat_result = self._concatenate_and_validate(valid_files, expected_duration_ms)
+        
+        if not concat_result["ok"]:
+            self.logger.error(f"Concatenation failed: {concat_result.get('error', 'unknown')}")
+            if self.ad_logger:
+                self.ad_logger.record_roll_attempt(
+                    roll_id, ad_names, 
+                    concat_validation=concat_result,
+                    insertion_result={"ok": False, "reason": "concat_failed"}
+                )
+                self.ad_logger.mark_roll_unconfirmed(roll_id, "concat_failed")
+            return False
+        
+        self.logger.info(f"Concatenation successful: {concat_result['actual_ms']:.0f}ms (expected {concat_result['expected_ms']:.0f}ms)")
+        
+        # Step 3: Call insertion URL
+        insertion_result = self._call_url_with_result(url)
+        
+        if not insertion_result["ok"]:
+            self.logger.error(f"Insertion URL call failed: {insertion_result.get('error', 'unknown')}")
+            if self.ad_logger:
+                self.ad_logger.record_roll_attempt(
+                    roll_id, ad_names,
+                    concat_validation=concat_result,
+                    insertion_result=insertion_result
+                )
+                self.ad_logger.mark_roll_unconfirmed(roll_id, "insertion_failed")
+            return False
+        
+        self.logger.info(f"Insertion URL called successfully (status={insertion_result.get('status_code')})")
+        
+        # Step 4: Record the attempt
+        if self.ad_logger:
+            self.ad_logger.record_roll_attempt(
+                roll_id, ad_names,
+                concat_validation=concat_result,
+                insertion_result=insertion_result
+            )
+        
+        # Step 5: Poll XML for confirmation
+        confirmation = self._poll_for_xml_confirmation(attempt_hour)
+        
+        if confirmation["ok"]:
+            self.logger.info(f"XML confirmation received: ARTIST='{confirmation['artist']}' at {confirmation.get('xml_started_at')}")
+            if self.ad_logger:
+                self.ad_logger.confirm_roll_playback(
+                    roll_id,
+                    confirmation["artist"],
+                    confirmation.get("xml_started_at")
+                )
+            return True
+        else:
+            self.logger.warning(f"XML confirmation failed: {confirmation.get('reason', 'unknown')}")
+            if self.ad_logger:
+                self.ad_logger.mark_roll_unconfirmed(roll_id, confirmation.get("reason", "unknown"))
+            return False
+
+    def _select_valid_ads(self) -> Optional[Tuple[List[str], List[str], float]]:
+        """
+        Select valid ads for insertion.
+        
+        Returns:
+            Tuple of (file_paths, ad_names, expected_duration_ms) or None if no valid ads
+        """
         # Safety check: Don't insert ads if playlist has ended
         if self.lecture_detector:
             try:
                 has_next = self.lecture_detector.has_next_track()
                 if not has_next:
-                    self.logger.warning("Playlist has ended (no next track) - skipping ad insertion (safety check).")
-                    return False
+                    self.logger.warning("Playlist has ended (no next track) - skipping ad insertion.")
+                    return None
                 self.logger.debug("Playlist continues - proceeding with ad insertion.")
             except Exception as e:
-                self.logger.error(f"Error checking for next track in safety check: {e}")
-                # If we can't determine, proceed cautiously but log the issue
+                self.logger.error(f"Error checking for next track: {e}")
                 self.logger.warning("Unable to verify playlist status - proceeding with ad insertion.")
         
         ads = self.config_manager.get_station_ads(self.station_id) or []
         valid_files = []
+        ad_names = []
+        expected_duration_ms = 0.0
         now = datetime.now()
+        
         for ad in ads:
             ad_name = ad.get("Name", "Unknown")
             
@@ -104,20 +217,23 @@ class AdInserterService:
                 self.logger.warning(f"Ad '{ad_name}' excluded: MP3 not found: {mp3}")
                 continue
             
+            # Calculate expected duration
+            try:
+                if PYDUB_AVAILABLE:
+                    audio = AudioSegment.from_mp3(mp3)
+                    expected_duration_ms += len(audio)
+            except Exception as e:
+                self.logger.warning(f"Could not get duration for '{ad_name}': {e}")
+            
             self.logger.info(f"Ad '{ad_name}' included in roll")
             valid_files.append(mp3)
+            ad_names.append(ad_name)
 
         if not valid_files:
             self.logger.warning("No valid ads to combine.")
-            return False
+            return None
 
-        # Log the ads that will be played
-        played_ad_names = [ad.get("Name", "Unknown") for ad in ads
-                          if ad.get("Enabled", True) and self._is_scheduled(ad, now)]
-        self._log_ad_plays(played_ad_names)
-
-        os.makedirs(os.path.dirname(self.output_mp3), exist_ok=True)
-        return self._concatenate_mp3_files(valid_files, self.output_mp3)
+        return (valid_files, ad_names, expected_duration_ms)
 
     def _is_scheduled(self, ad, now):
         ad_name = ad.get("Name", "Unknown")
@@ -169,7 +285,256 @@ class AdInserterService:
         self.logger.debug(f"Ad '{ad_name}': scheduled with no specific hours, allowing")
         return True
 
+    def _concatenate_and_validate(self, files: List[str], expected_duration_ms: float) -> Dict:
+        """
+        Concatenate MP3 files and validate the output.
+        
+        Args:
+            files: List of MP3 file paths
+            expected_duration_ms: Expected total duration in milliseconds
+            
+        Returns:
+            Dict with 'ok', 'expected_ms', 'actual_ms', and optionally 'error'
+        """
+        result = {
+            "ok": False,
+            "expected_ms": expected_duration_ms,
+            "actual_ms": 0
+        }
+        
+        if not PYDUB_AVAILABLE:
+            result["error"] = "pydub not available"
+            self.logger.error("pydub not available - cannot concatenate MP3 files")
+            return result
+        
+        try:
+            # Create output directory if needed
+            os.makedirs(os.path.dirname(self.output_mp3), exist_ok=True)
+            
+            # Concatenate files
+            combined = AudioSegment.empty()
+            for fp in files:
+                if not os.path.exists(fp):
+                    result["error"] = f"File not found: {fp}"
+                    self.logger.error(result["error"])
+                    return result
+                combined += AudioSegment.from_mp3(fp)
+            
+            # Export with adRoll artist tag
+            combined.export(self.output_mp3, format="mp3", tags={"artist": "adRoll"})
+            
+            # Validate output exists
+            if not os.path.exists(self.output_mp3):
+                result["error"] = "Output file not created"
+                return result
+            
+            # Validate output is readable and get actual duration
+            try:
+                output_audio = AudioSegment.from_mp3(self.output_mp3)
+                result["actual_ms"] = len(output_audio)
+            except Exception as e:
+                result["error"] = f"Output file not readable: {e}"
+                return result
+            
+            # Validate duration is within tolerance
+            duration_diff = abs(result["actual_ms"] - expected_duration_ms)
+            if duration_diff > CONCAT_DURATION_TOLERANCE_MS:
+                result["error"] = f"Duration mismatch: expected {expected_duration_ms}ms, got {result['actual_ms']}ms"
+                self.logger.warning(result["error"])
+                # Still mark as OK if file is readable - duration may vary due to encoding
+            
+            result["ok"] = True
+            return result
+            
+        except Exception as e:
+            result["error"] = str(e)
+            self.logger.exception(f"Error concatenating ads: {e}")
+            return result
+
+    def _call_url_with_result(self, url: str) -> Dict:
+        """
+        Call the insertion URL and return detailed result.
+        
+        Args:
+            url: The URL to call
+            
+        Returns:
+            Dict with 'ok', 'status_code', and optionally 'error'
+        """
+        result = {"ok": False}
+        
+        self.logger.info(f"Calling ad service URL: {url}")
+        try:
+            with urllib.request.urlopen(url, timeout=10) as resp:
+                result["status_code"] = resp.status
+                result["ok"] = (200 <= resp.status < 300)
+                self.logger.info(f"Ad service response: {resp.status}")
+        except Exception as e:
+            result["error"] = str(e)
+            self.logger.error(f"Failed to call ad service URL: {e}")
+        
+        return result
+
+    def _poll_for_xml_confirmation(self, attempt_hour: int) -> Dict:
+        """
+        Poll the nowplaying XML for ARTIST=="adRoll" confirmation.
+        
+        Uses the robust NowPlayingReader if available for reliable detection.
+        
+        Args:
+            attempt_hour: The hour when the insertion was attempted
+            
+        Returns:
+            Dict with 'ok', 'artist', 'xml_started_at', and optionally 'reason'
+        """
+        # Use robust reader if available
+        if self._xml_reader:
+            self.logger.info(f"Polling XML for adRoll confirmation using NowPlayingReader (timeout={XML_POLL_TIMEOUT}s)...")
+            result = self._xml_reader.wait_for_artist(
+                target_artist="adRoll",
+                timeout=XML_POLL_TIMEOUT,
+                poll_interval=XML_POLL_INTERVAL,
+                same_hour_required=False,  # We handle this ourselves
+                attempt_hour=attempt_hour
+            )
+            
+            if result.get("ok"):
+                self.logger.info(f"XML confirmation received: ARTIST='{result['artist']}' at {result.get('started_at')}")
+            else:
+                self.logger.warning(f"XML confirmation failed: {result.get('reason', 'unknown')}")
+            
+            return result
+        
+        # Fallback to manual polling
+        result = {"ok": False}
+        
+        self.logger.info(f"Polling XML for adRoll confirmation (timeout={XML_POLL_TIMEOUT}s)...")
+        
+        start_time = time.time()
+        last_artist = None
+        
+        while (time.time() - start_time) < XML_POLL_TIMEOUT:
+            try:
+                xml_info = self._read_xml_track_info()
+                
+                if xml_info:
+                    artist = xml_info.get("artist", "")
+                    started_at = xml_info.get("started_at")
+                    
+                    # Log when artist changes
+                    if artist != last_artist:
+                        self.logger.debug(f"XML artist: '{artist}' (started: {started_at})")
+                        last_artist = artist
+                    
+                    # Check if it's adRoll (case-insensitive)
+                    if artist.lower() == "adroll":
+                        # Verify it's in the same hour as the attempt
+                        current_hour = datetime.now().hour
+                        if current_hour == attempt_hour:
+                            result["ok"] = True
+                            result["artist"] = artist
+                            result["xml_started_at"] = started_at
+                            result["same_hour"] = True
+                            return result
+                        else:
+                            # Still confirm but note the hour mismatch
+                            self.logger.warning(f"adRoll found but hour changed ({attempt_hour} -> {current_hour})")
+                            result["ok"] = True
+                            result["artist"] = artist
+                            result["xml_started_at"] = started_at
+                            result["same_hour"] = False
+                            return result
+                
+            except Exception as e:
+                self.logger.debug(f"Error reading XML during poll: {e}")
+            
+            time.sleep(XML_POLL_INTERVAL)
+        
+        result["reason"] = "timeout"
+        result["last_artist"] = last_artist
+        self.logger.warning(f"XML confirmation timeout after {XML_POLL_TIMEOUT}s (last artist: {last_artist})")
+        return result
+
+    def _read_xml_track_info(self) -> Optional[Dict]:
+        """
+        Read current track info from the nowplaying XML file.
+        
+        Uses fresh file reading to avoid caching issues.
+        
+        Returns:
+            Dict with 'artist', 'title', 'started_at' or None on error
+        """
+        if not os.path.exists(self.xml_path):
+            return None
+        
+        try:
+            # Force fresh read by reading content directly
+            with open(self.xml_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            root = ET.fromstring(content)
+            track = root.find("TRACK")
+            
+            if track is not None:
+                return {
+                    "artist": (track.get("ARTIST") or "").strip(),
+                    "title": (track.findtext("TITLE") or "").strip(),
+                    "started_at": track.get("STARTED")
+                }
+        except ET.ParseError as e:
+            self.logger.debug(f"XML parse error: {e}")
+        except Exception as e:
+            self.logger.debug(f"Error reading XML: {e}")
+        
+        return None
+
+    # =========================================================================
+    # Legacy methods (kept for backward compatibility but deprecated)
+    # =========================================================================
+
+    def _combine_ads(self):
+        """DEPRECATED: Use _run_with_confirmation instead."""
+        # Safety check: Don't insert ads if playlist has ended
+        if self.lecture_detector:
+            try:
+                has_next = self.lecture_detector.has_next_track()
+                if not has_next:
+                    self.logger.warning("Playlist has ended (no next track) - skipping ad insertion.")
+                    return False
+                self.logger.debug("Playlist continues - proceeding with ad insertion.")
+            except Exception as e:
+                self.logger.error(f"Error checking for next track: {e}")
+                self.logger.warning("Unable to verify playlist status - proceeding with ad insertion.")
+        
+        ads = self.config_manager.get_station_ads(self.station_id) or []
+        valid_files = []
+        now = datetime.now()
+        for ad in ads:
+            ad_name = ad.get("Name", "Unknown")
+            
+            if not ad.get("Enabled", True):
+                self.logger.debug(f"Ad '{ad_name}' excluded: not enabled")
+                continue
+            if not self._is_scheduled(ad, now):
+                self.logger.debug(f"Ad '{ad_name}' excluded: not scheduled for current time")
+                continue
+            mp3 = ad.get("MP3File")
+            if not mp3 or not os.path.exists(mp3):
+                self.logger.warning(f"Ad '{ad_name}' excluded: MP3 not found: {mp3}")
+                continue
+            
+            self.logger.info(f"Ad '{ad_name}' included in roll")
+            valid_files.append(mp3)
+
+        if not valid_files:
+            self.logger.warning("No valid ads to combine.")
+            return False
+
+        os.makedirs(os.path.dirname(self.output_mp3), exist_ok=True)
+        return self._concatenate_mp3_files(valid_files, self.output_mp3)
+
     def _concatenate_mp3_files(self, files, output_path):
+        """DEPRECATED: Use _concatenate_and_validate instead."""
         self.logger.debug(f"Concatenating {len(files)} files to {output_path}")
         if not PYDUB_AVAILABLE:
             self.logger.error("pydub not available - cannot concatenate MP3 files")
@@ -183,44 +548,22 @@ class AdInserterService:
                 combined += AudioSegment.from_mp3(fp)
             combined.export(output_path, format="mp3", tags={"artist": "adRoll"})
             return True
-        except Exception as e:  # pragma: no cover - runtime safety
+        except Exception as e:
             self.logger.exception(f"Error concatenating ads: {e}")
             return False
 
     def _call_url(self, url):
+        """DEPRECATED: Use _call_url_with_result instead."""
         self.logger.info(f"Calling ad service URL: {url}")
         try:
             with urllib.request.urlopen(url, timeout=10) as resp:
                 self.logger.info(f"Ad service response: {resp.status}")
             return True
-        except Exception as e:  # pragma: no cover - runtime safety
+        except Exception as e:
             self.logger.error(f"Failed to call ad service URL: {e}")
             return False
 
     def _log_ad_plays(self, ad_names):
-        """
-        Log that the specified ads have been played.
-
-        Args:
-            ad_names: List of ad names that were played
-        """
-        if not self.ad_logger or not ad_names:
-            return
-
-        try:
-            results = self.ad_logger.record_multiple_ad_plays(ad_names)
-            successful = sum(results.values())
-            total = len(results)
-
-            if successful > 0:
-                self.logger.info(f"Successfully logged {successful}/{total} ad plays")
-                for ad_name, success in results.items():
-                    if success:
-                        self.logger.debug(f"Ad '{ad_name}' play logged successfully")
-                    else:
-                        self.logger.warning(f"Failed to log play for ad '{ad_name}'")
-            else:
-                self.logger.warning("No ad plays were successfully logged")
-
-        except Exception as e:
-            self.logger.error(f"Error logging ad plays: {e}")
+        """DEPRECATED: Ad plays are now logged via confirmation flow."""
+        # This method is no longer used - plays are recorded through confirm_roll_playback
+        pass

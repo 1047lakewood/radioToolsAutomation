@@ -509,51 +509,14 @@ class OptionsWindow(Toplevel):
         self.config_manager.update_shared_setting("migration.stable_path", self.migration_vars['stable_path'].get())
 
         # Save all settings changes to file
+        # Note: Config observers will automatically reload all handlers
         try:
             self.config_manager.save_config()
-            logging.info("Settings changes saved for all stations.")
+            logging.info("Settings changes saved for all stations. Handlers will reload automatically.")
         except Exception as e:
             logging.exception("Failed to save settings.")
             messagebox.showerror("Save Error", f"Failed to save settings:\n{e}", parent=self)
             return # Don't close if save failed
-
-        # Reload configuration in handlers to apply changes immediately
-        try:
-            self.intro_1047_handler.reload_configuration()
-            self.intro_887_handler.reload_configuration()
-            logging.info("Intro Loader configurations reloaded for both stations.")
-        except Exception as e:
-            logging.warning(f"Failed to reload Intro Loader configuration: {e}")
-
-        if self.rds_1047_handler:
-            try:
-                self.rds_1047_handler.reload_configuration()
-                self.rds_1047_handler.reload_lecture_detector()
-                logging.info("RDS Handler 104.7 configuration reloaded.")
-            except Exception as e:
-                logging.warning(f"Failed to reload RDS Handler 104.7 configuration: {e}")
-
-        if self.rds_887_handler:
-            try:
-                self.rds_887_handler.reload_configuration()
-                self.rds_887_handler.reload_lecture_detector()
-                logging.info("RDS Handler 88.7 configuration reloaded.")
-            except Exception as e:
-                logging.warning(f"Failed to reload RDS Handler 88.7 configuration: {e}")
-
-        if self.ad_1047_handler:
-            try:
-                self.ad_1047_handler.reload_configuration()
-                logging.info("Ad Scheduler 104.7 configuration reloaded.")
-            except Exception as e:
-                logging.warning(f"Failed to reload Ad Scheduler 104.7 configuration: {e}")
-
-        if self.ad_887_handler:
-            try:
-                self.ad_887_handler.reload_configuration()
-                logging.info("Ad Scheduler 88.7 configuration reloaded.")
-            except Exception as e:
-                logging.warning(f"Failed to reload Ad Scheduler 88.7 configuration: {e}")
 
         self.destroy()
 

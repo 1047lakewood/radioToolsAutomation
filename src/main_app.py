@@ -33,6 +33,7 @@ from ui_options_window import OptionsWindow
 from ui_playlist_editor_window import PlaylistEditorWindow
 from ui_ad_inserter_window import AdInserterWindow
 from utils import configure_hidden_subprocess
+from version import get_full_version
 
 class MainApp(tk.Tk):
     """Main application window with GUI for monitoring and configuration - Dual Station Support."""
@@ -149,6 +150,10 @@ class MainApp(tk.Tk):
             
             self.ad_887_handler = AdSchedulerHandler(self.ad_887_queue, self.config_manager, station_id='station_887')
             logging.info("Station 88.7 FM AdSchedulerHandler initialized successfully.")
+
+            # Register all handlers as config observers for automatic reload on config changes
+            self._register_config_observers()
+            logging.info("All handlers registered as config observers.")
             
         except AttributeError as e:
             logging.error(f"AttributeError during handler initialization: {e}")
@@ -206,6 +211,51 @@ class MainApp(tk.Tk):
         # Initialize status indicators
         self._update_status_indicators()
 
+    def _register_config_observers(self):
+        """Register all handlers as config observers for automatic reload on config changes."""
+        # Define a wrapper that safely reloads all handlers
+        def reload_all_handlers():
+            logging.info("Config changed - reloading all handler configurations...")
+            
+            # Reload RDS handlers
+            for handler, name in [
+                (self.rds_1047_handler, "RDS 104.7"),
+                (self.rds_887_handler, "RDS 88.7")
+            ]:
+                try:
+                    handler.reload_configuration()
+                    handler.reload_lecture_detector()
+                    logging.debug(f"{name} handler configuration reloaded.")
+                except Exception as e:
+                    logging.error(f"Failed to reload {name} handler: {e}")
+            
+            # Reload Intro Loader handlers
+            for handler, name in [
+                (self.intro_1047_handler, "Intro Loader 104.7"),
+                (self.intro_887_handler, "Intro Loader 88.7")
+            ]:
+                try:
+                    handler.reload_configuration()
+                    logging.debug(f"{name} handler configuration reloaded.")
+                except Exception as e:
+                    logging.error(f"Failed to reload {name} handler: {e}")
+            
+            # Reload Ad Scheduler handlers
+            for handler, name in [
+                (self.ad_1047_handler, "Ad Scheduler 104.7"),
+                (self.ad_887_handler, "Ad Scheduler 88.7")
+            ]:
+                try:
+                    handler.reload_configuration()
+                    logging.debug(f"{name} handler configuration reloaded.")
+                except Exception as e:
+                    logging.error(f"Failed to reload {name} handler: {e}")
+            
+            logging.info("All handler configurations reloaded successfully.")
+        
+        # Register the combined reload function as a config observer
+        self.config_manager.register_observer(reload_all_handlers)
+
     def create_menu_bar(self):
         """Create the application menu bar."""
         menubar = tk.Menu(self)
@@ -225,9 +275,10 @@ class MainApp(tk.Tk):
 
     def show_about(self):
         """Show the about dialog with version information."""
-        about_message = """radioToolsAutomation v2.3.1
+        about_message = f"""{get_full_version()}
 
 Dual Station RDS and Intro Automation System
+Enhanced with XML-Confirmed Ad Reporting
 
 © 2025 - Radio Tools Automation
 """

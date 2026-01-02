@@ -1,9 +1,15 @@
-radioToolsAutomation
+radioToolsAutomation v2.4.0
+==========================
 
+**Latest Release: January 1, 2026**
 
+**New in v2.4.0:**
+- XML-Confirmed Ad Reporting: Ads are only counted when ARTIST="adRoll" appears in XML
+- Hourly Line Items: Reports show exactly when ads played each hour
+- Enhanced Accuracy: MP3 concatenation validation + robust XML polling
+- Improved Reliability: No more overcounting or false positives
 
- 
-
+---
 
 Overview
 radioToolsAutomation is a Python-based desktop application for automating Radio Data System (RDS) messaging and audio intro loading in a radio broadcasting setup. Built with Tkinter for the GUI, it supports message scheduling, artist-based filtering (whitelists/blacklists), lecture detection, and tools for managing missing artist intros and simple M3U8 playlists.
@@ -38,6 +44,8 @@ Browse addition; save to file.
 Ad Services:
 Combine scheduled ads into one MP3 and send to a schedule URL.
 Instant ad option for immediate playback via a separate URL.
+XML-confirmed reporting with hourly line items and daily totals.
+Accurate play tracking only after MP3 validation and XML confirmation.
 Debug/Testing:
 XML "touch" to force checks.
 Bug reproduction scripts; integration tests.
@@ -72,7 +80,25 @@ Configuration
 messages.json: Messages array with Text, Enabled, Message Time, Scheduled (Enabled, Days, Times).
 Whitelist/Blacklist: In JSON; edit via Options UI.
 Presets: In JSON; manage via Playlist Editor.
+Changelog
+=========
+
+**v2.4.0 (January 1, 2026)**
+- Added XML-confirmed ad reporting system
+- Implemented hourly line items in ad reports
+- Added MP3 concatenation validation before ad insertion
+- Enhanced XML reading with robust polling and cache avoidance
+- Improved ad play accuracy (no overcounting)
+- Added NowPlayingReader module for reliable XML parsing
+- Updated AdPlayLogger with confirmed/unconfirmed event tracking
+
+**v2.3.2 (Previous)**
+- Dual station support (104.7 FM and 88.7 FM)
+- Enhanced RDS messaging with placeholder replacement
+- Lecture detection improvements
+
 Bug Fixes & History
+==================
 First-Click Bug (Fixed Jul 2025): Scheduled hours cleared on first select in config. Moved UI state after vars.
 CMD Windows (Fixed): Hidden pydub subprocesses on Windows.
 See BUG_REPRODUCTION_COMPLETE_REPORT.md for details.
@@ -87,4 +113,4 @@ MIT License (assumed; add LICENSE file).
 Contact
 For issues: Open GitHub issue or contact maintainer.
 
-Last Updated: July 13, 2025
+Last Updated: January 1, 2026

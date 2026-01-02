@@ -22,10 +22,49 @@ class ConfigManager:
         # Thread safety lock
         self._lock = threading.RLock()
 
+        # Observer pattern for config change notifications
+        self._observers = []
+
         # Station IDs
         self.STATION_1047 = 'station_1047'
         self.STATION_887 = 'station_887'
         self.STATIONS = [self.STATION_1047, self.STATION_887]
+
+    def register_observer(self, callback):
+        """
+        Register a callback to be notified when configuration changes.
+        
+        Args:
+            callback: A callable that will be called with no arguments when config is saved.
+                     The callback should handle its own error handling.
+        """
+        with self._lock:
+            if callback not in self._observers:
+                self._observers.append(callback)
+                logging.debug(f"Registered config observer: {callback}")
+
+    def unregister_observer(self, callback):
+        """
+        Unregister a previously registered callback.
+        
+        Args:
+            callback: The callback to unregister.
+        """
+        with self._lock:
+            if callback in self._observers:
+                self._observers.remove(callback)
+                logging.debug(f"Unregistered config observer: {callback}")
+
+    def _notify_observers(self):
+        """Notify all registered observers that configuration has changed."""
+        with self._lock:
+            observers_copy = self._observers.copy()
+        
+        for callback in observers_copy:
+            try:
+                callback()
+            except Exception as e:
+                logging.error(f"Error notifying config observer {callback}: {e}")
 
     def load_config(self):
         """Loads the JSON configuration or returns a default structure if file doesn't exist."""
@@ -284,8 +323,13 @@ class ConfigManager:
             }
         }
 
-    def save_config(self, make_backup=False):
-        """Saves the current configuration to JSON, optionally creating a backup."""
+    def save_config(self, make_backup=False, notify_observers=True):
+        """Saves the current configuration to JSON, optionally creating a backup.
+        
+        Args:
+            make_backup: If True, create a timestamped backup before saving.
+            notify_observers: If True (default), notify all registered observers after saving.
+        """
         with self._lock:
             if make_backup:
                 self._backup_config()
@@ -296,6 +340,11 @@ class ConfigManager:
                 logging.info(f"Configuration saved to {self.config_file}.")
             except Exception as e:
                 logging.error(f"Error saving configuration to {self.config_file}: {e}")
+                return  # Don't notify observers if save failed
+        
+        # Notify observers after releasing the lock
+        if notify_observers:
+            self._notify_observers()
 
     def _backup_config(self):
         """Creates a timestamped backup of the current config file."""
