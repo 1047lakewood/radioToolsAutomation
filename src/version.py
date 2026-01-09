@@ -2,9 +2,9 @@
 Version information for radioToolsAutomation.
 """
 
-__version__ = "2.4.0"
-__version_info__ = (2, 4, 0)
-__release_date__ = "January 1, 2026"
+__version__ = "2.4.1"
+__version_info__ = (2, 4, 1)
+__release_date__ = "January 8, 2026"
 
 # Version metadata
 VERSION_NAME = "radioToolsAutomation"
@@ -31,3 +31,5 @@ if __name__ == "__main__":
     print(FULL_VERSION)
     print(f"Minimum Python version: {MINIMUM_PYTHON_VERSION}")
     print(f"Tested on Python: {TESTED_PYTHON_VERSION}")
+
+
