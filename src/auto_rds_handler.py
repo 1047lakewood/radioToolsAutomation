@@ -234,65 +234,47 @@ class AutoRDSHandler:
         return formatted_text.strip()
 
     def _send_command(self, command):
-        """Sends a command to the RDS encoder and logs SEND and RECV."""
-        response = "Error: Not Sent" # Default error response
+        """Sends a command to the RDS encoder. Returns (response, success)."""
+        response = "Error: Not Sent"
         success = False
-        self.logger.info(f"SEND: {command}") # Log command being sent
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.settimeout(SOCKET_TIMEOUT)
                 s.connect((self.rds_ip, self.rds_port))
-                # Ensure CRLF line ending, UTF-8 encoded
                 s.sendall((command + '\r\n').encode('utf-8'))
-
-                # Read response
                 response_bytes = s.recv(1024)
                 response = response_bytes.decode('utf-8', errors='ignore').strip()
-                # Log successful receive
-                self.logger.info(f"RECV: {response}")
-                # Consider any non-empty, non-error response as success
-                # Different RDS encoders respond differently (OK, echo command, etc.)
                 success = bool(response) and not response.startswith('Error:')
 
         except socket.timeout:
             response = "Error: Timeout"
-            self.logger.error(f"RECV Error: Timeout after sending command: {command}")
-            self.logger.info(f"RECV: {response}") # Log the error string as the effective response
         except ConnectionRefusedError:
             response = "Error: Connection Refused"
-            self.logger.error(f"SEND Error: Connection Refused for command: {command}")
-            self.logger.info(f"RECV: {response}")
-        except OSError as e: # Catch other socket errors
+        except OSError as e:
             response = f"Error: Socket Error ({e.strerror})"
-            self.logger.error(f"SEND/RECV Error: {e} for command: {command}")
-            self.logger.info(f"RECV: {response}")
         except Exception as e:
             response = f"Error: {type(e).__name__}"
-            self.logger.exception(f"SEND/RECV Error: Unexpected exception for command: {command}")
-            self.logger.info(f"RECV: {response}")
 
         return response, success
 
     def _send_message_to_rds(self, text):
-        """Formats and sends the text message to the RDS encoder."""
+        """Formats and sends the text message to the RDS encoder. Returns success status."""
         if not text:
             self.logger.warning("Attempted to send an empty message to RDS. Skipping.")
-            return
+            return False
 
         # Sanitize and truncate
         sanitized_text = text.replace('\r', ' ').replace('\n', ' ').strip()
         max_len = 64
         if len(sanitized_text) > max_len:
-            self.logger.warning(f"Message truncated to {max_len} chars: '{sanitized_text[:max_len]}'")
             sanitized_text = sanitized_text[:max_len]
         elif len(sanitized_text) == 0:
-            self.logger.warning("Message became empty after sanitization. Sending default message instead.")
-            sanitized_text = self.default_message[:max_len] # Ensure default is also truncated if needed
+            sanitized_text = self.default_message[:max_len]
 
-        # Send the command - logging happens within _send_command
         response, success = self._send_command(f"DPSTEXT={sanitized_text}")
         self.last_send_status = 'success' if success else 'timeout'
-        time.sleep(COMMAND_DELAY) # Small delay between commands
+        time.sleep(COMMAND_DELAY)
+        return success
 
     def get_current_display_messages(self):
         """Returns a list of messages currently eligible for display."""
@@ -385,13 +367,14 @@ class AutoRDSHandler:
                         self.logger.debug(f"Time since last send: {time_since_last_send:.1f}s, Rotation due: {rotation_due}, Keepalive due: {keepalive_due}, Should send: {should_send}")
 
                         if should_send:
-                            send_type = "keepalive" if keepalive_due and not rotation_due else "rotation"
-                            self.logger.info(f"Sending RDS message ({send_type}): '{display_text}' for {selected_duration}s")
                             try:
-                                self._send_message_to_rds(display_text)
-                                self.logger.info(f"Sent RDS message: {display_text}")
+                                success = self._send_message_to_rds(display_text)
+                                if success:
+                                    self.logger.info(f'Sent: "{display_text}" ({selected_duration}s)')
+                                else:
+                                    self.logger.info(f'TIMEOUT: "{display_text}" ({selected_duration}s)')
                             except Exception as e:
-                                self.logger.error(f"Failed to send RDS message '{display_text}': {e}")
+                                self.logger.error(f'ERROR: "{display_text}" - {e}')
                             
                             self.last_sent_text = display_text
                             self.last_send_time = now
