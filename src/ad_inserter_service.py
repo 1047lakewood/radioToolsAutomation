@@ -165,6 +165,11 @@ class AdInserterService:
         
         if confirmation["ok"]:
             self.logger.info(f"XML confirmation received: ARTIST='{confirmation['artist']}' at {confirmation.get('xml_started_at')}")
+            
+            # Update play counts directly - ensures plays are logged even if event system fails
+            self._update_play_counts_for_ads(ad_names)
+            
+            # Also try to confirm in events system for record-keeping
             if self.ad_logger:
                 self.ad_logger.confirm_roll_playback(
                     roll_id,
@@ -487,6 +492,47 @@ class AdInserterService:
             self.logger.debug(f"Error reading XML: {e}")
         
         return None
+
+    def _update_play_counts_for_ads(self, ad_names: List[str]) -> bool:
+        """
+        Directly update PlayCount and LastPlayed in config for the given ads.
+        
+        This ensures plays are logged even if the pending event system fails.
+        
+        Args:
+            ad_names: List of ad names that were played
+            
+        Returns:
+            bool: True if successfully updated, False otherwise
+        """
+        try:
+            ads = self.config_manager.get_station_ads(self.station_id)
+            if not ads:
+                self.logger.warning("No ads found in config to update play counts")
+                return False
+            
+            played_at = datetime.now()
+            updated_count = 0
+            
+            for ad in ads:
+                if ad.get("Name") in ad_names:
+                    ad["PlayCount"] = ad.get("PlayCount", 0) + 1
+                    ad["LastPlayed"] = played_at.isoformat()
+                    updated_count += 1
+                    self.logger.info(f"Updated play count for '{ad.get('Name')}': now {ad['PlayCount']}")
+            
+            if updated_count > 0:
+                self.config_manager.set_station_ads(self.station_id, ads)
+                self.config_manager.save_config()
+                self.logger.info(f"Saved play counts for {updated_count} ads")
+                return True
+            else:
+                self.logger.warning(f"No matching ads found to update. Looking for: {ad_names}")
+                return False
+                
+        except Exception as e:
+            self.logger.error(f"Error updating play counts: {e}")
+            return False
 
     # =========================================================================
     # Legacy methods (kept for backward compatibility but deprecated)

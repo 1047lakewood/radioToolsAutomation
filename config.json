@@ -85,45 +85,12 @@
                 },
                 {
                     "Text": "SPONSOR 732.901.7777",
-                    "Enabled": false,
-                    "Message Time": 35,
+                    "Enabled": true,
+                    "Message Time": 26,
                     "Scheduled": {
-                        "Enabled": true,
-                        "Days": [
-                            "Sunday",
-                            "Monday",
-                            "Tuesday",
-                            "Wednesday",
-                            "Thursday",
-                            "Friday",
-                            "Saturday"
-                        ],
-                        "Times": [
-                            {
-                                "hour": 7
-                            },
-                            {
-                                "hour": 9
-                            },
-                            {
-                                "hour": 11
-                            },
-                            {
-                                "hour": 16
-                            },
-                            {
-                                "hour": 17
-                            },
-                            {
-                                "hour": 18
-                            },
-                            {
-                                "hour": 19
-                            },
-                            {
-                                "hour": 21
-                            }
-                        ]
+                        "Enabled": false,
+                        "Days": [],
+                        "Times": []
                     }
                 },
                 {
@@ -209,9 +176,128 @@
                     "Enabled": true,
                     "Message Time": 10,
                     "Scheduled": {
-                        "Enabled": false,
-                        "Days": [],
-                        "Times": []
+                        "Enabled": true,
+                        "Days": [
+                            "Sunday",
+                            "Monday",
+                            "Tuesday",
+                            "Wednesday",
+                            "Thursday",
+                            "Friday"
+                        ],
+                        "Times": [
+                            {
+                                "hour": 0
+                            },
+                            {
+                                "hour": 7
+                            },
+                            {
+                                "hour": 10
+                            },
+                            {
+                                "hour": 12
+                            },
+                            {
+                                "hour": 19
+                            },
+                            {
+                                "hour": 23
+                            }
+                        ]
+                    }
+                },
+                {
+                    "Text": "KEREN ZICHRON TZIPORA 732 702 8100",
+                    "Enabled": true,
+                    "Message Time": 10,
+                    "Scheduled": {
+                        "Enabled": true,
+                        "Days": [
+                            "Sunday",
+                            "Tuesday",
+                            "Thursday"
+                        ],
+                        "Times": [
+                            {
+                                "hour": 6
+                            },
+                            {
+                                "hour": 9
+                            },
+                            {
+                                "hour": 10
+                            },
+                            {
+                                "hour": 13
+                            },
+                            {
+                                "hour": 14
+                            },
+                            {
+                                "hour": 19
+                            },
+                            {
+                                "hour": 20
+                            },
+                            {
+                                "hour": 23
+                            }
+                        ]
+                    }
+                },
+                {
+                    "Text": "KZT 100k raffle 100kgoral.org/kzt",
+                    "Enabled": true,
+                    "Message Time": 13,
+                    "Scheduled": {
+                        "Enabled": true,
+                        "Days": [
+                            "Monday",
+                            "Wednesday",
+                            "Friday"
+                        ],
+                        "Times": [
+                            {
+                                "hour": 6
+                            },
+                            {
+                                "hour": 7
+                            },
+                            {
+                                "hour": 8
+                            },
+                            {
+                                "hour": 9
+                            },
+                            {
+                                "hour": 10
+                            },
+                            {
+                                "hour": 13
+                            },
+                            {
+                                "hour": 14
+                            },
+                            {
+                                "hour": 17
+                            },
+                            {
+                                "hour": 18
+                            },
+                            {
+                                "hour": 19
+                            },
+                            {
+                                "hour": 20
+                            },
+                            {
+                                "hour": 22
+                            },
+                            {
+                                "hour": 23
+                            }
+                        ]
                     }
                 }
             ],
@@ -244,12 +330,12 @@
                         7,
                         8,
                         11,
-                        17,
                         19,
-                        21
+                        21,
+                        23
                     ],
-                    "PlayCount": 374,
-                    "LastPlayed": "2025-12-22T08:16:40.711228"
+                    "PlayCount": 427,
+                    "LastPlayed": "2026-01-06T23:00:32.742196"
                 },
                 {
                     "Name": "Judaica Plaza",
@@ -269,8 +355,8 @@
                         13,
                         15
                     ],
-                    "PlayCount": 155,
-                    "LastPlayed": "2025-12-21T15:31:55.952109"
+                    "PlayCount": 173,
+                    "LastPlayed": "2026-01-01T15:37:26.232492"
                 },
                 {
                     "Name": "stonebrook",
@@ -288,10 +374,11 @@
                     ],
                     "Hours": [
                         9,
-                        14
+                        16,
+                        20
                     ],
-                    "PlayCount": 114,
-                    "LastPlayed": "2025-12-22T09:23:50.903637"
+                    "PlayCount": 133,
+                    "LastPlayed": "2026-01-05T09:15:33.194362"
                 },
                 {
                     "Name": "SPONSORSHIP",
@@ -305,43 +392,68 @@
                     ],
                     "Hours": [
                         10,
-                        16,
                         17,
                         18,
                         22
                     ],
-                    "PlayCount": 46,
-                    "LastPlayed": "2025-12-21T18:20:40.301244"
+                    "PlayCount": 65,
+                    "LastPlayed": "2026-01-01T18:11:30.762890"
+                },
+                {
+                    "Name": "Keren",
+                    "Enabled": true,
+                    "MP3File": "G:/Misc/Sponsorships/Audio Files/keren.mp3",
+                    "Scheduled": true,
+                    "Days": [
+                        "Sunday",
+                        "Monday",
+                        "Tuesday",
+                        "Wednesday",
+                        "Thursday",
+                        "Friday"
+                    ],
+                    "Hours": [
+                        14,
+                        19,
+                        21,
+                        23
+                    ],
+                    "PlayCount": 11,
+                    "LastPlayed": "2026-01-06T23:00:32.742196"
                 }
             ],
             "settings": {
                 "rds": {
                     "ip": "50.208.125.86",
-                    "port": 8063,
+                    "port": 61313,
                     "now_playing_xml": "G:\\To_RDS\\nowplaying.xml",
                     "default_message": "732.901.7777 to SUPPORT and hear this program!"
-                },
-                "radioboss": {
-                    "server": "http://192.168.3.12:9000",
-                    "password": "bmas220"
                 },
                 "intro_loader": {
                     "now_playing_xml": "G:\\To_RDS\\nowplaying.xml",
                     "mp3_directory": "G:\\Shiurim\\introsCleanedUp",
                     "missing_artists_log": "G:\\Misc\\Dev\\CombinedRDSApp\\missing_artists.log",
-                    "schedule_event_id": "TBACFNBGJKOMETDYSQYR",
                     "current_artist_filename": "currentArtist_1047.mp3",
                     "actual_current_artist_filename": "actualCurrentArtist_1047.mp3",
                     "blank_mp3_filename": "blank.mp3",
-                    "silent_mp3_filename": "near_silent.mp3"
+                    "silent_mp3_filename": "near_silent.mp3",
+                    "schedule_event_id": "TBACFNBGJKOMETDYSQYR"
                 },
                 "ad_inserter": {
+                    "output_mp3": "G:\\\\Ads\\\\adRoll_1047.mp3",
                     "insertion_event_id": "YGRWYYYHNWXPEHUGUAHB",
-                    "instant_event_id": "UHEWRUVGPMLEZYTKODHW",
-                    "output_mp3": "G:\\\\Ads\\\\adRoll_1047.mp3"
+                    "instant_event_id": "UHEWRUVGPMLEZYTKODHW"
+                },
+                "mairlist": {
+                    "server": "http://192.168.3.12:9000",
+                    "password": "bmas220"
                 },
                 "debug": {
                     "enable_debug_logs": false
+                },
+                "radioboss": {
+                    "server": "http://DESKTOP-NR3M3OR:9000",
+                    "password": "bmas220"
                 }
             }
         },
@@ -367,24 +479,28 @@
                     "now_playing_xml": "G:/To_RDS/nowplaying_test.xml",
                     "default_message": "Ein Od Milvado"
                 },
-                "radioboss": {
-                    "server": "http://localhost:9000",
-                    "password": "bmas220"
-                },
                 "intro_loader": {
                     "now_playing_xml": "G:\\To_RDS\\nowplaying_test.xml",
                     "mp3_directory": "G:\\Shiurim\\introsCleanedUp",
                     "missing_artists_log": "missing_artists_887.log",
-                    "schedule_event_id": "TBACFNBGJKOMETDYSQYR",
                     "current_artist_filename": "currentArtist_887.mp3",
                     "actual_current_artist_filename": "actualCurrentArtist_887.mp3",
                     "blank_mp3_filename": "blank.mp3",
-                    "silent_mp3_filename": "near_silent.mp3"
+                    "silent_mp3_filename": "near_silent.mp3",
+                    "schedule_event_id": "TBACFNBGJKOMETDYSQYR"
                 },
                 "ad_inserter": {
+                    "output_mp3": "G:\\Ads\\adRoll_887.mp3",
                     "insertion_event_id": "IZVRTKXNHAHFUHXVPCGY",
-                    "instant_event_id": "NDCKWHGTOQWWGYPRVEKT",
-                    "output_mp3": "G:\\Ads\\adRoll_887.mp3"
+                    "instant_event_id": "NDCKWHGTOQWWGYPRVEKT"
+                },
+                "mairlist": {
+                    "server": "http://localhost:9000",
+                    "password": "bmas220"
+                },
+                "radioboss": {
+                    "server": "http://localhost:9000",
+                    "password": "bmas220"
                 }
             }
         }
@@ -419,7 +535,7 @@
         "intro_loader": {
             "volume": {
                 "intro_db": -0.38596491228070207,
-                "overlay_db": -0.38596491228070207
+                "overlay_db": -1.8456140350877206
             }
         },
         "migration": {
