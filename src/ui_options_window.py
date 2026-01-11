@@ -898,12 +898,11 @@ class OptionsWindow(Toplevel):
         success = MigrationUtils.copy_config_file(stable_path, active_root, backup=True)
 
         if success:
-            self.migration_status_var.set("Config copied successfully from Stable to Active")
-            messagebox.showinfo("Success", "Config copied from Stable to Active folder.\n\nActive config was backed up.", parent=self)
+            self.migration_status_var.set("✓ Config copied successfully from Stable to Active")
             logging.info("Migration: Copied config from Stable to Active")
         else:
-            self.migration_status_var.set("Failed to copy config")
-            messagebox.showerror("Copy Failed", "Failed to copy config from Stable to Active.\nCheck logs for details.", parent=self)
+            self.migration_status_var.set("✗ Failed to copy config - check logs for details")
+            logging.error("Migration: Failed to copy config from Stable to Active")
 
     def copy_config_to_stable(self):
         """Copy config.json from Active to Stable folder."""
@@ -934,12 +933,11 @@ class OptionsWindow(Toplevel):
         success = MigrationUtils.copy_config_file(active_root, stable_path, backup=True)
 
         if success:
-            self.migration_status_var.set("Config copied successfully from Active to Stable")
-            messagebox.showinfo("Success", "Config copied from Active to Stable folder.\n\nStable config was backed up.", parent=self)
+            self.migration_status_var.set("✓ Config copied successfully from Active to Stable")
             logging.info("Migration: Copied config from Active to Stable")
         else:
-            self.migration_status_var.set("Failed to copy config")
-            messagebox.showerror("Copy Failed", "Failed to copy config from Active to Stable.\nCheck logs for details.", parent=self)
+            self.migration_status_var.set("✗ Failed to copy config - check logs for details")
+            logging.error("Migration: Failed to copy config from Active to Stable")
 
     def deploy_active_to_stable(self):
         """Deploy entire Active folder to Stable (destructive)."""
@@ -954,15 +952,6 @@ class OptionsWindow(Toplevel):
             messagebox.showerror("Path Error", validation_error, parent=self)
             return
 
-        # Confirm destructive operation
-        confirm_msg = (
-            "WARNING: This will completely replace the contents of the Stable folder with the Active folder.\n\n"
-            f"Stable folder: {stable_path}\n\n"
-            "This operation cannot be undone. Are you sure you want to proceed?"
-        )
-        if not messagebox.askyesno("Confirm Deployment", confirm_msg, parent=self, icon='warning'):
-            return
-
         # Disable buttons during operation
         self._set_migration_buttons_state(False)
         self.migration_status_var.set("Deploying Active → Stable...")
@@ -975,16 +964,14 @@ class OptionsWindow(Toplevel):
             try:
                 success = MigrationUtils.deploy_active_to_stable(active_root, stable_path, progress_callback)
                 if success:
-                    self.migration_status_var.set("Deployment completed successfully")
-                    messagebox.showinfo("Success", "Active folder deployed to Stable successfully!", parent=self)
+                    self.migration_status_var.set("✓ Deployment completed successfully")
                     logging.info("Migration: Deployed Active to Stable")
                 else:
-                    self.migration_status_var.set("Deployment failed")
-                    messagebox.showerror("Deployment Failed", "Failed to deploy Active to Stable.\nCheck logs for details.", parent=self)
+                    self.migration_status_var.set("✗ Deployment failed - check logs for details")
+                    logging.error("Migration: Failed to deploy Active to Stable")
             except Exception as e:
                 logging.exception("Deployment exception")
-                self.migration_status_var.set("Deployment failed with exception")
-                messagebox.showerror("Deployment Error", f"Deployment failed: {e}", parent=self)
+                self.migration_status_var.set(f"✗ Deployment failed: {str(e)}")
             finally:
                 self._set_migration_buttons_state(True)
 
