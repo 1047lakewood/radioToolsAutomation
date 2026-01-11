@@ -96,6 +96,23 @@ class AdInserterService:
         """Combine ads and call the instant-play URL with confirmation."""
         return self._run_with_confirmation(self.instant_url, "instant")
 
+    def _seconds_until_hour_end(self) -> int:
+        """
+        Calculate seconds remaining until the end of the current hour.
+        
+        Used to set dynamic timeout for XML confirmation polling, since
+        scheduled ads may not play until the end of the current song
+        (which could be up to ~59 minutes away).
+        
+        Returns:
+            int: Seconds until hour end, with a minimum of 60 seconds
+        """
+        now = datetime.now()
+        hour_end = now.replace(minute=59, second=59, microsecond=999999)
+        seconds_remaining = int((hour_end - now).total_seconds())
+        # Ensure minimum timeout of 60 seconds for instant ads
+        return max(seconds_remaining, 60)
+
     def _run_with_confirmation(self, url: str, mode: str) -> bool:
         """
         Execute the ad insertion workflow with validation and confirmation.
@@ -161,7 +178,10 @@ class AdInserterService:
             )
         
         # Step 5: Poll XML for confirmation
-        confirmation = self._poll_for_xml_confirmation(attempt_hour)
+        # Calculate timeout based on time remaining in hour (scheduled ads may not play until song ends)
+        timeout = self._seconds_until_hour_end()
+        self.logger.info(f"Waiting for XML confirmation with timeout={timeout}s (until hour end)")
+        confirmation = self._poll_for_xml_confirmation(attempt_hour, timeout=timeout)
         
         if confirmation["ok"]:
             self.logger.info(f"XML confirmation received: ARTIST='{confirmation['artist']}' at {confirmation.get('xml_started_at')}")
@@ -380,7 +400,7 @@ class AdInserterService:
         
         return result
 
-    def _poll_for_xml_confirmation(self, attempt_hour: int) -> Dict:
+    def _poll_for_xml_confirmation(self, attempt_hour: int, timeout: int = None) -> Dict:
         """
         Poll the nowplaying XML for ARTIST=="adRoll" confirmation.
         
@@ -388,16 +408,21 @@ class AdInserterService:
         
         Args:
             attempt_hour: The hour when the insertion was attempted
+            timeout: Custom timeout in seconds (defaults to XML_POLL_TIMEOUT if not specified)
             
         Returns:
             Dict with 'ok', 'artist', 'xml_started_at', and optionally 'reason'
         """
+        # Use default timeout if not specified
+        if timeout is None:
+            timeout = XML_POLL_TIMEOUT
+        
         # Use robust reader if available
         if self._xml_reader:
-            self.logger.info(f"Polling XML for adRoll confirmation using NowPlayingReader (timeout={XML_POLL_TIMEOUT}s)...")
+            self.logger.info(f"Polling XML for adRoll confirmation using NowPlayingReader (timeout={timeout}s)...")
             result = self._xml_reader.wait_for_artist(
                 target_artist="adRoll",
-                timeout=XML_POLL_TIMEOUT,
+                timeout=timeout,
                 poll_interval=XML_POLL_INTERVAL,
                 same_hour_required=False,  # We handle this ourselves
                 attempt_hour=attempt_hour
@@ -413,12 +438,12 @@ class AdInserterService:
         # Fallback to manual polling
         result = {"ok": False}
         
-        self.logger.info(f"Polling XML for adRoll confirmation (timeout={XML_POLL_TIMEOUT}s)...")
+        self.logger.info(f"Polling XML for adRoll confirmation (timeout={timeout}s)...")
         
         start_time = time.time()
         last_artist = None
         
-        while (time.time() - start_time) < XML_POLL_TIMEOUT:
+        while (time.time() - start_time) < timeout:
             try:
                 xml_info = self._read_xml_track_info()
                 
@@ -457,7 +482,7 @@ class AdInserterService:
         
         result["reason"] = "timeout"
         result["last_artist"] = last_artist
-        self.logger.warning(f"XML confirmation timeout after {XML_POLL_TIMEOUT}s (last artist: {last_artist})")
+        self.logger.warning(f"XML confirmation timeout after {timeout}s (last artist: {last_artist})")
         return result
 
     def _read_xml_track_info(self) -> Optional[Dict]:

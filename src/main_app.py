@@ -208,6 +208,15 @@ class MainApp(tk.Tk):
         self.message_update_running = True
         self.message_update_thread.start()
 
+        # Initialize connectivity status cache (checked in background thread)
+        self._radioboss_1047_connected = None
+        self._radioboss_887_connected = None
+        self._connectivity_lock = threading.Lock()
+
+        # Start background thread for connectivity checks (separate from UI updates)
+        self.connectivity_thread = threading.Thread(target=self._connectivity_check_worker, daemon=True, name="ConnectivityCheck")
+        self.connectivity_thread.start()
+
         # Initialize status indicators
         self._update_status_indicators()
 
@@ -287,10 +296,12 @@ Enhanced with XML-Confirmed Ad Reporting
     def on_close(self):
         """Handle window close event."""
         try:
-            # Stop message update thread
+            # Stop message update and connectivity threads
             self.message_update_running = False
             if hasattr(self, 'message_update_thread') and self.message_update_thread.is_alive():
                 self.message_update_thread.join(timeout=2)
+            if hasattr(self, 'connectivity_thread') and self.connectivity_thread.is_alive():
+                self.connectivity_thread.join(timeout=2)
 
             # Stop all handlers
             handlers = [
@@ -579,27 +590,51 @@ Enhanced with XML-Confirmed Ad Reporting
             # Sleep for 5 seconds before next update
             time.sleep(5)
 
-    def _check_radioboss_connectivity(self, station_id):
-        """Check if we can connect to the RadioBoss API server for the given station."""
+    def _connectivity_check_worker(self):
+        """Background worker that periodically checks RadioBoss connectivity."""
+        import socket
+        from urllib.parse import urlparse
+        
+        while self.message_update_running:
+            try:
+                # Check Station 1047
+                connected_1047 = self._do_connectivity_check('station_1047')
+                # Check Station 887
+                connected_887 = self._do_connectivity_check('station_887')
+                
+                # Update cached values thread-safely
+                with self._connectivity_lock:
+                    self._radioboss_1047_connected = connected_1047
+                    self._radioboss_887_connected = connected_887
+                    
+            except Exception as e:
+                logging.error(f"Error in connectivity check worker: {e}")
+            
+            # Check every 10 seconds (reasonable interval for connectivity monitoring)
+            time.sleep(10)
+    
+    def _do_connectivity_check(self, station_id):
+        """Perform the actual connectivity check (runs in background thread)."""
+        import socket
+        from urllib.parse import urlparse
+        
         try:
             # Get the RadioBoss API server URL (e.g., "http://192.168.3.12:9000")
             server_url = self.config_manager.get_station_setting(station_id, "radioboss.server")
 
             # Parse the URL to extract IP and port
-            from urllib.parse import urlparse
             parsed = urlparse(server_url)
             host = parsed.hostname
             port = parsed.port or 80  # Default to port 80 if not specified
 
-            import socket
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(5)  # 5 second timeout
+            sock.settimeout(3)  # 3 second timeout (reduced from 5)
             result = sock.connect_ex((host, port))
             sock.close()
 
             return result == 0  # 0 means connection successful
         except Exception as e:
-            logging.error(f"Error checking RadioBoss connectivity for {station_id}: {e}")
+            logging.debug(f"Connectivity check failed for {station_id}: {e}")
             return False
 
     def _update_status_indicators(self):
@@ -614,7 +649,7 @@ Enhanced with XML-Confirmed Ad Reporting
                 self.current_rds_1047_var.set(status_1047['message'])
         except Exception as e:
             self.rds_1047_status_canvas.itemconfig(1, fill='gray')
-            self.logger.error(f"Error updating 1047 status indicator: {e}")
+            logging.error(f"Error updating 1047 status indicator: {e}")
 
         try:
             # Station 887
@@ -626,24 +661,26 @@ Enhanced with XML-Confirmed Ad Reporting
                 self.current_rds_887_var.set(status_887['message'])
         except Exception as e:
             self.rds_887_status_canvas.itemconfig(1, fill='gray')
-            self.logger.error(f"Error updating 887 status indicator: {e}")
+            logging.error(f"Error updating 887 status indicator: {e}")
 
-        # Update RadioBoss connectivity indicators
+        # Update RadioBoss connectivity indicators (using cached values from background thread)
         try:
-            radioboss_1047_connected = self._check_radioboss_connectivity('station_1047')
-            radioboss_1047_color = 'green' if radioboss_1047_connected else 'red'
+            with self._connectivity_lock:
+                connected_1047 = self._radioboss_1047_connected
+            radioboss_1047_color = 'green' if connected_1047 else 'red' if connected_1047 is False else 'gray'
             self.radioboss_1047_status_canvas.itemconfig(1, fill=radioboss_1047_color)
         except Exception as e:
             self.radioboss_1047_status_canvas.itemconfig(1, fill='gray')
-            self.logger.error(f"Error updating RadioBoss 1047 connectivity indicator: {e}")
+            logging.error(f"Error updating RadioBoss 1047 connectivity indicator: {e}")
 
         try:
-            radioboss_887_connected = self._check_radioboss_connectivity('station_887')
-            radioboss_887_color = 'green' if radioboss_887_connected else 'red'
+            with self._connectivity_lock:
+                connected_887 = self._radioboss_887_connected
+            radioboss_887_color = 'green' if connected_887 else 'red' if connected_887 is False else 'gray'
             self.radioboss_887_status_canvas.itemconfig(1, fill=radioboss_887_color)
         except Exception as e:
             self.radioboss_887_status_canvas.itemconfig(1, fill='gray')
-            self.logger.error(f"Error updating RadioBoss 887 connectivity indicator: {e}")
+            logging.error(f"Error updating RadioBoss 887 connectivity indicator: {e}")
 
     def _update_message_lists(self, messages_1047, messages_887):
         """Update the message listboxes on the main thread."""
@@ -670,9 +707,6 @@ Enhanced with XML-Confirmed Ad Reporting
         except Exception as e:
             self.msg_887_listbox.delete(0, tk.END)
             self.msg_887_listbox.insert(tk.END, f"(Error: {e})")
-
-        # Update status indicators
-        self._update_status_indicators()
 
     def _log_messages_batch(self, widget, messages):
         """Insert multiple timestamped messages into the given text widget in a single operation."""

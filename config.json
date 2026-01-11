@@ -427,7 +427,7 @@
                     "ip": "50.208.125.86",
                     "port": 61313,
                     "now_playing_xml": "G:\\To_RDS\\nowplaying.xml",
-                    "default_message": "732.901.7777 to SUPPORT and hear this program!"
+                    "default_message": "SPONSOR 732.901.7777"
                 },
                 "intro_loader": {
                     "now_playing_xml": "G:\\To_RDS\\nowplaying.xml",
@@ -499,7 +499,7 @@
                     "password": "bmas220"
                 },
                 "radioboss": {
-                    "server": "http://localhost:9000",
+                    "server": "http://DreamQuest:9000",
                     "password": "bmas220"
                 }
             }
