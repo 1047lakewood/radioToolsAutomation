@@ -66,6 +66,21 @@ class ConfigManager:
             except Exception as e:
                 logging.error(f"Error notifying config observer {callback}: {e}")
 
+    def reload_config(self):
+        """
+        Reload configuration from disk and notify all observers.
+        
+        Use this after external changes to config.json (e.g., migration from stable).
+        This reloads the config into memory and triggers all handlers to reload.
+        """
+        with self._lock:
+            logging.info("Reloading configuration from disk...")
+            self.config = self.load_config()
+            logging.info("Configuration reloaded successfully.")
+        
+        # Notify observers outside the lock to avoid deadlocks
+        self._notify_observers()
+
     def load_config(self):
         """Loads the JSON configuration or returns a default structure if file doesn't exist."""
         # Config path is already absolute (set in __init__)

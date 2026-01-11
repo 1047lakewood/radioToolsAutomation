@@ -873,7 +873,7 @@ class OptionsWindow(Toplevel):
             self.migration_vars['stable_path'].set(path)
 
     def copy_config_from_stable(self):
-        """Copy config.json from Stable to Active folder."""
+        """Copy config.json and ad statistics files from Stable to Active folder."""
         from migration_utils import MigrationUtils
 
         stable_path = self.migration_vars['stable_path'].get().strip()
@@ -891,15 +891,27 @@ class OptionsWindow(Toplevel):
             messagebox.showerror("Config Error", f"Stable config.json not found at: {stable_config}", parent=self)
             return
 
-        # Perform the copy
-        self.migration_status_var.set("Copying config Stable → Active...")
+        # Perform the copy (config + ad statistics files)
+        self.migration_status_var.set("Copying config and stats Stable → Active...")
         self.update()  # Force UI update
 
-        success = MigrationUtils.copy_config_file(stable_path, active_root, backup=True)
+        success, copied_files, failed_files = MigrationUtils.copy_config_and_stats(stable_path, active_root, backup=True)
 
         if success:
-            self.migration_status_var.set("✓ Config copied successfully from Stable to Active")
-            logging.info("Migration: Copied config from Stable to Active")
+            # Reload config immediately so changes take effect
+            try:
+                self.config_manager.reload_config()
+                logging.info("Migration: Config reloaded after copying from Stable")
+            except Exception as e:
+                logging.error(f"Migration: Failed to reload config: {e}")
+            
+            # Show success message with details
+            files_msg = ", ".join(copied_files)
+            self.migration_status_var.set(f"✓ Copied {len(copied_files)} files: {files_msg}")
+            logging.info(f"Migration: Copied from Stable to Active: {copied_files}")
+            
+            if failed_files:
+                logging.warning(f"Migration: Some optional files not copied: {failed_files}")
         else:
             self.migration_status_var.set("✗ Failed to copy config - check logs for details")
             logging.error("Migration: Failed to copy config from Stable to Active")

@@ -64,6 +64,15 @@ class MigrationUtils:
 
         return None
 
+    # Ad statistics and events files to copy during migration
+    AD_DATA_FILES = [
+        'config.json',
+        'ad_play_statistics_1047.json',
+        'ad_play_statistics_887.json',
+        'ad_play_events_1047.json',
+        'ad_play_events_887.json',
+    ]
+
     @staticmethod
     def copy_config_file(source_path: str, dest_path: str, backup: bool = True) -> bool:
         """
@@ -95,6 +104,59 @@ class MigrationUtils:
         except Exception as e:
             logging.exception(f"Failed to copy config from {source_config} to {dest_config}")
             return False
+
+    @staticmethod
+    def copy_config_and_stats(source_path: str, dest_path: str, backup: bool = True) -> tuple:
+        """
+        Copy config.json and all ad statistics/events files from source to dest.
+        
+        Args:
+            source_path: Source folder path
+            dest_path: Destination folder path
+            backup: Whether to backup existing files before overwriting
+            
+        Returns:
+            Tuple of (success: bool, copied_files: list, failed_files: list)
+        """
+        copied_files = []
+        failed_files = []
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        
+        for filename in MigrationUtils.AD_DATA_FILES:
+            source_file = os.path.join(source_path, filename)
+            dest_file = os.path.join(dest_path, filename)
+            
+            # Skip if source file doesn't exist (stats files may not exist yet)
+            if not os.path.exists(source_file):
+                if filename == 'config.json':
+                    # config.json is required
+                    logging.error(f"Source config not found: {source_file}")
+                    failed_files.append(filename)
+                else:
+                    # Stats files are optional
+                    logging.debug(f"Optional file not found, skipping: {source_file}")
+                continue
+            
+            try:
+                # Backup destination if it exists and backup requested
+                if backup and os.path.exists(dest_file):
+                    backup_name = f"{os.path.splitext(filename)[0]}_backup_{timestamp}.json"
+                    backup_file = os.path.join(dest_path, backup_name)
+                    shutil.copy2(dest_file, backup_file)
+                    logging.info(f"Backed up existing {filename} to: {backup_file}")
+                
+                # Copy the file
+                shutil.copy2(source_file, dest_file)
+                logging.info(f"Copied {filename} from {source_path} to {dest_path}")
+                copied_files.append(filename)
+                
+            except Exception as e:
+                logging.exception(f"Failed to copy {filename}: {e}")
+                failed_files.append(filename)
+        
+        # Success if config.json was copied (the required file)
+        success = 'config.json' in copied_files
+        return success, copied_files, failed_files
 
     @staticmethod
     def _should_exclude(path: str, excludes: set) -> bool:

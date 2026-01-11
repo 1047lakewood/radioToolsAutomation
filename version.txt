@@ -1,14 +1,11 @@
-radioToolsAutomation v2.4.5
+radioToolsAutomation v2.5.0
 ============================
 
 Release Date: January 11, 2026
 Major Changes:
-- Added calendar view for ad play history
-- Calendar shows days with plays using dot indicators
-- Navigate between months and click days for play times
-- Efficient caching for large datasets
+- Version 2.5.0 release
 
-Previous Version: v2.4.4
+Previous Version: v2.4.7
 Compatibility: Backward compatible with existing configurations
 
 

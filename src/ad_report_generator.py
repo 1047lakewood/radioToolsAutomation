@@ -488,13 +488,14 @@ class AdReportGenerator:
     def _generate_legacy_report(self, start_date, end_date, advertiser_name, company_name):
         """Fall back to legacy report generation if no confirmed events exist."""
         try:
-            # Get all ads that have plays in the date range (legacy)
-            detailed_stats = self.ad_logger.get_detailed_stats(start_date, end_date)
-            if "error" in detailed_stats:
-                self.logger.error(f"Error getting stats for report generation: {detailed_stats['error']}")
-                return None, None
+            # Get all ads that have plays in the date range
+            daily_confirmed = self.ad_logger.get_daily_confirmed_stats(start_date, end_date)
 
-            ad_totals = detailed_stats.get("ad_totals", {})
+            # Calculate ad totals from daily data
+            ad_totals = {}
+            for date_str, ad_plays in daily_confirmed.items():
+                for ad_name, count in ad_plays.items():
+                    ad_totals[ad_name] = ad_totals.get(ad_name, 0) + count
 
             # Get ads that have plays in the period
             played_ads = [ad_name for ad_name, total in ad_totals.items() if total > 0]
@@ -561,17 +562,12 @@ class AdReportGenerator:
             bool: True if successful, False otherwise
         """
         try:
-            # Get detailed statistics
-            detailed_stats = self.ad_logger.get_detailed_stats(start_date, end_date)
-            if "error" in detailed_stats:
-                self.logger.error(f"Error getting stats: {detailed_stats['error']}")
-                return False
-
-            daily_plays = detailed_stats.get("daily_plays", {})
+            # Get daily confirmed statistics
+            daily_confirmed = self.ad_logger.get_daily_confirmed_stats(start_date, end_date)
 
             # Collect all play records for this ad
             play_records = []
-            for date_str, ad_plays in daily_plays.items():
+            for date_str, ad_plays in daily_confirmed.items():
                 if ad_name in ad_plays:
                     play_count = ad_plays[ad_name]
                     play_records.append({
@@ -637,17 +633,12 @@ class AdReportGenerator:
             return False
 
         try:
-            # Get detailed statistics
-            detailed_stats = self.ad_logger.get_detailed_stats(start_date, end_date)
-            if "error" in detailed_stats:
-                self.logger.error(f"Error getting stats: {detailed_stats['error']}")
-                return False
-
-            daily_plays = detailed_stats.get("daily_plays", {})
+            # Get daily confirmed statistics
+            daily_confirmed = self.ad_logger.get_daily_confirmed_stats(start_date, end_date)
 
             # Collect all play records for this ad
             play_records = []
-            for date_str, ad_plays in daily_plays.items():
+            for date_str, ad_plays in daily_confirmed.items():
                 if ad_name in ad_plays:
                     play_count = ad_plays[ad_name]
                     play_records.append({
@@ -851,14 +842,11 @@ class AdReportGenerator:
                                end_date: str, output_file: str) -> bool:
         """Generate a CSV report for multiple ads."""
         try:
-            detailed_stats = self.ad_logger.get_detailed_stats(start_date, end_date)
-            if "error" in detailed_stats:
-                return False
-
-            daily_plays = detailed_stats.get("daily_plays", {})
+            # Get daily confirmed statistics
+            daily_confirmed = self.ad_logger.get_daily_confirmed_stats(start_date, end_date)
 
             # Collect all dates
-            all_dates = sorted(daily_plays.keys())
+            all_dates = sorted(daily_confirmed.keys())
 
             with open(output_file, 'w', newline='', encoding='utf-8') as csvfile:
                 writer = csv.writer(csvfile)
@@ -878,7 +866,7 @@ class AdReportGenerator:
                 # Daily breakdown
                 for date_str in all_dates:
                     row = [date_str]
-                    ad_plays = daily_plays.get(date_str, {})
+                    ad_plays = daily_confirmed.get(date_str, {})
                     daily_total = 0
 
                     for ad_name in ad_names:
@@ -893,7 +881,7 @@ class AdReportGenerator:
                 totals_row = ["TOTAL"]
                 grand_total = 0
                 for ad_name in ad_names:
-                    ad_total = sum(daily_plays.get(date_str, {}).get(ad_name, 0) 
+                    ad_total = sum(daily_confirmed.get(date_str, {}).get(ad_name, 0) 
                                  for date_str in all_dates)
                     totals_row.append(ad_total)
                     grand_total += ad_total
@@ -916,12 +904,9 @@ class AdReportGenerator:
             return False
 
         try:
-            detailed_stats = self.ad_logger.get_detailed_stats(start_date, end_date)
-            if "error" in detailed_stats:
-                return False
-
-            daily_plays = detailed_stats.get("daily_plays", {})
-            all_dates = sorted(daily_plays.keys())
+            # Get daily confirmed statistics
+            daily_confirmed = self.ad_logger.get_daily_confirmed_stats(start_date, end_date)
+            all_dates = sorted(daily_confirmed.keys())
 
             # Create PDF
             doc = SimpleDocTemplate(output_file, pagesize=letter)
@@ -962,7 +947,7 @@ class AdReportGenerator:
 
             for date_str in all_dates:
                 row = [date_str]
-                ad_plays = daily_plays.get(date_str, {})
+                ad_plays = daily_confirmed.get(date_str, {})
                 daily_total = 0
 
                 for ad_name in ad_names:
@@ -977,7 +962,7 @@ class AdReportGenerator:
             totals_row = ["TOTAL"]
             grand_total = 0
             for ad_name in ad_names:
-                ad_total = sum(daily_plays.get(date_str, {}).get(ad_name, 0)
+                ad_total = sum(daily_confirmed.get(date_str, {}).get(ad_name, 0)
                              for date_str in all_dates)
                 totals_row.append(str(ad_total))
                 grand_total += ad_total

@@ -334,8 +334,8 @@
                         21,
                         23
                     ],
-                    "PlayCount": 435,
-                    "LastPlayed": "2026-01-11T11:28:02.736095"
+                    "PlayCount": 427,
+                    "LastPlayed": "2026-01-06T23:00:32.742196"
                 },
                 {
                     "Name": "Judaica Plaza",
@@ -355,8 +355,8 @@
                         13,
                         15
                     ],
-                    "PlayCount": 175,
-                    "LastPlayed": "2026-01-11T13:06:42.139610"
+                    "PlayCount": 173,
+                    "LastPlayed": "2026-01-01T15:37:26.232492"
                 },
                 {
                     "Name": "stonebrook",
@@ -377,8 +377,8 @@
                         16,
                         20
                     ],
-                    "PlayCount": 137,
-                    "LastPlayed": "2026-01-11T09:06:59.193708"
+                    "PlayCount": 133,
+                    "LastPlayed": "2026-01-05T09:15:33.194362"
                 },
                 {
                     "Name": "SPONSORSHIP",
@@ -396,8 +396,8 @@
                         18,
                         22
                     ],
-                    "PlayCount": 67,
-                    "LastPlayed": "2026-01-11T10:08:55.451704"
+                    "PlayCount": 65,
+                    "LastPlayed": "2026-01-01T18:11:30.762890"
                 },
                 {
                     "Name": "Keren",
@@ -418,8 +418,15 @@
                         21,
                         23
                     ],
-                    "PlayCount": 13,
-                    "LastPlayed": "2026-01-11T14:10:33.361226"
+                    "PlayCount": 11,
+                    "LastPlayed": "2026-01-06T23:00:32.742196"
+                },
+                {
+                    "Name": "Test Ad",
+                    "MP3File": "test_ad.mp3",
+                    "Enabled": true,
+                    "PlayCount": 15,
+                    "LastPlayed": "2026-01-10T14:00:00"
                 }
             ],
             "settings": {
@@ -462,16 +469,6 @@
             "Messages": [
                 {
                     "Text": "{artist} ",
-                    "Enabled": true,
-                    "Message Time": 10,
-                    "Scheduled": {
-                        "Enabled": false,
-                        "Days": [],
-                        "Times": []
-                    }
-                },
-                {
-                    "Text": "Harav Shlomo Grossman",
                     "Enabled": true,
                     "Message Time": 10,
                     "Scheduled": {

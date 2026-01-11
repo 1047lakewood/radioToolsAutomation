@@ -5,6 +5,7 @@ import calendar
 import logging
 import os
 import json
+from tkcalendar import DateEntry
 
 class AdStatisticsWindow:
     """Window to display ad play statistics with tabs for each station."""
@@ -131,18 +132,12 @@ class AdStatisticsWindow:
         filter_frame.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 10))
 
         ttk.Label(filter_frame, text="From:").grid(row=0, column=0, sticky=tk.W, padx=5)
-        widgets['start_date_var'] = tk.StringVar()
-        widgets['start_date_entry'] = ttk.Entry(filter_frame, textvariable=widgets['start_date_var'], width=12)
+        widgets['start_date_entry'] = DateEntry(filter_frame, width=12, date_pattern='yyyy-mm-dd')
         widgets['start_date_entry'].grid(row=0, column=1, padx=5)
-        widgets['start_date_entry'].insert(0, "YYYY-MM-DD")
-        widgets['start_date_entry'].configure(foreground="gray")
 
         ttk.Label(filter_frame, text="To:").grid(row=0, column=2, sticky=tk.W, padx=5)
-        widgets['end_date_var'] = tk.StringVar()
-        widgets['end_date_entry'] = ttk.Entry(filter_frame, textvariable=widgets['end_date_var'], width=12)
+        widgets['end_date_entry'] = DateEntry(filter_frame, width=12, date_pattern='yyyy-mm-dd')
         widgets['end_date_entry'].grid(row=0, column=3, padx=5)
-        widgets['end_date_entry'].insert(0, "YYYY-MM-DD")
-        widgets['end_date_entry'].configure(foreground="gray")
 
         ttk.Button(filter_frame, text="Apply", command=lambda: self.apply_date_filter(station_id), width=8).grid(row=0, column=4, padx=5)
         ttk.Button(filter_frame, text="Clear", command=lambda: self.clear_date_filter(station_id), width=8).grid(row=0, column=5, padx=5)
@@ -228,12 +223,9 @@ class AdStatisticsWindow:
 
             # Use filtered or unfiltered stats based on current filter state
             if station_data['date_filter_active']:
-                start_date = widgets['start_date_var'].get().strip()
-                end_date = widgets['end_date_var'].get().strip()
-
-                if not start_date or not end_date or start_date == "YYYY-MM-DD" or end_date == "YYYY-MM-DD":
-                    messagebox.showerror("Error", "Please enter both start and end dates for filtering.", parent=self.window)
-                    return
+                # Get dates and format as YYYY-MM-DD strings
+                start_date = widgets['start_date_entry'].get_date().strftime('%Y-%m-%d')
+                end_date = widgets['end_date_entry'].get_date().strftime('%Y-%m-%d')
 
                 stats = ad_logger.get_ad_statistics_filtered(start_date, end_date)
             else:
@@ -287,12 +279,10 @@ class AdStatisticsWindow:
         widgets = station_data['widgets']
         
         station_data['date_filter_active'] = False
-        widgets['start_date_var'].set("")
-        widgets['end_date_var'].set("")
-        widgets['start_date_entry'].insert(0, "YYYY-MM-DD")
-        widgets['start_date_entry'].configure(foreground="gray")
-        widgets['end_date_entry'].insert(0, "YYYY-MM-DD")
-        widgets['end_date_entry'].configure(foreground="gray")
+        # Reset date entries to today's date
+        today = datetime.now().date()
+        widgets['start_date_entry'].set_date(today)
+        widgets['end_date_entry'].set_date(today)
         self.refresh_stats(station_id)
 
     def reset_counts(self, station_id):
@@ -345,12 +335,8 @@ class AdStatisticsWindow:
         end_date = None
         if station_data['date_filter_active']:
             widgets = station_data['widgets']
-            start_date = widgets['start_date_var'].get().strip()
-            end_date = widgets['end_date_var'].get().strip()
-            if start_date == "YYYY-MM-DD":
-                start_date = None
-            if end_date == "YYYY-MM-DD":
-                end_date = None
+            start_date = widgets['start_date_entry'].get_date().strftime('%Y-%m-%d')
+            end_date = widgets['end_date_entry'].get_date().strftime('%Y-%m-%d')
 
         try:
             csv_path, pdf_path = report_generator.generate_report(start_date, end_date)

@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python:*)",
+      "Bash(move \"G:\\\\Misc\\\\Dev\\\\radioToolsAutomation\\\\src\\\\ad_play_events_1047.json\" \"G:\\\\Misc\\\\Dev\\\\radioToolsAutomation\\\\ad_play_events_1047.json\")",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nVersion 2.4.5: Add calendar view for ad play history\n\n- Added interactive calendar feature to Ad Statistics window\n- Calendar displays days with ad plays using dot indicators\n  * Up to 5 dots show individual plays \\(●●●●●\\)\n  * 5+ plays show dot with count \\(●5\\)\n- Month navigation with < > buttons\n- Click days to see specific play times in 12-hour format\n- Efficient caching of daily/hourly stats\n- Larger calendar cells for better visibility\n- Test data creation script for calendar feature\n\nCo-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push:*)"
+    ]
+  }
+}
