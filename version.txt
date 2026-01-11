@@ -1,15 +1,14 @@
-radioToolsAutomation v2.4.4
+radioToolsAutomation v2.4.5
 ============================
 
-Release Date: January 10, 2026
+Release Date: January 11, 2026
 Major Changes:
-- Enhanced ad reporting with XML confirmation
-- Hourly line items in ad reports
-- MP3 concatenation validation
-- Robust XML reading system
-- Accurate ad play tracking (no overcounting)
+- Added calendar view for ad play history
+- Calendar shows days with plays using dot indicators
+- Navigate between months and click days for play times
+- Efficient caching for large datasets
 
-Previous Version: v2.4.2
+Previous Version: v2.4.4
 Compatibility: Backward compatible with existing configurations
 
 

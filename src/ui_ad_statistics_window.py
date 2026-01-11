@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 from datetime import datetime
+import calendar
 import logging
 import os
 import json
@@ -20,6 +21,7 @@ class AdStatisticsWindow:
         self.config_manager = config_manager
         
         # Dictionary to store station-specific data
+        now = datetime.now()
         self.stations = {
             'station_1047': {
                 'name': '104.7 FM',
@@ -28,7 +30,12 @@ class AdStatisticsWindow:
                 'widgets': {},
                 'date_filter_active': False,
                 'sort_column_name': None,
-                'sort_reverse': False
+                'sort_reverse': False,
+                'calendar_year': now.year,
+                'calendar_month': now.month,
+                'selected_ad': None,
+                'daily_stats_cache': {},
+                'hourly_stats_cache': {}
             },
             'station_887': {
                 'name': '88.7 FM',
@@ -37,7 +44,12 @@ class AdStatisticsWindow:
                 'widgets': {},
                 'date_filter_active': False,
                 'sort_column_name': None,
-                'sort_reverse': False
+                'sort_reverse': False,
+                'calendar_year': now.year,
+                'calendar_month': now.month,
+                'selected_ad': None,
+                'daily_stats_cache': {},
+                'hourly_stats_cache': {}
             }
         }
         
@@ -56,8 +68,8 @@ class AdStatisticsWindow:
 
         self.window = tk.Toplevel(parent)
         self.window.title("Ad Play Statistics")
-        self.window.geometry("1050x750")
-        self.window.minsize(950, 650)
+        self.window.geometry("1050x920")
+        self.window.minsize(950, 820)
 
         # Make window modal
         self.window.transient(parent)
@@ -68,9 +80,10 @@ class AdStatisticsWindow:
 
         self.create_widgets()
         
-        # Refresh stats for both stations
+        # Refresh stats and populate calendar for both stations
         for station_id in self.stations.keys():
             self.refresh_stats(station_id)
+            self.populate_calendar_ad_list(station_id)
 
         # Handle window close
         self.window.protocol("WM_DELETE_WINDOW", self.on_close)
@@ -170,11 +183,11 @@ class AdStatisticsWindow:
 
         # Ad details table
         table_frame = ttk.LabelFrame(parent_frame, text="Ad Details", padding="10")
-        table_frame.pack(fill=tk.BOTH, expand=True, pady=(10, 0))
+        table_frame.pack(fill=tk.X, pady=(10, 0))
 
         # Create treeview for ad details
         columns = ("Name", "Status", "Play Count", "Last Played", "File")
-        widgets['ad_tree'] = ttk.Treeview(table_frame, columns=columns, show="headings", height=12)
+        widgets['ad_tree'] = ttk.Treeview(table_frame, columns=columns, show="headings", height=6)
 
         # Define column headings
         for col in columns:
@@ -190,6 +203,9 @@ class AdStatisticsWindow:
         v_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         h_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
         widgets['ad_tree'].pack(fill=tk.BOTH, expand=True)
+
+        # Calendar section
+        self.create_calendar_section(parent_frame, station_id)
 
         # Status bar
         widgets['status_var'] = tk.StringVar(value="Ready")
@@ -368,6 +384,267 @@ class AdStatisticsWindow:
         # Rearrange items
         for index, (val, item) in enumerate(items):
             tree.move(item, '', index)
+
+    def create_calendar_section(self, parent_frame, station_id):
+        """Create the calendar view section for a station."""
+        station_data = self.stations[station_id]
+        widgets = station_data['widgets']
+
+        # Calendar frame
+        calendar_frame = ttk.LabelFrame(parent_frame, text="Play Calendar", padding="10")
+        calendar_frame.pack(fill=tk.X, pady=(10, 0))
+
+        # Top row: Ad selector and month navigation
+        top_row = ttk.Frame(calendar_frame)
+        top_row.pack(fill=tk.X, pady=(0, 10))
+
+        # Ad selector
+        ttk.Label(top_row, text="Ad:").pack(side=tk.LEFT, padx=(0, 5))
+        widgets['calendar_ad_var'] = tk.StringVar()
+        widgets['calendar_ad_combo'] = ttk.Combobox(
+            top_row,
+            textvariable=widgets['calendar_ad_var'],
+            state='readonly',
+            width=30
+        )
+        widgets['calendar_ad_combo'].pack(side=tk.LEFT, padx=(0, 20))
+        widgets['calendar_ad_combo'].bind('<<ComboboxSelected>>', lambda e: self.on_calendar_ad_selected(station_id))
+
+        # Month navigation
+        nav_frame = ttk.Frame(top_row)
+        nav_frame.pack(side=tk.LEFT, padx=20)
+
+        ttk.Button(nav_frame, text="<", width=3, command=lambda: self.calendar_prev_month(station_id)).pack(side=tk.LEFT)
+        widgets['calendar_month_label'] = ttk.Label(nav_frame, text="", width=20, anchor=tk.CENTER, font=("Segoe UI", 10, "bold"))
+        widgets['calendar_month_label'].pack(side=tk.LEFT, padx=10)
+        ttk.Button(nav_frame, text=">", width=3, command=lambda: self.calendar_next_month(station_id)).pack(side=tk.LEFT)
+
+        # Calendar grid and detail panel side by side
+        content_frame = ttk.Frame(calendar_frame)
+        content_frame.pack(fill=tk.X)
+
+        # Calendar grid
+        grid_frame = ttk.Frame(content_frame)
+        grid_frame.pack(side=tk.LEFT, padx=(0, 20))
+
+        # Day headers (Sun-Sat)
+        day_names = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+        for col, day_name in enumerate(day_names):
+            lbl = ttk.Label(grid_frame, text=day_name, width=7, anchor=tk.CENTER, font=("Segoe UI", 11, "bold"))
+            lbl.grid(row=0, column=col, padx=2, pady=2)
+
+        # Day cells (6 rows x 7 columns)
+        widgets['calendar_day_frames'] = []
+        widgets['calendar_day_labels'] = []
+        widgets['calendar_dot_labels'] = []
+
+        for row in range(6):
+            row_frames = []
+            row_labels = []
+            row_dots = []
+            for col in range(7):
+                # Frame for each day cell
+                cell_frame = ttk.Frame(grid_frame, width=60, height=45)
+                cell_frame.grid(row=row+1, column=col, padx=2, pady=2)
+                cell_frame.grid_propagate(False)
+
+                # Day number label
+                day_label = ttk.Label(cell_frame, text="", anchor=tk.CENTER, font=("Segoe UI", 12))
+                day_label.place(relx=0.5, rely=0.3, anchor=tk.CENTER)
+
+                # Play count indicator label (shows number of plays as dots or count)
+                dot_label = ttk.Label(cell_frame, text="", foreground="#28a745", font=("Segoe UI", 11, "bold"))
+                dot_label.place(relx=0.5, rely=0.72, anchor=tk.CENTER)
+
+                row_frames.append(cell_frame)
+                row_labels.append(day_label)
+                row_dots.append(dot_label)
+
+            widgets['calendar_day_frames'].append(row_frames)
+            widgets['calendar_day_labels'].append(row_labels)
+            widgets['calendar_dot_labels'].append(row_dots)
+
+        # Day detail panel
+        detail_frame = ttk.LabelFrame(content_frame, text="Play Details", padding="10", width=200)
+        detail_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        widgets['calendar_detail_label'] = ttk.Label(detail_frame, text="Select an ad and click a day to see play times.", wraplength=250, justify=tk.LEFT)
+        widgets['calendar_detail_label'].pack(anchor=tk.NW)
+
+        # Initialize calendar display
+        self.update_calendar_month_label(station_id)
+
+    def populate_calendar_ad_list(self, station_id):
+        """Populate the ad selector dropdown with ad names."""
+        station_data = self.stations[station_id]
+        widgets = station_data['widgets']
+
+        # Get ad names from config using get_station_ads method
+        ads = self.config_manager.get_station_ads(station_id) or []
+        ad_names = [ad.get('Name', '') for ad in ads if ad.get('Name')]
+
+        widgets['calendar_ad_combo']['values'] = ad_names
+        if ad_names:
+            widgets['calendar_ad_combo'].set('')
+
+    def on_calendar_ad_selected(self, station_id):
+        """Handle ad selection in calendar."""
+        station_data = self.stations[station_id]
+        widgets = station_data['widgets']
+        ad_logger = station_data['ad_logger']
+
+        selected_ad = widgets['calendar_ad_var'].get()
+        station_data['selected_ad'] = selected_ad
+
+        # Cache the stats data
+        if ad_logger:
+            station_data['daily_stats_cache'] = ad_logger.get_daily_confirmed_stats() or {}
+            station_data['hourly_stats_cache'] = ad_logger.get_hourly_confirmed_stats() or {}
+
+        # Refresh calendar display
+        self.refresh_calendar_grid(station_id)
+
+        # Clear detail panel
+        widgets['calendar_detail_label'].config(text=f"Selected: {selected_ad}\nClick a day with a dot to see play times.")
+
+    def calendar_prev_month(self, station_id):
+        """Navigate to previous month."""
+        station_data = self.stations[station_id]
+
+        if station_data['calendar_month'] == 1:
+            station_data['calendar_month'] = 12
+            station_data['calendar_year'] -= 1
+        else:
+            station_data['calendar_month'] -= 1
+
+        self.update_calendar_month_label(station_id)
+        self.refresh_calendar_grid(station_id)
+
+    def calendar_next_month(self, station_id):
+        """Navigate to next month."""
+        station_data = self.stations[station_id]
+
+        if station_data['calendar_month'] == 12:
+            station_data['calendar_month'] = 1
+            station_data['calendar_year'] += 1
+        else:
+            station_data['calendar_month'] += 1
+
+        self.update_calendar_month_label(station_id)
+        self.refresh_calendar_grid(station_id)
+
+    def update_calendar_month_label(self, station_id):
+        """Update the month/year display label."""
+        station_data = self.stations[station_id]
+        widgets = station_data['widgets']
+
+        month_name = calendar.month_name[station_data['calendar_month']]
+        year = station_data['calendar_year']
+        widgets['calendar_month_label'].config(text=f"{month_name} {year}")
+
+    def refresh_calendar_grid(self, station_id):
+        """Refresh the calendar grid with dots for days the selected ad played."""
+        station_data = self.stations[station_id]
+        widgets = station_data['widgets']
+
+        year = station_data['calendar_year']
+        month = station_data['calendar_month']
+        selected_ad = station_data['selected_ad']
+        daily_stats = station_data['daily_stats_cache']
+
+        # Get calendar for this month (Sunday start)
+        cal = calendar.Calendar(firstweekday=6)
+        month_days = cal.monthdayscalendar(year, month)
+
+        # Clear all cells first
+        for row in range(6):
+            for col in range(7):
+                widgets['calendar_day_labels'][row][col].config(text="")
+                widgets['calendar_dot_labels'][row][col].config(text="")
+                # Remove old bindings
+                widgets['calendar_day_frames'][row][col].unbind('<Button-1>')
+                widgets['calendar_day_labels'][row][col].unbind('<Button-1>')
+                widgets['calendar_dot_labels'][row][col].unbind('<Button-1>')
+
+        # Fill in the days
+        for row, week in enumerate(month_days):
+            if row >= 6:
+                break
+            for col, day in enumerate(week):
+                if day == 0:
+                    continue
+
+                # Set day number
+                widgets['calendar_day_labels'][row][col].config(text=str(day))
+
+                # Check if this ad played on this day
+                date_str = f"{year}-{month:02d}-{day:02d}"
+                has_plays = False
+                play_count = 0
+
+                if selected_ad and date_str in daily_stats:
+                    day_data = daily_stats[date_str]
+                    if selected_ad in day_data and day_data[selected_ad] > 0:
+                        has_plays = True
+                        play_count = day_data[selected_ad]
+                        # Show dots for play count (up to 5 dots, then show number)
+                        if play_count <= 5:
+                            widgets['calendar_dot_labels'][row][col].config(text="●" * play_count)
+                        else:
+                            widgets['calendar_dot_labels'][row][col].config(text=f"●{play_count}")
+
+                # Bind click handler
+                click_handler = lambda e, d=day, dp=has_plays: self.on_calendar_day_click(station_id, d, dp)
+                widgets['calendar_day_frames'][row][col].bind('<Button-1>', click_handler)
+                widgets['calendar_day_labels'][row][col].bind('<Button-1>', click_handler)
+                widgets['calendar_dot_labels'][row][col].bind('<Button-1>', click_handler)
+
+    def on_calendar_day_click(self, station_id, day, has_plays):
+        """Handle click on a calendar day."""
+        station_data = self.stations[station_id]
+        widgets = station_data['widgets']
+
+        year = station_data['calendar_year']
+        month = station_data['calendar_month']
+        selected_ad = station_data['selected_ad']
+        hourly_stats = station_data['hourly_stats_cache']
+
+        if not selected_ad:
+            widgets['calendar_detail_label'].config(text="Please select an ad first.")
+            return
+
+        date_str = f"{year}-{month:02d}-{day:02d}"
+        month_name = calendar.month_name[month]
+
+        if not has_plays:
+            widgets['calendar_detail_label'].config(text=f"{month_name} {day}, {year}\n\nNo plays for {selected_ad}")
+            return
+
+        # Find hours when this ad played
+        play_hours = []
+        for hour in range(24):
+            hour_key = f"{date_str}_{hour:02d}"
+            if hour_key in hourly_stats:
+                hour_data = hourly_stats[hour_key]
+                if selected_ad in hour_data and hour_data[selected_ad] > 0:
+                    # Format hour as 12-hour time
+                    if hour == 0:
+                        time_str = "12:00 AM"
+                    elif hour < 12:
+                        time_str = f"{hour}:00 AM"
+                    elif hour == 12:
+                        time_str = "12:00 PM"
+                    else:
+                        time_str = f"{hour-12}:00 PM"
+                    play_hours.append(time_str)
+
+        # Build detail text
+        detail_text = f"{month_name} {day}, {year}\n\nPlayed at:\n"
+        for time_str in play_hours:
+            detail_text += f"  {time_str}\n"
+        detail_text += f"\nTotal: {len(play_hours)} play{'s' if len(play_hours) != 1 else ''}"
+
+        widgets['calendar_detail_label'].config(text=detail_text)
 
     def on_close(self):
         """Handle window close event."""
