@@ -715,7 +715,7 @@ Enhanced with XML-Confirmed Ad Reporting
 
         widget.config(state=tk.NORMAL)
         for message in messages:
-            timestamp = datetime.now().strftime('%H:%M:%S')
+            timestamp = datetime.now().strftime('%I:%M:%S %p').lstrip('0').lower()
             widget.insert(tk.END, f"[{timestamp}] {message}\n")
         widget.config(state=tk.DISABLED)
 
