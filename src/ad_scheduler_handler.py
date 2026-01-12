@@ -42,6 +42,7 @@ class AdSchedulerHandler:
         self.last_seen_track = None  # Track the last seen track for change detection
         self.waiting_for_track_boundary = False
         self.pending_lecture_check = False
+        self._is_hour_start = False  # Flag for hour-start station ID prepend
         self.logger.debug(f"AdSchedulerHandler initialized with running={self.running}")
 
         # Initialize components
@@ -125,6 +126,11 @@ class AdSchedulerHandler:
                     # Check if we've crossed into a new hour
                     if current_hour != self.last_hour_checked:
                         self.logger.info(f"New hour detected: {current_hour}:00 (was {self.last_hour_checked}:00)")
+                        # Check if we're in first 5 seconds of the hour (for station ID prepend)
+                        current_second = datetime.now().second
+                        self._is_hour_start = current_second <= 5
+                        if self._is_hour_start:
+                            self.logger.info(f"Hour start detected (second={current_second}) - station ID will be prepended if enabled")
                         try:
                             self._perform_hourly_check()
                             self.last_hour_checked = current_hour
@@ -133,6 +139,9 @@ class AdSchedulerHandler:
                             self.logger.error(f"Error in hourly check: {e}")
                             # Update last_hour_checked to avoid immediate retry
                             self.last_hour_checked = current_hour
+                        finally:
+                            # Reset hour-start flag after hourly check completes
+                            self._is_hour_start = False
 
                     # Check for track changes (if we have components and are waiting for track boundary)
                     current_time = time.time()
@@ -646,8 +655,8 @@ class AdSchedulerHandler:
                 self.logger.warning("Ad service not available - cannot run instant service.")
                 return
 
-            self.logger.info("Running ad service in instant mode.")
-            success = self.ad_service.run_instant()
+            self.logger.info(f"Running ad service in instant mode (is_hour_start={self._is_hour_start}).")
+            success = self.ad_service.run_instant(is_hour_start=self._is_hour_start)
             if success:
                 self.logger.info("Instant service completed successfully.")
             else:

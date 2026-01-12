@@ -54,7 +54,19 @@ class AdInserterService:
             "settings.ad_inserter.output_mp3",
             r"G:\\Ads\\newAd.mp3",
         )
-        
+
+        # Station ID settings for hour-start prepend
+        self.station_id_enabled = self.config_manager.get_station_setting(
+            station_id,
+            "ad_inserter.station_id_enabled",
+            False
+        )
+        self.station_id_file = self.config_manager.get_station_setting(
+            station_id,
+            "ad_inserter.station_id_file",
+            ""
+        )
+
         # Get XML path for confirmation
         self.xml_path = self.config_manager.get_station_setting(
             station_id, 
@@ -92,9 +104,13 @@ class AdInserterService:
         """Combine ads and call the scheduled insertion URL with confirmation."""
         return self._run_with_confirmation(self.insertion_url, "scheduled")
 
-    def run_instant(self):
-        """Combine ads and call the instant-play URL with confirmation."""
-        return self._run_with_confirmation(self.instant_url, "instant")
+    def run_instant(self, is_hour_start=False):
+        """Combine ads and call the instant-play URL with confirmation.
+
+        Args:
+            is_hour_start: If True and station ID is enabled, prepend station ID audio
+        """
+        return self._run_with_confirmation(self.instant_url, "instant", is_hour_start=is_hour_start)
 
     def _seconds_until_hour_end(self) -> int:
         """
@@ -113,13 +129,14 @@ class AdInserterService:
         # Ensure minimum timeout of 60 seconds for instant ads
         return max(seconds_remaining, 60)
 
-    def _run_with_confirmation(self, url: str, mode: str) -> bool:
+    def _run_with_confirmation(self, url: str, mode: str, is_hour_start: bool = False) -> bool:
         """
         Execute the ad insertion workflow with validation and confirmation.
 
         Args:
             url: The insertion URL to call
             mode: 'scheduled' or 'instant' for logging
+            is_hour_start: If True and station ID is enabled, prepend station ID audio
 
         Returns:
             bool: True if ads were confirmed as played, False otherwise
@@ -132,10 +149,27 @@ class AdInserterService:
         valid_files, ad_names, expected_duration_ms = ads_result
         attempt_hour = datetime.now().hour
 
+        # Determine if we should prepend station ID
+        prepend_station_id = (
+            is_hour_start and
+            self.station_id_enabled and
+            self.station_id_file and
+            os.path.exists(self.station_id_file)
+        )
+        if is_hour_start:
+            if prepend_station_id:
+                self.logger.info(f"Hour start: will prepend station ID from {self.station_id_file}")
+            elif not self.station_id_enabled:
+                self.logger.debug("Hour start: station ID prepend disabled")
+            elif not self.station_id_file:
+                self.logger.debug("Hour start: no station ID file configured")
+            elif not os.path.exists(self.station_id_file):
+                self.logger.warning(f"Hour start: station ID file not found: {self.station_id_file}")
+
         self.logger.info(f"Starting {mode} ad insertion ({len(ad_names)} ads: {ad_names})")
 
-        # Step 2: Concatenate MP3 files
-        concat_result = self._concatenate_and_validate(valid_files, expected_duration_ms)
+        # Step 2: Concatenate MP3 files (with optional station ID prepend)
+        concat_result = self._concatenate_and_validate(valid_files, expected_duration_ms, prepend_station_id=prepend_station_id)
 
         if not concat_result["ok"]:
             error_msg = concat_result.get('error', 'unknown')
@@ -286,14 +320,15 @@ class AdInserterService:
         self.logger.debug(f"Ad '{ad_name}': scheduled with no specific hours, allowing")
         return True
 
-    def _concatenate_and_validate(self, files: List[str], expected_duration_ms: float) -> Dict:
+    def _concatenate_and_validate(self, files: List[str], expected_duration_ms: float, prepend_station_id: bool = False) -> Dict:
         """
         Concatenate MP3 files and validate the output.
-        
+
         Args:
             files: List of MP3 file paths
             expected_duration_ms: Expected total duration in milliseconds
-            
+            prepend_station_id: If True, prepend station ID audio at the beginning
+
         Returns:
             Dict with 'ok', 'expected_ms', 'actual_ms', and optionally 'error'
         """
@@ -302,25 +337,39 @@ class AdInserterService:
             "expected_ms": expected_duration_ms,
             "actual_ms": 0
         }
-        
+
         if not PYDUB_AVAILABLE:
             result["error"] = "pydub not available"
             self.logger.error("pydub not available - cannot concatenate MP3 files")
             return result
-        
+
         try:
             # Create output directory if needed
             os.makedirs(os.path.dirname(self.output_mp3), exist_ok=True)
-            
-            # Concatenate files
+
+            # Start with station ID if requested
             combined = AudioSegment.empty()
+            if prepend_station_id and self.station_id_file and os.path.exists(self.station_id_file):
+                try:
+                    station_id_audio = AudioSegment.from_mp3(self.station_id_file)
+                    combined += station_id_audio
+                    # Update expected duration to include station ID
+                    expected_duration_ms += len(station_id_audio)
+                    result["expected_ms"] = expected_duration_ms
+                    self.logger.info(f"Prepended station ID audio ({len(station_id_audio)}ms)")
+                except Exception as e:
+                    self.logger.error(f"Failed to load station ID file: {e}")
+                    result["error"] = f"Station ID file error: {e}"
+                    return result
+
+            # Concatenate ad files
             for fp in files:
                 if not os.path.exists(fp):
                     result["error"] = f"File not found: {fp}"
                     self.logger.error(result["error"])
                     return result
                 combined += AudioSegment.from_mp3(fp)
-            
+
             # Export with adRoll artist tag
             combined.export(self.output_mp3, format="mp3", tags={"artist": "adRoll"})
             

@@ -500,6 +500,8 @@ class OptionsWindow(Toplevel):
             self.config_manager.update_station_setting(station_id, "ad_inserter.insertion_event_id", station_vars['ad_insertion_event_id'].get())
             self.config_manager.update_station_setting(station_id, "ad_inserter.instant_event_id", station_vars['ad_instant_event_id'].get())
             self.config_manager.update_station_setting(station_id, "ad_inserter.output_mp3", station_vars['ad_mp3'].get())
+            self.config_manager.update_station_setting(station_id, "ad_inserter.station_id_enabled", station_vars['station_id_enabled'].get())
+            self.config_manager.update_station_setting(station_id, "ad_inserter.station_id_file", station_vars['station_id_file'].get())
 
         # Save shared volume settings
         self.config_manager.update_shared_setting("intro_loader.volume.intro_db", self.volume_vars['intro_db'].get())
@@ -1146,6 +1148,16 @@ class OptionsWindow(Toplevel):
         station_vars['ad_mp3'] = tk.StringVar(value=self.config_manager.get_station_setting(station_id, "settings.ad_inserter.output_mp3", r"G:\\Ads\\newAd.mp3"))
         ttk.Entry(ad_frame, textvariable=station_vars['ad_mp3'], width=40).grid(row=2, column=1, sticky=tk.W, padx=5)
         ttk.Button(ad_frame, text="Browse", command=lambda: self.browse_file(station_vars['ad_mp3'])).grid(row=2, column=2, padx=5)
+
+        # Station ID Settings (for hour-start prepend)
+        ttk.Label(ad_frame, text="Station ID at Hour Start:").grid(row=3, column=0, sticky=tk.W, padx=5)
+        station_vars['station_id_enabled'] = tk.BooleanVar(value=self.config_manager.get_station_setting(station_id, "ad_inserter.station_id_enabled", False))
+        ttk.Checkbutton(ad_frame, text="Enable", variable=station_vars['station_id_enabled']).grid(row=3, column=1, sticky=tk.W, padx=5)
+
+        ttk.Label(ad_frame, text="Station ID File:").grid(row=4, column=0, sticky=tk.W, padx=5)
+        station_vars['station_id_file'] = tk.StringVar(value=self.config_manager.get_station_setting(station_id, "ad_inserter.station_id_file", ""))
+        ttk.Entry(ad_frame, textvariable=station_vars['station_id_file'], width=40).grid(row=4, column=1, sticky=tk.W, padx=5)
+        ttk.Button(ad_frame, text="Browse", command=lambda: self.browse_file(station_vars['station_id_file'])).grid(row=4, column=2, padx=5)
 
         # Note: mAirList server settings are now handled by RadioBoss API settings above
 
