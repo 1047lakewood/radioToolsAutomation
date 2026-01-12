@@ -35,8 +35,7 @@ class AdStatisticsWindow:
                 'calendar_year': now.year,
                 'calendar_month': now.month,
                 'selected_ad': None,
-                'daily_stats_cache': {},
-                'hourly_stats_cache': {}
+                'daily_stats_cache': {}
             },
             'station_887': {
                 'name': '88.7 FM',
@@ -49,8 +48,7 @@ class AdStatisticsWindow:
                 'calendar_year': now.year,
                 'calendar_month': now.month,
                 'selected_ad': None,
-                'daily_stats_cache': {},
-                'hourly_stats_cache': {}
+                'daily_stats_cache': {}
             }
         }
         
@@ -152,9 +150,13 @@ class AdStatisticsWindow:
         ttk.Button(button_row1, text="Reset Counts", command=lambda: self.reset_counts(station_id), width=14).pack(side=tk.LEFT, padx=2)
 
         button_row2 = ttk.Frame(button_frame)
-        button_row2.pack(fill=tk.X)
+        button_row2.pack(fill=tk.X, pady=(0, 5))
         ttk.Button(button_row2, text="Export Stats", command=lambda: self.export_stats(station_id), width=14).pack(side=tk.LEFT, padx=2)
         ttk.Button(button_row2, text="Generate Report", command=lambda: self.generate_advertiser_report(station_id), width=14).pack(side=tk.LEFT, padx=2)
+
+        button_row3 = ttk.Frame(button_frame)
+        button_row3.pack(fill=tk.X)
+        ttk.Button(button_row3, text="View Failures", command=lambda: self.show_failures(station_id), width=14).pack(side=tk.LEFT, padx=2)
 
         # Statistics summary
         summary_frame = ttk.LabelFrame(parent_frame, text="Summary", padding="10")
@@ -482,10 +484,9 @@ class AdStatisticsWindow:
         selected_ad = widgets['calendar_ad_var'].get()
         station_data['selected_ad'] = selected_ad
 
-        # Cache the stats data
+        # Cache the play data for this ad (compact format: MM-DD-YY -> [hours])
         if ad_logger:
-            station_data['daily_stats_cache'] = ad_logger.get_daily_confirmed_stats() or {}
-            station_data['hourly_stats_cache'] = ad_logger.get_hourly_confirmed_stats() or {}
+            station_data['daily_stats_cache'] = ad_logger.get_daily_play_counts(selected_ad) or {}
 
         # Refresh calendar display
         self.refresh_calendar_grid(station_id)
@@ -536,7 +537,7 @@ class AdStatisticsWindow:
         year = station_data['calendar_year']
         month = station_data['calendar_month']
         selected_ad = station_data['selected_ad']
-        daily_stats = station_data['daily_stats_cache']
+        daily_stats = station_data['daily_stats_cache']  # Format: MM-DD-YY -> play_count
 
         # Get calendar for this month (Sunday start)
         cal = calendar.Calendar(firstweekday=6)
@@ -563,16 +564,15 @@ class AdStatisticsWindow:
                 # Set day number
                 widgets['calendar_day_labels'][row][col].config(text=str(day))
 
-                # Check if this ad played on this day
-                date_str = f"{year}-{month:02d}-{day:02d}"
+                # Check if this ad played on this day (compact format: MM-DD-YY)
+                date_str = f"{month:02d}-{day:02d}-{year % 100:02d}"
                 has_plays = False
                 play_count = 0
 
                 if selected_ad and date_str in daily_stats:
-                    day_data = daily_stats[date_str]
-                    if selected_ad in day_data and day_data[selected_ad] > 0:
+                    play_count = daily_stats[date_str]
+                    if play_count > 0:
                         has_plays = True
-                        play_count = day_data[selected_ad]
                         # Show dots for play count (up to 5 dots, then show number)
                         if play_count <= 5:
                             widgets['calendar_dot_labels'][row][col].config(text="●" * play_count)
@@ -589,40 +589,38 @@ class AdStatisticsWindow:
         """Handle click on a calendar day."""
         station_data = self.stations[station_id]
         widgets = station_data['widgets']
+        ad_logger = station_data['ad_logger']
 
         year = station_data['calendar_year']
         month = station_data['calendar_month']
         selected_ad = station_data['selected_ad']
-        hourly_stats = station_data['hourly_stats_cache']
 
         if not selected_ad:
             widgets['calendar_detail_label'].config(text="Please select an ad first.")
             return
 
-        date_str = f"{year}-{month:02d}-{day:02d}"
         month_name = calendar.month_name[month]
 
         if not has_plays:
             widgets['calendar_detail_label'].config(text=f"{month_name} {day}, {year}\n\nNo plays for {selected_ad}")
             return
 
-        # Find hours when this ad played
+        # Get hours when this ad played (compact format: MM-DD-YY)
+        date_str = f"{month:02d}-{day:02d}-{year % 100:02d}"
+        hours_played = ad_logger.get_play_hours_for_date(selected_ad, date_str) if ad_logger else []
+
+        # Format hours as 12-hour time
         play_hours = []
-        for hour in range(24):
-            hour_key = f"{date_str}_{hour:02d}"
-            if hour_key in hourly_stats:
-                hour_data = hourly_stats[hour_key]
-                if selected_ad in hour_data and hour_data[selected_ad] > 0:
-                    # Format hour as 12-hour time
-                    if hour == 0:
-                        time_str = "12:00 AM"
-                    elif hour < 12:
-                        time_str = f"{hour}:00 AM"
-                    elif hour == 12:
-                        time_str = "12:00 PM"
-                    else:
-                        time_str = f"{hour-12}:00 PM"
-                    play_hours.append(time_str)
+        for hour in hours_played:
+            if hour == 0:
+                time_str = "12:00 AM"
+            elif hour < 12:
+                time_str = f"{hour}:00 AM"
+            elif hour == 12:
+                time_str = "12:00 PM"
+            else:
+                time_str = f"{hour-12}:00 PM"
+            play_hours.append(time_str)
 
         # Build detail text
         detail_text = f"{month_name} {day}, {year}\n\nPlayed at:\n"
@@ -631,6 +629,60 @@ class AdStatisticsWindow:
         detail_text += f"\nTotal: {len(play_hours)} play{'s' if len(play_hours) != 1 else ''}"
 
         widgets['calendar_detail_label'].config(text=detail_text)
+
+    def show_failures(self, station_id):
+        """Show the failure log for a specific station."""
+        station_data = self.stations[station_id]
+        ad_logger = station_data['ad_logger']
+
+        if not ad_logger:
+            messagebox.showerror("Error", "Ad logging system not available", parent=self.window)
+            return
+
+        failures = ad_logger.get_failures()
+
+        # Create a simple dialog to show failures
+        dialog = tk.Toplevel(self.window)
+        dialog.title(f"Ad Insertion Failures - {station_data['name']}")
+        dialog.geometry("500x400")
+        dialog.transient(self.window)
+        dialog.grab_set()
+
+        # Center the dialog
+        dialog.update_idletasks()
+        x = (dialog.winfo_screenwidth() // 2) - (250)
+        y = (dialog.winfo_screenheight() // 2) - (200)
+        dialog.geometry(f'+{x}+{y}')
+
+        main_frame = ttk.Frame(dialog, padding="10")
+        main_frame.pack(fill=tk.BOTH, expand=True)
+
+        ttk.Label(main_frame, text=f"Last {len(failures)} failures (most recent first):", font=("Segoe UI", 10, "bold")).pack(anchor=tk.W)
+
+        # Text widget with scrollbar
+        text_frame = ttk.Frame(main_frame)
+        text_frame.pack(fill=tk.BOTH, expand=True, pady=(5, 10))
+
+        text_widget = tk.Text(text_frame, wrap=tk.WORD, font=("Consolas", 9))
+        scrollbar = ttk.Scrollbar(text_frame, orient=tk.VERTICAL, command=text_widget.yview)
+        text_widget.configure(yscrollcommand=scrollbar.set)
+
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        text_widget.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        if not failures:
+            text_widget.insert(tk.END, "No failures recorded.")
+        else:
+            # Show most recent first
+            for failure in reversed(failures):
+                timestamp = failure.get("t", "?")
+                ads = ", ".join(failure.get("ads", ["?"]))
+                error = failure.get("err", "unknown")
+                text_widget.insert(tk.END, f"{timestamp}  {ads}\n  Error: {error}\n\n")
+
+        text_widget.config(state=tk.DISABLED)
+
+        ttk.Button(main_frame, text="Close", command=dialog.destroy).pack(side=tk.RIGHT)
 
     def on_close(self):
         """Handle window close event."""

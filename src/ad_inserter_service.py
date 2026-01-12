@@ -116,11 +116,11 @@ class AdInserterService:
     def _run_with_confirmation(self, url: str, mode: str) -> bool:
         """
         Execute the ad insertion workflow with validation and confirmation.
-        
+
         Args:
             url: The insertion URL to call
             mode: 'scheduled' or 'instant' for logging
-            
+
         Returns:
             bool: True if ads were confirmed as played, False otherwise
         """
@@ -128,79 +128,55 @@ class AdInserterService:
         ads_result = self._select_valid_ads()
         if not ads_result:
             return False
-        
+
         valid_files, ad_names, expected_duration_ms = ads_result
-        
-        # Generate roll ID for tracking
-        roll_id = self.ad_logger.generate_roll_id() if self.ad_logger else "no-logger"
         attempt_hour = datetime.now().hour
-        
-        self.logger.info(f"Starting {mode} ad insertion (roll_id={roll_id}, {len(ad_names)} ads)")
-        
+
+        self.logger.info(f"Starting {mode} ad insertion ({len(ad_names)} ads: {ad_names})")
+
         # Step 2: Concatenate MP3 files
         concat_result = self._concatenate_and_validate(valid_files, expected_duration_ms)
-        
+
         if not concat_result["ok"]:
-            self.logger.error(f"Concatenation failed: {concat_result.get('error', 'unknown')}")
+            error_msg = concat_result.get('error', 'unknown')
+            self.logger.error(f"Concatenation failed: {error_msg}")
             if self.ad_logger:
-                self.ad_logger.record_roll_attempt(
-                    roll_id, ad_names, 
-                    concat_validation=concat_result,
-                    insertion_result={"ok": False, "reason": "concat_failed"}
-                )
-                self.ad_logger.mark_roll_unconfirmed(roll_id, "concat_failed")
+                self.ad_logger.log_failure(ad_names, f"concat:{error_msg[:20]}")
             return False
-        
+
         self.logger.info(f"Concatenation successful: {concat_result['actual_ms']:.0f}ms (expected {concat_result['expected_ms']:.0f}ms)")
-        
+
         # Step 3: Call insertion URL
         insertion_result = self._call_url_with_result(url)
-        
+
         if not insertion_result["ok"]:
-            self.logger.error(f"Insertion URL call failed: {insertion_result.get('error', 'unknown')}")
+            error_msg = insertion_result.get('error', 'unknown')
+            self.logger.error(f"Insertion URL call failed: {error_msg}")
             if self.ad_logger:
-                self.ad_logger.record_roll_attempt(
-                    roll_id, ad_names,
-                    concat_validation=concat_result,
-                    insertion_result=insertion_result
-                )
-                self.ad_logger.mark_roll_unconfirmed(roll_id, "insertion_failed")
+                self.ad_logger.log_failure(ad_names, f"http:{error_msg[:20]}")
             return False
-        
+
         self.logger.info(f"Insertion URL called successfully (status={insertion_result.get('status_code')})")
-        
-        # Step 4: Record the attempt
-        if self.ad_logger:
-            self.ad_logger.record_roll_attempt(
-                roll_id, ad_names,
-                concat_validation=concat_result,
-                insertion_result=insertion_result
-            )
-        
-        # Step 5: Poll XML for confirmation
+
+        # Step 4: Poll XML for confirmation
         # Calculate timeout based on time remaining in hour (scheduled ads may not play until song ends)
         timeout = self._seconds_until_hour_end()
         self.logger.info(f"Waiting for XML confirmation with timeout={timeout}s (until hour end)")
         confirmation = self._poll_for_xml_confirmation(attempt_hour, timeout=timeout)
-        
+
         if confirmation["ok"]:
             self.logger.info(f"XML confirmation received: ARTIST='{confirmation['artist']}' at {confirmation.get('xml_started_at')}")
-            
-            # Update play counts directly - ensures plays are logged even if event system fails
-            self._update_play_counts_for_ads(ad_names)
-            
-            # Also try to confirm in events system for record-keeping
+
+            # Log successful plays (ultra-compact storage)
             if self.ad_logger:
-                self.ad_logger.confirm_roll_playback(
-                    roll_id,
-                    confirmation["artist"],
-                    confirmation.get("xml_started_at")
-                )
+                for ad_name in ad_names:
+                    self.ad_logger.log_play(ad_name)
             return True
         else:
-            self.logger.warning(f"XML confirmation failed: {confirmation.get('reason', 'unknown')}")
+            reason = confirmation.get('reason', 'unknown')
+            self.logger.warning(f"XML confirmation failed: {reason}")
             if self.ad_logger:
-                self.ad_logger.mark_roll_unconfirmed(roll_id, confirmation.get("reason", "unknown"))
+                self.ad_logger.log_failure(ad_names, f"xml:{reason[:20]}")
             return False
 
     def _select_valid_ads(self) -> Optional[Tuple[List[str], List[str], float]]:
@@ -517,47 +493,6 @@ class AdInserterService:
             self.logger.debug(f"Error reading XML: {e}")
         
         return None
-
-    def _update_play_counts_for_ads(self, ad_names: List[str]) -> bool:
-        """
-        Directly update PlayCount and LastPlayed in config for the given ads.
-        
-        This ensures plays are logged even if the pending event system fails.
-        
-        Args:
-            ad_names: List of ad names that were played
-            
-        Returns:
-            bool: True if successfully updated, False otherwise
-        """
-        try:
-            ads = self.config_manager.get_station_ads(self.station_id)
-            if not ads:
-                self.logger.warning("No ads found in config to update play counts")
-                return False
-            
-            played_at = datetime.now()
-            updated_count = 0
-            
-            for ad in ads:
-                if ad.get("Name") in ad_names:
-                    ad["PlayCount"] = ad.get("PlayCount", 0) + 1
-                    ad["LastPlayed"] = played_at.isoformat()
-                    updated_count += 1
-                    self.logger.info(f"Updated play count for '{ad.get('Name')}': now {ad['PlayCount']}")
-            
-            if updated_count > 0:
-                self.config_manager.set_station_ads(self.station_id, ads)
-                self.config_manager.save_config()
-                self.logger.info(f"Saved play counts for {updated_count} ads")
-                return True
-            else:
-                self.logger.warning(f"No matching ads found to update. Looking for: {ad_names}")
-                return False
-                
-        except Exception as e:
-            self.logger.error(f"Error updating play counts: {e}")
-            return False
 
     # =========================================================================
     # Legacy methods (kept for backward compatibility but deprecated)
