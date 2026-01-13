@@ -74,17 +74,25 @@ class MigrationUtils:
         Dynamically find all ad-related data files in the source directory.
 
         Returns list of filenames including config.json and all ad_plays_*.json, ad_failures_*.json files.
+        Files are located in user_data/ subfolder.
         """
         import glob
 
         ad_files = MigrationUtils.CORE_DATA_FILES.copy()
 
+        # Look in user_data subfolder for data files
+        user_data_path = os.path.join(source_path, "user_data")
+
+        if not os.path.exists(user_data_path):
+            # Fallback to root for backward compatibility with old installations
+            user_data_path = source_path
+
         # Find all ad_plays_*.json files
-        plays_pattern = os.path.join(source_path, "ad_plays_*.json")
+        plays_pattern = os.path.join(user_data_path, "ad_plays_*.json")
         ad_files.extend([os.path.basename(f) for f in glob.glob(plays_pattern)])
 
         # Find all ad_failures_*.json files
-        failures_pattern = os.path.join(source_path, "ad_failures_*.json")
+        failures_pattern = os.path.join(user_data_path, "ad_failures_*.json")
         ad_files.extend([os.path.basename(f) for f in glob.glob(failures_pattern)])
 
         return ad_files
@@ -93,12 +101,24 @@ class MigrationUtils:
     def copy_config_file(source_path: str, dest_path: str, backup: bool = True) -> bool:
         """
         Copy config.json from source to dest, optionally backing up dest first.
+        Files are in user_data/ subfolder.
 
         Returns True on success.
         """
         config_file = 'config.json'
-        source_config = os.path.join(source_path, config_file)
-        dest_config = os.path.join(dest_path, config_file)
+
+        # Look for source in user_data subfolder
+        source_user_data = os.path.join(source_path, "user_data")
+        if os.path.exists(source_user_data):
+            source_config = os.path.join(source_user_data, config_file)
+        else:
+            # Fallback to root for backward compatibility
+            source_config = os.path.join(source_path, config_file)
+
+        # Destination is in user_data subfolder
+        dest_user_data = os.path.join(dest_path, "user_data")
+        os.makedirs(dest_user_data, exist_ok=True)
+        dest_config = os.path.join(dest_user_data, config_file)
 
         try:
             if not os.path.exists(source_config):
@@ -108,7 +128,7 @@ class MigrationUtils:
             # Backup destination if it exists and backup requested
             if backup and os.path.exists(dest_config):
                 timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-                backup_file = os.path.join(dest_path, f"config_backup_{timestamp}.json")
+                backup_file = os.path.join(dest_user_data, f"config_backup_{timestamp}.json")
                 shutil.copy2(dest_config, backup_file)
                 logging.info(f"Backed up existing config to: {backup_file}")
 
@@ -125,6 +145,7 @@ class MigrationUtils:
     def copy_config_and_stats(source_path: str, dest_path: str, backup: bool = True) -> tuple:
         """
         Copy config.json and all ad statistics/events files from source to dest.
+        Files are in user_data/ subfolder.
 
         Args:
             source_path: Source folder path
@@ -141,10 +162,20 @@ class MigrationUtils:
         # Get all ad data files dynamically
         ad_data_files = MigrationUtils.get_ad_data_files(source_path)
 
+        # Setup source user_data path
+        source_user_data = os.path.join(source_path, "user_data")
+        if not os.path.exists(source_user_data):
+            # Fallback to root for backward compatibility
+            source_user_data = source_path
+
+        # Setup destination user_data path
+        dest_user_data = os.path.join(dest_path, "user_data")
+        os.makedirs(dest_user_data, exist_ok=True)
+
         for filename in ad_data_files:
-            source_file = os.path.join(source_path, filename)
-            dest_file = os.path.join(dest_path, filename)
-            
+            source_file = os.path.join(source_user_data, filename)
+            dest_file = os.path.join(dest_user_data, filename)
+
             # Skip if source file doesn't exist (stats files may not exist yet)
             if not os.path.exists(source_file):
                 if filename == 'config.json':
@@ -155,24 +186,24 @@ class MigrationUtils:
                     # Stats files are optional
                     logging.debug(f"Optional file not found, skipping: {source_file}")
                 continue
-            
+
             try:
                 # Backup destination if it exists and backup requested
                 if backup and os.path.exists(dest_file):
                     backup_name = f"{os.path.splitext(filename)[0]}_backup_{timestamp}.json"
-                    backup_file = os.path.join(dest_path, backup_name)
+                    backup_file = os.path.join(dest_user_data, backup_name)
                     shutil.copy2(dest_file, backup_file)
                     logging.info(f"Backed up existing {filename} to: {backup_file}")
-                
+
                 # Copy the file
                 shutil.copy2(source_file, dest_file)
-                logging.info(f"Copied {filename} from {source_path} to {dest_path}")
+                logging.info(f"Copied {filename} from {source_user_data} to {dest_user_data}")
                 copied_files.append(filename)
-                
+
             except Exception as e:
                 logging.exception(f"Failed to copy {filename}: {e}")
                 failed_files.append(filename)
-        
+
         # Success if config.json was copied (the required file)
         success = 'config.json' in copied_files
         return success, copied_files, failed_files
