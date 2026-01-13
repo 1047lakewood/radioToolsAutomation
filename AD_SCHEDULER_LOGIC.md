@@ -20,7 +20,7 @@ START: Hourly check triggered (or simulate)
   ↓
 3. Is NEXT track a lecture?
    YES → Check timing:
-         - Lecture starts within hour? → Play SCHEDULED
+         - Lecture starts within hour? ( < 3 min from end) → Play SCHEDULED
          - Lecture starts next hour? → Play INSTANT
    NO → Continue
   ↓
@@ -38,7 +38,7 @@ TRACK CHANGED → Re-run the ENTIRE check from step 1!
    YES → Play INSTANT (time ran out!)
    NO → Continue
   ↓
-2. Does NEW current track end THIS hour?
+2. Does NEW current track end THIS hour? (or < 3 min from end)
    NO (ends next hour) → Play INSTANT immediately
    YES → Continue
   ↓
