@@ -24,10 +24,12 @@ python src/main_app.py
 # Run headless (no console window)
 START RDS AND INTRO.bat
 
-# Diagnostic scripts
-python check_status.py
-python check_xml.py
-python check_blacklist.py
+# Diagnostic scripts (in tests/ folder)
+python tests/check_status.py
+python tests/check_xml.py
+python tests/check_blacklist.py
+python tests/test_xml_monitor.py
+python tests/run_with_monitor.py
 ```
 
 ## Dependencies
@@ -78,9 +80,35 @@ Modal windows in `src/ui_*.py`:
 - `ui_ad_inserter_window.py` - Ad configuration
 - `ui_ad_statistics_window.py` - Ad play statistics and report generation
 
+## Project Structure
+
+```
+radioToolsAutomation/
+├── src/                      # Application source code
+│   ├── main_app.py          # Main application
+│   ├── config_manager.py    # Configuration management
+│   ├── ad_scheduler_handler.py
+│   ├── auto_rds_handler.py
+│   ├── intro_loader_handler.py
+│   └── ...other modules
+├── tests/                    # Test and diagnostic scripts
+│   ├── check_status.py
+│   ├── check_xml.py
+│   ├── test_xml_monitor.py
+│   └── ...other diagnostics
+├── user_data/               # User configuration and statistics (gitignored)
+│   ├── config.json          # Application configuration
+│   ├── ad_plays_1047.json   # Ad play statistics for 104.7 FM
+│   ├── ad_plays_887.json    # Ad play statistics for 88.7 FM
+│   ├── ad_failures_1047.json
+│   ├── ad_failures_887.json
+│   └── config_backup_*.json # Auto-created backups
+└── ...other files
+```
+
 ## Configuration
 
-**config.json** (auto-created, gitignored):
+**user_data/config.json** (auto-created in user_data/, gitignored):
 ```
 stations.station_1047.settings.rds.ip/port  - RDS encoder connection
 stations.station_1047.settings.intro_loader.now_playing_xml  - XML path
@@ -88,14 +116,18 @@ stations.station_1047.Messages[]  - RDS message array
 shared.whitelist/blacklist  - Lecture detection overrides
 ```
 
-Backups are auto-created as `config_backup_YYYYMMDD_HHMMSS.json` on each save.
+Backups are auto-created as `user_data/config_backup_YYYYMMDD_HHMMSS.json` on each save.
+
+**Ad Statistics:**
+- `user_data/ad_plays_*.json` - Successful ad insertions (ultra-compact format)
+- `user_data/ad_failures_*.json` - Failed ad insertion attempts for debugging
 
 ## Lecture Detection Logic
 
 Tracks are classified as lectures based on:
 1. Artist name starts with 'R' → lecture (unless whitelisted)
-2. Whitelist → never a lecture
-3. Blacklist → always a lecture
+2. Whitelist → a lecture
+3. Blacklist → not a lecture
 
 See `src/lecture_detector.py` for implementation.
 
@@ -104,7 +136,7 @@ See `src/lecture_detector.py` for implementation.
 Ad scheduler runs hourly checks with:
 - 3-minute safety margin before hour end
 - Track-change detection for opportunistic scheduling
-- Lecture detection integration (skips ads during lectures)
+- Lecture detection integration (tries to play ad before lectures)
 - XML confirmation polling (waits for ARTIST=="adRoll")
 
 See `AD_SCHEDULER_LOGIC.md` for detailed decision flow.
@@ -115,4 +147,9 @@ Use Options → Debug tab for:
 - XML "touch" to force track change checks
 - Simulate hour start for ad scheduler testing
 
-Check diagnostic scripts in root: `check_*.py`
+Diagnostic scripts are located in `tests/` folder:
+- `tests/check_status.py` - Check handler status
+- `tests/check_xml.py` - Validate XML file format
+- `tests/check_blacklist.py` - Review lecture detection rules
+- `tests/test_xml_monitor.py` - Monitor XML updates in real-time
+- `tests/run_with_monitor.py` - Run app with XML monitoring

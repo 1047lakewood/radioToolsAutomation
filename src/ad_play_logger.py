@@ -38,10 +38,14 @@ class AdPlayLogger:
         # Get project root for file paths
         script_dir = os.path.dirname(os.path.abspath(__file__))
         project_root = os.path.dirname(script_dir)
+        user_data_dir = os.path.join(project_root, "user_data")
+
+        # Ensure user_data directory exists
+        os.makedirs(user_data_dir, exist_ok=True)
 
         station_number = station_id.split("_")[1]
-        self.plays_file = os.path.join(project_root, f"ad_plays_{station_number}.json")
-        self.failures_file = os.path.join(project_root, f"ad_failures_{station_number}.json")
+        self.plays_file = os.path.join(user_data_dir, f"ad_plays_{station_number}.json")
+        self.failures_file = os.path.join(user_data_dir, f"ad_failures_{station_number}.json")
 
         # Old format file for migration
         self.old_events_file = os.path.join(project_root, f"ad_play_events_{station_number}.json")

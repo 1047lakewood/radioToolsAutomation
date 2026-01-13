@@ -79,6 +79,17 @@ logs/
 # Example: config.prod.ini
 messages.json # Added as requested
 
-# Other
-placeholder.ico 
+# User Data - Configuration and Statistics
+user_data/
 config.json
+ad_plays_*.json
+ad_failures_*.json
+config_backup_*.json
+*_backup_*.json
+
+# Temporary Files
+tmpclaude-*
+*.tmp
+
+# Other
+placeholder.ico

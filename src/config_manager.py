@@ -7,14 +7,18 @@ import threading
 class ConfigManager:
     """Manages loading, saving, and accessing configuration from JSON with dual-station support."""
 
-    def __init__(self, config_file='config.json', backup_prefix='config_backup_'):
+    def __init__(self, config_file='user_data/config.json', backup_prefix='user_data/config_backup_'):
         # IMPORTANT: Always use the project root directory (parent of src/) for config files
         # This ensures consistent behavior regardless of where the app is started from
         script_dir = os.path.dirname(os.path.abspath(__file__))
         project_root = os.path.dirname(script_dir)  # Go up from src/ to project root
-        
+
         self.config_file = os.path.join(project_root, config_file)
         self.backup_prefix = os.path.join(project_root, backup_prefix)
+
+        # Ensure user_data directory exists
+        config_dir = os.path.dirname(self.config_file)
+        os.makedirs(config_dir, exist_ok=True)
         
         logging.info(f"ConfigManager initialized with config path: {self.config_file}")
         self.config = self.load_config()
