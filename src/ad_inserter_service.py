@@ -192,10 +192,19 @@ class AdInserterService:
 
         self.logger.info(f"Insertion URL called successfully (status={insertion_result.get('status_code')})")
 
-        # Step 4: Poll XML for confirmation
-        # Calculate timeout based on time remaining in hour (scheduled ads may not play until song ends)
+        # Step 4: Poll XML for confirmation (skip for INSTANT ads - they play immediately)
+        if mode == "instant":
+            # For INSTANT ads, log as played immediately without polling
+            # INSTANT ads are already in the playback queue, XML confirmation is unnecessary
+            self.logger.info(f"INSTANT ad insertion successful - logging plays (XML polling skipped for immediate playback)")
+            if self.ad_logger:
+                for ad_name in ad_names:
+                    self.ad_logger.log_play(ad_name)
+            return True
+
+        # For SCHEDULED ads, poll for XML confirmation
         timeout = self._seconds_until_hour_end()
-        self.logger.info(f"Waiting for XML confirmation with timeout={timeout}s (until hour end)")
+        self.logger.info(f"Waiting for XML confirmation with timeout={timeout}s (SCHEDULED mode - until hour end)")
         confirmation = self._poll_for_xml_confirmation(attempt_hour, timeout=timeout)
 
         if confirmation["ok"]:

@@ -3,6 +3,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox, Toplevel, filedialog
 import logging
 import os
+import threading
 import urllib.request
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
@@ -262,8 +263,17 @@ class OptionsWindow(Toplevel):
 
             if hasattr(self, handler_attr) and getattr(self, handler_attr):
                 handler = getattr(self, handler_attr)
-                handler._perform_hourly_check()
-                logging.info(f"AdScheduler {selected_station} hourly check triggered successfully.")
+                # Run in background thread to prevent UI freeze (XML confirmation polling can take 60+ seconds)
+                def run_check():
+                    try:
+                        handler._perform_hourly_check()
+                        logging.info(f"AdScheduler {selected_station} hourly check completed successfully.")
+                    except Exception as e:
+                        logging.exception("Exception in background hourly check.")
+
+                thread = threading.Thread(target=run_check, daemon=True, name=f"HourSimulation_{selected_station}")
+                thread.start()
+                logging.info(f"AdScheduler {selected_station} hourly check triggered in background thread.")
             else:
                 logging.error(f"AdScheduler handler for station {selected_station} not available.")
                 messagebox.showerror("Error", f"AdScheduler handler for station {selected_station} not available.", parent=self)
