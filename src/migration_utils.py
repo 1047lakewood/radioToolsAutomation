@@ -27,7 +27,8 @@ class MigrationUtils:
         'messages_backup_*.json',
         'REAL_REPORT_*.csv',
         'REAL_REPORT_*.pdf',
-        'ad_play_statistics_*.json'
+        # Note: ad_plays_*.json and ad_failures_*.json are intentionally NOT excluded
+        # as they contain important ad statistics that should be preserved during migration
     }
 
     @staticmethod
@@ -64,14 +65,29 @@ class MigrationUtils:
 
         return None
 
-    # Ad statistics and events files to copy during migration
-    AD_DATA_FILES = [
-        'config.json',
-        'ad_play_statistics_1047.json',
-        'ad_play_statistics_887.json',
-        'ad_play_events_1047.json',
-        'ad_play_events_887.json',
-    ]
+    # Core config file that must be copied
+    CORE_DATA_FILES = ['config.json']
+
+    @staticmethod
+    def get_ad_data_files(source_path: str) -> List[str]:
+        """
+        Dynamically find all ad-related data files in the source directory.
+
+        Returns list of filenames including config.json and all ad_plays_*.json, ad_failures_*.json files.
+        """
+        import glob
+
+        ad_files = MigrationUtils.CORE_DATA_FILES.copy()
+
+        # Find all ad_plays_*.json files
+        plays_pattern = os.path.join(source_path, "ad_plays_*.json")
+        ad_files.extend([os.path.basename(f) for f in glob.glob(plays_pattern)])
+
+        # Find all ad_failures_*.json files
+        failures_pattern = os.path.join(source_path, "ad_failures_*.json")
+        ad_files.extend([os.path.basename(f) for f in glob.glob(failures_pattern)])
+
+        return ad_files
 
     @staticmethod
     def copy_config_file(source_path: str, dest_path: str, backup: bool = True) -> bool:
@@ -109,20 +125,23 @@ class MigrationUtils:
     def copy_config_and_stats(source_path: str, dest_path: str, backup: bool = True) -> tuple:
         """
         Copy config.json and all ad statistics/events files from source to dest.
-        
+
         Args:
             source_path: Source folder path
             dest_path: Destination folder path
             backup: Whether to backup existing files before overwriting
-            
+
         Returns:
             Tuple of (success: bool, copied_files: list, failed_files: list)
         """
         copied_files = []
         failed_files = []
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        
-        for filename in MigrationUtils.AD_DATA_FILES:
+
+        # Get all ad data files dynamically
+        ad_data_files = MigrationUtils.get_ad_data_files(source_path)
+
+        for filename in ad_data_files:
             source_file = os.path.join(source_path, filename)
             dest_file = os.path.join(dest_path, filename)
             

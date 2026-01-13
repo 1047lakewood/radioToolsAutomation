@@ -833,15 +833,15 @@ class OptionsWindow(Toplevel):
 
         ttk.Button(
             buttons_frame,
-            text="Copy Config: Stable → Active",
-            command=self.copy_config_from_stable,
+            text="Copy Saved Data: Stable → Active",
+            command=self.copy_saved_data_from_stable,
             width=25
         ).pack(side=tk.LEFT, padx=5)
 
         ttk.Button(
             buttons_frame,
-            text="Copy Config: Active → Stable",
-            command=self.copy_config_to_stable,
+            text="Copy Saved Data: Active → Stable",
+            command=self.copy_saved_data_to_stable,
             width=25
         ).pack(side=tk.LEFT, padx=5)
 
@@ -860,8 +860,8 @@ class OptionsWindow(Toplevel):
         # Help text
         help_text = (
             "Migration Operations:\n\n"
-            "• Copy Config Stable → Active: Copies config.json from Stable to Active folder, backing up Active's config first.\n\n"
-            "• Copy Config Active → Stable: Copies config.json from Active to Stable folder, backing up Stable's config first.\n\n"
+            "• Copy Saved Data Stable → Active: Copies config.json and all ad statistics data (ad_plays_*.json, ad_failures_*.json) from Stable to Active folder, backing up Active's files first.\n\n"
+            "• Copy Saved Data Active → Stable: Copies config.json and all ad statistics data (ad_plays_*.json, ad_failures_*.json) from Active to Stable folder, backing up Stable's files first.\n\n"
             "• Deploy Active → Stable: Completely replaces Stable folder contents with Active folder contents.\n"
             "  This is destructive and excludes development artifacts (.git, __pycache__, etc.). Requires confirmation."
         )
@@ -874,7 +874,7 @@ class OptionsWindow(Toplevel):
         if path:
             self.migration_vars['stable_path'].set(path)
 
-    def copy_config_from_stable(self):
+    def copy_saved_data_from_stable(self):
         """Copy config.json and ad statistics files from Stable to Active folder."""
         from migration_utils import MigrationUtils
 
@@ -918,8 +918,8 @@ class OptionsWindow(Toplevel):
             self.migration_status_var.set("✗ Failed to copy config - check logs for details")
             logging.error("Migration: Failed to copy config from Stable to Active")
 
-    def copy_config_to_stable(self):
-        """Copy config.json from Active to Stable folder."""
+    def copy_saved_data_to_stable(self):
+        """Copy config.json and ad statistics files from Active to Stable folder."""
         from migration_utils import MigrationUtils
 
         stable_path = self.migration_vars['stable_path'].get().strip()
@@ -941,17 +941,22 @@ class OptionsWindow(Toplevel):
                 return
 
         # Perform the copy
-        self.migration_status_var.set("Copying config Active → Stable...")
+        self.migration_status_var.set("Copying saved data Active → Stable...")
         self.update()  # Force UI update
 
-        success = MigrationUtils.copy_config_file(active_root, stable_path, backup=True)
+        success, copied_files, failed_files = MigrationUtils.copy_config_and_stats(active_root, stable_path, backup=True)
 
         if success:
-            self.migration_status_var.set("✓ Config copied successfully from Active to Stable")
-            logging.info("Migration: Copied config from Active to Stable")
+            # Show success message with details
+            files_msg = ", ".join(copied_files)
+            self.migration_status_var.set(f"✓ Copied {len(copied_files)} files: {files_msg}")
+            logging.info(f"Migration: Copied from Active to Stable: {copied_files}")
+
+            if failed_files:
+                logging.warning(f"Migration: Some optional files not copied: {failed_files}")
         else:
-            self.migration_status_var.set("✗ Failed to copy config - check logs for details")
-            logging.error("Migration: Failed to copy config from Active to Stable")
+            self.migration_status_var.set("✗ Failed to copy saved data - check logs for details")
+            logging.error("Migration: Failed to copy saved data from Active to Stable")
 
     def deploy_active_to_stable(self):
         """Deploy entire Active folder to Stable (destructive)."""

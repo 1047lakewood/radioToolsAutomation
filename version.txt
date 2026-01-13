@@ -1,11 +1,13 @@
-radioToolsAutomation v2.5.1
+radioToolsAutomation v2.5.4
 ============================
 
-Release Date: January 11, 2026
+Release Date: January 12, 2026
 Major Changes:
-- Version 2.5.0 release
+- Enhanced Migration Assistant: Now copies all saved data including ad statistics (ad_plays_*.json, ad_failures_*.json) instead of just config files
+- Updated migration UI buttons to reflect "Copy Saved Data" functionality
+- Improved ad statistics preservation during version transitions
 
-Previous Version: v2.4.7
+Previous Version: v2.5.3
 Compatibility: Backward compatible with existing configurations
 
 
