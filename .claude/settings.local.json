@@ -10,7 +10,8 @@
       "Bash(git commit:*)",
       "Bash(git checkout:*)",
       "Bash(git reset:*)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(tasklist:*)"
     ]
   }
 }
