@@ -63,7 +63,7 @@ class AutoRDSHandler:
         """Reload configuration settings from config manager."""
         self.rds_ip = self.config_manager.get_station_setting(self.station_id, "settings.rds.ip", "50.208.125.83")
         self.rds_port = self.config_manager.get_station_setting(self.station_id, "settings.rds.port", 10001)
-        self.now_playing_xml = self.config_manager.get_station_setting(self.station_id, "settings.rds.now_playing_xml", r"G:\To_RDS\nowplaying.xml")
+        self.now_playing_xml = self.config_manager.get_xml_path(self.station_id)
         self.default_message = self.config_manager.get_station_setting(self.station_id, "settings.rds.default_message", "732.901.7777 to SUPPORT and hear this program!")
 
     def reload_lecture_detector(self):

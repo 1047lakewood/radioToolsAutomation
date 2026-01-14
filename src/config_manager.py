@@ -134,6 +134,7 @@ class ConfigManager:
                     "Messages": [],
                     "Ads": [],
                     "settings": {
+                        "now_playing_xml": r"G:\To_RDS\nowplaying_887.xml",
                         "radioboss": {
                             "server": "http://localhost:9000",
                             "password": "password"
@@ -141,11 +142,9 @@ class ConfigManager:
                         "rds": {
                             "ip": "192.168.1.100",
                             "port": 10002,
-                            "now_playing_xml": r"G:\To_RDS\nowplaying_887.xml",
                             "default_message": "88.7 FM"
                         },
                         "intro_loader": {
-                            "now_playing_xml": r"G:\To_RDS\nowplaying_887.xml",
                             "mp3_directory": r"G:\Shiurim\introsCleanedUp",
                             "missing_artists_log": r"missing_artists_887.log",
                             "schedule_event_id": "INTRO",
@@ -177,6 +176,29 @@ class ConfigManager:
         migrated = False
 
         if 'stations' in config:
+            # Migrate XML path to consolidated location
+            for station_id, station_data in config['stations'].items():
+                if 'settings' in station_data:
+                    settings = station_data['settings']
+
+                    # Check if we need to migrate XML path to consolidated location
+                    if 'now_playing_xml' not in settings:
+                        # Try to get from intro_loader first, then rds
+                        xml_path = None
+                        if 'intro_loader' in settings and 'now_playing_xml' in settings['intro_loader']:
+                            xml_path = settings['intro_loader']['now_playing_xml']
+                        elif 'rds' in settings and 'now_playing_xml' in settings['rds']:
+                            xml_path = settings['rds']['now_playing_xml']
+
+                        if xml_path:
+                            settings['now_playing_xml'] = xml_path
+                            # Remove from old locations
+                            if 'intro_loader' in settings and 'now_playing_xml' in settings['intro_loader']:
+                                del settings['intro_loader']['now_playing_xml']
+                            if 'rds' in settings and 'now_playing_xml' in settings['rds']:
+                                del settings['rds']['now_playing_xml']
+                            migrated = True
+                            logging.info(f"Migrated XML path to consolidated location for {station_id}")
             for station_id, station_data in config['stations'].items():
                 if 'settings' in station_data:
                     settings = station_data['settings']
@@ -272,6 +294,7 @@ class ConfigManager:
                     "Messages": [],
                     "Ads": [],
                     "settings": {
+                        "now_playing_xml": r"G:\To_RDS\nowplaying.xml",
                         "radioboss": {
                             "server": "http://192.168.3.12:9000",
                             "password": "bmas220"
@@ -279,11 +302,9 @@ class ConfigManager:
                         "rds": {
                             "ip": "50.208.125.83",
                             "port": 10001,
-                            "now_playing_xml": r"G:\To_RDS\nowplaying.xml",
                             "default_message": "732.901.7777 to SUPPORT and hear this program!"
                         },
                         "intro_loader": {
-                            "now_playing_xml": r"G:\To_RDS\nowplaying.xml",
                             "mp3_directory": r"G:\Shiurim\introsCleanedUp",
                             "missing_artists_log": r"missing_artists_1047.log",
                             "schedule_event_id": "TBACFNBGJKOMETDYSQYR",
@@ -304,6 +325,7 @@ class ConfigManager:
                     "Messages": [],
                     "Ads": [],
                     "settings": {
+                        "now_playing_xml": r"G:\To_RDS\nowplaying_887.xml",
                         "radioboss": {
                             "server": "http://localhost:9000",
                             "password": "password"
@@ -311,11 +333,9 @@ class ConfigManager:
                         "rds": {
                             "ip": "192.168.1.100",
                             "port": 10002,
-                            "now_playing_xml": r"G:\To_RDS\nowplaying_887.xml",
                             "default_message": "88.7 FM"
                         },
                         "intro_loader": {
-                            "now_playing_xml": r"G:\To_RDS\nowplaying_887.xml",
                             "mp3_directory": r"G:\Shiurim\introsCleanedUp",
                             "missing_artists_log": r"missing_artists_887.log",
                             "schedule_event_id": "INTRO",
@@ -443,6 +463,13 @@ class ConfigManager:
             logging.info(f"Updated station '{station_id}' setting '{key}' to {value}")
         except Exception as e:
             logging.error(f"Error updating station '{station_id}' setting '{key}': {e}")
+
+    # ==================== XML PATH HELPER ====================
+
+    def get_xml_path(self, station_id):
+        """Get the now playing XML path for a station (consolidated location)."""
+        default_path = r"G:\To_RDS\nowplaying.xml" if station_id == self.STATION_1047 else r"G:\To_RDS\nowplaying_887.xml"
+        return self.get_station_setting(station_id, "now_playing_xml", default_path)
 
     # ==================== RADIOBOSS URL HELPER METHODS ====================
 

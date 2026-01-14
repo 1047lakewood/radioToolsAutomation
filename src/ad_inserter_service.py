@@ -68,11 +68,7 @@ class AdInserterService:
         )
 
         # Get XML path for confirmation
-        self.xml_path = self.config_manager.get_station_setting(
-            station_id, 
-            "settings.intro_loader.now_playing_xml", 
-            r"G:\To_RDS\nowplaying.xml"
-        )
+        self.xml_path = self.config_manager.get_xml_path(station_id)
         
         # Initialize robust XML reader if available
         if NOWPLAYING_READER_AVAILABLE:

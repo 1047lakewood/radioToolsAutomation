@@ -66,7 +66,7 @@ class AdSchedulerHandler:
         """Reload configuration-dependent components."""
         try:
             # Get XML path from config
-            xml_path = self.config_manager.get_station_setting(self.station_id, "settings.intro_loader.now_playing_xml", r"G:\To_RDS\nowplaying.xml")
+            xml_path = self.config_manager.get_xml_path(self.station_id)
             self.logger.debug(f"Using XML path: {xml_path}")
 
             # Initialize lecture detector
