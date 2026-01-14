@@ -898,8 +898,8 @@ class OptionsWindow(Toplevel):
             messagebox.showerror("Path Error", validation_error, parent=self)
             return
 
-        # Check if stable config exists
-        stable_config = os.path.join(stable_path, 'config.json')
+        # Check if stable config exists (in user_data subfolder)
+        stable_config = os.path.join(stable_path, 'user_data', 'config.json')
         if not os.path.exists(stable_config):
             messagebox.showerror("Config Error", f"Stable config.json not found at: {stable_config}", parent=self)
             return
