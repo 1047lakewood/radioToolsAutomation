@@ -169,17 +169,19 @@ If you need a specific version, just specify it: "update version to 2.6.0"
 ## Deployment
 
 **Workflow Rule:** When you request "deploy", automatically:
-1. Kill any running Python process (taskkill to terminate main_app.py from stable folder)
-2. Run `python deploy.py --full` to migrate user data and deploy active to stable
-3. Start the stable version hidden using: `cscript start_hidden.vbs "path/to/stable/START RDS AND INTRO.bat"`
-4. The VBScript launcher keeps running after bash shell closes with NO console window
-5. Report the results
+1. Execute `DEPLOY.bat` from the active folder
+2. The batch file handles all steps:
+   - Kill any running Python process (taskkill)
+   - Run full deployment (migrate + deploy)
+   - Start stable version hidden with no console window
+3. Report the results
 
-**Key Details:**
-- Uses `taskkill /IM python.exe /F` to forcefully terminate old instances
-- Uses `start_hidden.vbs` (VBScript) to run application hidden (no console window visible)
-- Waits 1-2 seconds after kill before deploying to ensure clean shutdown
-- Application continues running independently after shell closes
+**What DEPLOY.bat Does:**
+- Uses native Windows `taskkill /F /IM python.exe` to terminate old instances
+- Runs `python deploy.py --full` for migration and deployment
+- Uses `start_hidden.vbs` (VBScript) to launch app completely hidden (no console)
+- Waits between steps for clean shutdown
+- All native Windows commands (no bash/git bash involved)
 
 **Deployment Modes (manual):**
 ```bash
