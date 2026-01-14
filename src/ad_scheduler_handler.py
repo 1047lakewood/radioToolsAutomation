@@ -591,7 +591,11 @@ class AdSchedulerHandler:
             return False
 
     def _get_current_track_start_time(self):
-        """Get the start time of the current track from XML."""
+        """Get the start time of the current track from XML.
+
+        If the STARTED timestamp is stale (more than 2 hours old), logs a warning
+        since the XML file may not be updating properly.
+        """
         try:
             self.logger.debug(f"Getting current track start time from XML: {self.lecture_detector.xml_path}")
 
@@ -619,6 +623,14 @@ class AdSchedulerHandler:
             try:
                 start_time = datetime.strptime(started_str, "%Y-%m-%d %H:%M:%S")
                 self.logger.debug(f"Parsed start time: {start_time}")
+
+                # Check if timestamp is stale (more than 2 hours old)
+                current_time = datetime.now()
+                time_diff = (current_time - start_time).total_seconds()
+
+                if time_diff > 7200:  # More than 2 hours old
+                    self.logger.warning(f"STARTED timestamp is stale ({time_diff/3600:.1f} hours old) - XML file may not be updating properly.")
+
                 return start_time
             except ValueError as e:
                 self.logger.error(f"Error parsing start time '{started_str}': {e}")

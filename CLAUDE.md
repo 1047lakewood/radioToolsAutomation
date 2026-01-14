@@ -153,3 +153,15 @@ Diagnostic scripts are located in `tests/` folder:
 - `tests/check_blacklist.py` - Review lecture detection rules
 - `tests/test_xml_monitor.py` - Monitor XML updates in real-time
 - `tests/run_with_monitor.py` - Run app with XML monitoring
+
+## Version Updates
+
+**Workflow Rule:** When you request "update version" (without specifying a new version), automatically:
+1. Increment the last number (patch version) by one in `src/version.py`
+2. Update the release date to today
+3. Commit with message: `v{new_version}: {description of changes}`
+4. Push to remote
+
+**Example:** If current version is 2.5.5 and you say "update version", it becomes 2.5.6.
+
+If you need a specific version, just specify it: "update version to 2.6.0"
