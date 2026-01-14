@@ -169,11 +169,13 @@ If you need a specific version, just specify it: "update version to 2.6.0"
 ## Deployment
 
 **Workflow Rule:** When you request "deploy", automatically:
-1. Run `python deploy.py --migrate` to copy user data from stable to active
-2. Run `python deploy.py --deploy` to copy active to stable
-3. Report the results
+1. Kill any running process in the stable folder (graceful shutdown)
+2. Run `python deploy.py --full` to migrate user data and deploy active to stable
+3. Start the stable version with `START "RDS AND INTRO" "path/to/stable/START RDS AND INTRO.bat"`
+4. Use detached process so it keeps running after bash shell closes
+5. Report the results
 
-**Deployment Modes:**
+**Deployment Modes (manual):**
 ```bash
 # Full cycle (migrate from stable, then deploy active to stable)
 python deploy.py --full
@@ -189,7 +191,10 @@ python deploy.py --full --stable-path "C:/path/to/stable"
 ```
 
 The deployment process:
+- Kills running stable version before deploying
 - Preserves all user data (config.json, ad_plays_*.json, ad_failures_*.json)
 - Creates backups with timestamps before overwriting
 - Excludes development files (.git, __pycache__, logs, etc.)
+- Starts stable version headless after deployment
+- Uses detached process (Windows START command) so it survives shell closure
 - Can be configured with custom stable path in `user_data/config.json` under `shared.migration.stable_path`
