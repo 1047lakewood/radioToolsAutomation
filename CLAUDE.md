@@ -165,3 +165,31 @@ Diagnostic scripts are located in `tests/` folder:
 **Example:** If current version is 2.5.5 and you say "update version", it becomes 2.5.6.
 
 If you need a specific version, just specify it: "update version to 2.6.0"
+
+## Deployment
+
+**Workflow Rule:** When you request "deploy", automatically:
+1. Run `python deploy.py --migrate` to copy user data from stable to active
+2. Run `python deploy.py --deploy` to copy active to stable
+3. Report the results
+
+**Deployment Modes:**
+```bash
+# Full cycle (migrate from stable, then deploy active to stable)
+python deploy.py --full
+
+# Just migrate user data from stable to active
+python deploy.py --migrate
+
+# Just deploy active to stable
+python deploy.py --deploy
+
+# With custom stable path
+python deploy.py --full --stable-path "C:/path/to/stable"
+```
+
+The deployment process:
+- Preserves all user data (config.json, ad_plays_*.json, ad_failures_*.json)
+- Creates backups with timestamps before overwriting
+- Excludes development files (.git, __pycache__, logs, etc.)
+- Can be configured with custom stable path in `user_data/config.json` under `shared.migration.stable_path`
