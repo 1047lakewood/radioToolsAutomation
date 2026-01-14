@@ -1,8 +1,6 @@
 @echo off
 REM Deployment script for radioToolsAutomation
-REM Handles: Kill old process, deploy, start new version hidden
-
-setlocal enabledelayedexpansion
+REM Uses PowerShell for reliable process management
 
 echo.
 echo ============================================================
@@ -10,51 +8,44 @@ echo DEPLOYMENT: radioToolsAutomation
 echo ============================================================
 echo.
 
-REM Get the active path (where this script is)
 set "ACTIVE_ROOT=%~dp0"
 set "ACTIVE_ROOT=%ACTIVE_ROOT:~0,-1%"
-
-REM Get stable path from config or use default
 set "STABLE_ROOT=%ACTIVE_ROOT% - stable"
 
-echo Active folder: %ACTIVE_ROOT%
-echo Stable folder: %STABLE_ROOT%
+echo Active: %ACTIVE_ROOT%
+echo Stable: %STABLE_ROOT%
 echo.
 
-REM Kill old processes (both python.exe and pythonw.exe)
-echo [1/3] Terminating old process...
-taskkill /F /IM python.exe >nul 2>&1
-taskkill /F /IM pythonw.exe >nul 2>&1
-if errorlevel 1 (
-    echo         (No processes to terminate)
-) else (
-    echo         Process terminated successfully
-    timeout /t 2 /nobreak >nul
-)
+REM Step 1: Kill running instances using PowerShell
+echo [1/3] Stopping running instances...
+powershell -Command "if (Get-Process pythonw -ErrorAction SilentlyContinue) { Stop-Process -Name pythonw -Force; Write-Host '      Stopped pythonw.exe'; Start-Sleep -Seconds 2 } else { Write-Host '      No pythonw.exe running' }"
+powershell -Command "if (Get-Process python -ErrorAction SilentlyContinue) { Stop-Process -Name python -Force; Write-Host '      Stopped python.exe'; Start-Sleep -Seconds 1 } else { Write-Host '      No python.exe running' }"
 echo.
 
-REM Run deployment
-echo [2/3] Deploying active to stable...
+REM Step 2: Run deployment
+echo [2/3] Deploying...
 cd /d "%ACTIVE_ROOT%"
 python deploy.py --full
 if errorlevel 1 (
+    echo.
     echo ERROR: Deployment failed!
     pause
     exit /b 1
 )
 echo.
 
-REM Start new stable version hidden
+REM Step 3: Start stable version
 echo [3/3] Starting stable version...
-cscript.exe //nologo "%ACTIVE_ROOT%\start_hidden.vbs" "%STABLE_ROOT%\START RDS AND INTRO.bat"
-timeout /t 1 /nobreak >nul
-echo         Stable version started successfully
+powershell -Command "Start-Process pythonw -ArgumentList '%STABLE_ROOT%\src\main_app.py' -WorkingDirectory '%STABLE_ROOT%'"
+timeout /t 2 /nobreak >nul
+
+REM Verify
+powershell -Command "if (Get-Process pythonw -ErrorAction SilentlyContinue) { Write-Host '      App running' } else { Write-Host '      WARNING: App may not have started' }"
 echo.
 
 echo ============================================================
 echo DEPLOYMENT COMPLETE
 echo ============================================================
-echo Stable version is now running in the background.
 echo.
 
 exit /b 0
