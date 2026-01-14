@@ -21,9 +21,10 @@ echo Active folder: %ACTIVE_ROOT%
 echo Stable folder: %STABLE_ROOT%
 echo.
 
-REM Kill old processes
+REM Kill old processes (both python.exe and pythonw.exe)
 echo [1/3] Terminating old process...
 taskkill /F /IM python.exe >nul 2>&1
+taskkill /F /IM pythonw.exe >nul 2>&1
 if errorlevel 1 (
     echo         (No processes to terminate)
 ) else (
