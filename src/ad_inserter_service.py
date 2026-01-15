@@ -270,7 +270,7 @@ class AdInserterService:
             ad_names.append(ad_name)
 
         if not valid_files:
-            self.logger.info("No ads are valid or scheduled for this hour.")
+            self.logger.info("No ads scheduled.")
             return None
 
         return (valid_files, ad_names, expected_duration_ms)
@@ -587,7 +587,7 @@ class AdInserterService:
             valid_files.append(mp3)
 
         if not valid_files:
-            self.logger.info("No ads are valid or scheduled for this hour.")
+            self.logger.info("No ads scheduled.")
             return False
 
         os.makedirs(os.path.dirname(self.output_mp3), exist_ok=True)

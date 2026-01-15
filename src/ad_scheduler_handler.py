@@ -656,7 +656,7 @@ class AdSchedulerHandler:
             if success:
                 self.logger.info("Schedule service completed successfully.")
             else:
-                self.logger.warning("Schedule service completed with errors.")
+                self.logger.info("Schedule service completed - no ads scheduled.")
         except Exception as e:
             self.logger.error(f"Error running schedule service: {e}")
 
@@ -672,7 +672,7 @@ class AdSchedulerHandler:
             if success:
                 self.logger.info("Instant service completed successfully.")
             else:
-                self.logger.warning("Instant service completed with errors.")
+                self.logger.info("Instant service completed - no ads scheduled.")
         except Exception as e:
             self.logger.error(f"Error running instant service: {e}")
 

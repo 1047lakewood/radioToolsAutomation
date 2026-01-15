@@ -372,6 +372,35 @@ class AdPlayLogger:
             ad_plays = plays.get(ad_name, {})
             return {date: len(hours) for date, hours in ad_plays.items()}
 
+    def was_ad_played_this_hour(self) -> bool:
+        """Check if any ad was played in the current hour.
+
+        Returns:
+            True if at least one ad was played this hour, False otherwise.
+        """
+        with self._lock:
+            try:
+                now = datetime.now()
+                date_str = now.strftime("%m-%d-%y")
+                current_hour = now.hour
+
+                plays = self._load_plays()
+
+                # Check all ads for a play in the current hour
+                for ad_name, ad_plays in plays.items():
+                    if date_str in ad_plays:
+                        hours = ad_plays[date_str]
+                        if current_hour in hours:
+                            self.logger.debug(f"Ad '{ad_name}' was played this hour ({current_hour}:00)")
+                            return True
+
+                self.logger.debug(f"No ads played this hour ({date_str} hour {current_hour})")
+                return False
+
+            except Exception as e:
+                self.logger.error(f"Error checking if ad played this hour: {e}")
+                return False
+
     def get_failures(self) -> List[Dict]:
         """Get the failure log."""
         with self._lock:
