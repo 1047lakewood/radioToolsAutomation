@@ -168,43 +168,13 @@ If you need a specific version, just specify it: "update version to 2.6.0"
 
 ## Deployment
 
-**Workflow Rule:** When you request "deploy", automatically:
-1. Execute `DEPLOY.bat` from the active folder
-2. The batch file handles all steps:
-   - Kill any running Python process (taskkill)
-   - Run full deployment (migrate + deploy)
-   - Start stable version hidden with no console window
-3. Report the results
+**Workflow Rule:** When you say "deploy", automatically:
 
-**What DEPLOY.bat Does:**
-- Uses native Windows `taskkill /F /IM python.exe` to terminate old instances
-- Runs `python deploy.py --full` for migration and deployment
-- Uses `start_hidden.vbs` (VBScript) to launch app completely hidden (no console)
-- Waits between steps for clean shutdown
-- All native Windows commands (no bash/git bash involved)
+1. Read stable path from `user_data/config.json` at `shared.migration.stable_path` (default: `../radioToolsAutomation - stable`)
+2. Copy `config.json` and `ad_plays_*.json` and `ad_failures_*.json` from stable's `user_data/` to active's `user_data/`
+3. Wipe stable folder and copy all files from active to stable (exclude `.git`, `.venv`, `__pycache__`, `*.pyc`, `*.log`)
+4. Kill python/pythonw processes: `powershell -Command "Get-Process python*, pythonw* -ErrorAction SilentlyContinue | Stop-Process -Force"`
+5. Start stable version hidden: `powershell -Command "Start-Process '{stable_path}\START RDS AND INTRO.bat' -WindowStyle Hidden -WorkingDirectory '{stable_path}'"`
 
-**Deployment Modes (manual):**
-```bash
-# Full cycle (migrate from stable, then deploy active to stable)
-python deploy.py --full
+Use `src/migration_utils.py` for steps 2-3 (`MigrationUtils.copy_config_and_stats()` and `MigrationUtils.deploy_active_to_stable()`).
 
-# Just migrate user data from stable to active
-python deploy.py --migrate
-
-# Just deploy active to stable
-python deploy.py --deploy
-
-# With custom stable path
-python deploy.py --full --stable-path "C:/path/to/stable"
-```
-
-The deployment process:
-- Forcefully kills all Python processes (old stable version)
-- Waits briefly for clean shutdown
-- Preserves all user data (config.json, ad_plays_*.json, ad_failures_*.json)
-- Creates backups with timestamps before overwriting
-- Excludes development files (.git, __pycache__, logs, etc.)
-- Starts new stable version hidden (no console window)
-- Uses VBScript hidden launcher so it survives shell closure
-- Application runs as independent background process
-- Can be configured with custom stable path in `user_data/config.json` under `shared.migration.stable_path`
