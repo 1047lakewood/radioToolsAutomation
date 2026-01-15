@@ -235,47 +235,6 @@ class MigrationUtils:
         func(path)
 
     @staticmethod
-    def _wipe_directory_contents(dir_path: Path, progress_callback: Optional[Callable] = None) -> tuple:
-        """
-        Wipe all contents inside a directory without removing the directory itself.
-        Returns (success: bool, failed_items: list).
-        """
-        failed_items = []
-
-        if not dir_path.exists():
-            return True, []
-
-        if progress_callback:
-            progress_callback("Wiping stable folder contents...")
-
-        # Get all items in the directory (top-level only first)
-        items = list(dir_path.iterdir())
-
-        for item in items:
-            try:
-                if item.is_file():
-                    # Handle read-only files
-                    try:
-                        os.chmod(item, stat.S_IWRITE)
-                    except Exception:
-                        pass
-                    item.unlink()
-                elif item.is_dir():
-                    # Use shutil.rmtree with read-only handler for directories
-                    shutil.rmtree(item, onerror=MigrationUtils._remove_readonly)
-                logging.debug(f"Removed: {item}")
-            except Exception as e:
-                logging.warning(f"Could not remove {item}: {e}")
-                failed_items.append(str(item))
-
-        # Check if directory is now empty (except for failed items)
-        remaining = list(dir_path.iterdir())
-        if remaining:
-            logging.warning(f"{len(remaining)} items remain in {dir_path}")
-
-        return len(failed_items) == 0, failed_items
-
-    @staticmethod
     def deploy_active_to_stable(active_root: str, stable_path: str, progress_callback: Optional[Callable] = None) -> bool:
         """
         Deploy entire Active folder to Stable (wipe Stable contents first).
@@ -287,22 +246,25 @@ class MigrationUtils:
             active_path = Path(active_root)
             stable_path = Path(stable_path)
 
-            # Wipe contents of stable folder (keep the folder itself)
+            # Delete and recreate stable folder (more efficient than wiping contents)
             if stable_path.exists():
-                logging.info(f"Wiping contents of stable folder: {stable_path}")
-                success, failed_items = MigrationUtils._wipe_directory_contents(stable_path, progress_callback)
+                if progress_callback:
+                    progress_callback("Removing stable folder...")
+                logging.info(f"Removing stable folder: {stable_path}")
+                try:
+                    shutil.rmtree(stable_path, onerror=MigrationUtils._remove_readonly)
+                    logging.info("Stable folder removed successfully")
+                except PermissionError:
+                    # Windows may hold a lock on the empty directory itself
+                    # Check if contents were deleted and folder is empty
+                    remaining = list(stable_path.iterdir()) if stable_path.exists() else []
+                    if not remaining:
+                        logging.info("Stable folder contents removed (folder lock held by Windows)")
+                    else:
+                        raise  # Re-raise if contents remain
 
-                if not success:
-                    logging.error(f"Could not remove {len(failed_items)} items: {failed_items}")
-                    if progress_callback:
-                        progress_callback(f"Error: {len(failed_items)} items couldn't be removed")
-                    return False
-
-                logging.info("Stable folder contents wiped successfully")
-            else:
-                # Stable folder doesn't exist - create it
-                stable_path.mkdir(parents=True, exist_ok=True)
-                logging.info(f"Created stable folder: {stable_path}")
+            stable_path.mkdir(parents=True, exist_ok=True)
+            logging.info(f"Created stable folder: {stable_path}")
 
             # Copy all files/folders from active to stable, excluding specified items
             total_items = sum(1 for _ in active_path.rglob('*') if _.is_file() or _.is_dir())

@@ -34,8 +34,6 @@ from ui_playlist_editor_window import PlaylistEditorWindow
 from ui_ad_inserter_window import AdInserterWindow
 from utils import configure_hidden_subprocess
 from version import get_full_version, get_version
-from ad_play_logger import AdPlayLogger
-from nowplaying_reader import NowPlayingReader
 
 class MainApp(tk.Tk):
     """Main application window with GUI for monitoring and configuration - Dual Station Support."""
@@ -221,62 +219,6 @@ class MainApp(tk.Tk):
 
         # Initialize status indicators
         self._update_status_indicators()
-
-        # Check if ads were played this hour - if not, trigger hourly check for each station
-        # Delay by 5 seconds to allow handlers to fully initialize
-        self.after(5000, self._check_and_trigger_ads_on_startup)
-
-    def _check_and_trigger_ads_on_startup(self):
-        """Check if ads were played this hour and trigger hourly check if not.
-
-        This ensures that if the app was closed and reopened, ads will still
-        play during the current hour.
-
-        Skips triggering if:
-        - Ads were already played this hour
-        - Next track is already "adRoll" (ad already scheduled)
-        """
-        logging.info("Checking if ads were played this hour on startup...")
-
-        for station_id, handler in [('station_1047', self.ad_1047_handler),
-                                     ('station_887', self.ad_887_handler)]:
-            try:
-                # Create an AdPlayLogger instance to check ad plays
-                ad_logger = AdPlayLogger(self.config_manager, station_id)
-
-                if ad_logger.was_ad_played_this_hour():
-                    logging.info(f"Ads already played this hour for {station_id} - skipping hourly check")
-                    continue
-
-                # Check if next track is already "adRoll" (ad already scheduled)
-                try:
-                    xml_path = self.config_manager.get_xml_path(station_id)
-                    reader = NowPlayingReader(xml_path)
-                    next_track = reader.get_next_track()
-
-                    if next_track and next_track.get('artist', '').lower() == 'adroll':
-                        logging.info(f"Next track is already adRoll for {station_id} - ad already scheduled, skipping")
-                        continue
-                except Exception as e:
-                    logging.warning(f"Could not check next track for {station_id}: {e}")
-                    # Continue with the check if we can't determine next track
-
-                logging.info(f"No ads played this hour for {station_id} - triggering hourly check")
-
-                # Run in background thread to prevent UI freeze
-                def run_check(h=handler, sid=station_id):
-                    try:
-                        h._perform_hourly_check()
-                        logging.info(f"Startup hourly check completed for {sid}")
-                    except Exception as e:
-                        logging.error(f"Error in startup hourly check for {sid}: {e}")
-
-                thread = threading.Thread(target=run_check, daemon=True,
-                                          name=f"StartupAdCheck_{station_id}")
-                thread.start()
-
-            except Exception as e:
-                logging.error(f"Error checking ad plays for {station_id}: {e}")
 
     def _register_config_observers(self):
         """Register all handlers as config observers for automatic reload on config changes."""
