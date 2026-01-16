@@ -220,6 +220,10 @@ class MainApp(tk.Tk):
         # Initialize status indicators
         self._update_status_indicators()
 
+        # Restore logs collapsed state from config
+        if self.config_manager.get_shared_setting("ui.logs_collapsed", False):
+            self.after(100, self._toggle_logs)  # Delay to ensure window is fully rendered
+
     def _register_config_observers(self):
         """Register all handlers as config observers for automatic reload on config changes."""
         # Define a wrapper that safely reloads all handlers
@@ -337,38 +341,47 @@ Enhanced with XML-Confirmed Ad Reporting
         toolbar = ttk.Frame(main_frame)
         toolbar.pack(fill=tk.X, pady=(0, 10))
 
+        self.log_collapsed = False
+        self.log_expanded_height = None  # Store height when expanded
+        self.log_toggle_btn = ttk.Button(toolbar, text="▼ Logs", width=8, command=self._toggle_logs)
+        self.log_toggle_btn.pack(side=tk.LEFT, padx=5)
         ttk.Button(toolbar, text="Configure Messages", command=self.open_config_window).pack(side=tk.LEFT, padx=5)
         ttk.Button(toolbar, text="Mini Playlist Editor", command=self.open_playlist_editor_window).pack(side=tk.LEFT, padx=5)
         ttk.Button(toolbar, text="Ad Inserter", command=self.open_ad_inserter_window).pack(side=tk.LEFT, padx=5)
         ttk.Button(toolbar, text="Pause Scroll", command=self._pause_scroll).pack(side=tk.LEFT, padx=5)
         ttk.Button(toolbar, text="Jump to Bottom", command=self._jump_to_bottom).pack(side=tk.LEFT, padx=5)
 
-        # Logs Section with 6 tabs (3 per station)
-        log_pane = ttk.PanedWindow(main_frame, orient=tk.VERTICAL)
-        log_pane.pack(fill=tk.BOTH, expand=True)
+        # Logs Section with 6 tabs (3 per station) - Collapsible
+        self.log_container = ttk.Frame(main_frame)
+        self.log_container.pack(fill=tk.BOTH, expand=True)
+
+        # Log content frame (collapsible)
+        self.log_content_frame = ttk.Frame(self.log_container)
+        self.log_content_frame.pack(fill=tk.BOTH, expand=True)
 
         # Create tabbed notebook for logs
-        log_notebook = ttk.Notebook(log_pane)
+        self.log_notebook = ttk.Notebook(self.log_content_frame)
+        self.log_notebook.pack(fill=tk.BOTH, expand=True)
 
         # Station 104.7 FM Logs
-        rds_1047_frame = ttk.Frame(log_notebook)
-        log_notebook.add(rds_1047_frame, text="104.7 AutoRDS")
+        rds_1047_frame = ttk.Frame(self.log_notebook)
+        self.log_notebook.add(rds_1047_frame, text="104.7 AutoRDS")
         self.rds_1047_log_text = tk.Text(rds_1047_frame, wrap=tk.WORD, state=tk.DISABLED, height=10, font=("Consolas", 9))
         rds_1047_scroll = ttk.Scrollbar(rds_1047_frame, orient=tk.VERTICAL, command=self.rds_1047_log_text.yview)
         self.rds_1047_log_text.config(yscrollcommand=rds_1047_scroll.set)
         rds_1047_scroll.pack(side=tk.RIGHT, fill=tk.Y)
         self.rds_1047_log_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-        intro_1047_frame = ttk.Frame(log_notebook)
-        log_notebook.add(intro_1047_frame, text="104.7 Intro Loader")
+        intro_1047_frame = ttk.Frame(self.log_notebook)
+        self.log_notebook.add(intro_1047_frame, text="104.7 Intro Loader")
         self.intro_1047_log_text = tk.Text(intro_1047_frame, wrap=tk.WORD, state=tk.DISABLED, height=10, font=("Consolas", 9))
         intro_1047_scroll = ttk.Scrollbar(intro_1047_frame, orient=tk.VERTICAL, command=self.intro_1047_log_text.yview)
         self.intro_1047_log_text.config(yscrollcommand=intro_1047_scroll.set)
         intro_1047_scroll.pack(side=tk.RIGHT, fill=tk.Y)
         self.intro_1047_log_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-        ad_1047_frame = ttk.Frame(log_notebook)
-        log_notebook.add(ad_1047_frame, text="104.7 Ad Scheduler")
+        ad_1047_frame = ttk.Frame(self.log_notebook)
+        self.log_notebook.add(ad_1047_frame, text="104.7 Ad Scheduler")
         self.ad_1047_log_text = tk.Text(ad_1047_frame, wrap=tk.WORD, state=tk.DISABLED, height=10, font=("Consolas", 9))
         ad_1047_scroll = ttk.Scrollbar(ad_1047_frame, orient=tk.VERTICAL, command=self.ad_1047_log_text.yview)
         self.ad_1047_log_text.config(yscrollcommand=ad_1047_scroll.set)
@@ -376,39 +389,36 @@ Enhanced with XML-Confirmed Ad Reporting
         self.ad_1047_log_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
 
         # Station 88.7 FM Logs
-        rds_887_frame = ttk.Frame(log_notebook)
-        log_notebook.add(rds_887_frame, text="88.7 AutoRDS")
+        rds_887_frame = ttk.Frame(self.log_notebook)
+        self.log_notebook.add(rds_887_frame, text="88.7 AutoRDS")
         self.rds_887_log_text = tk.Text(rds_887_frame, wrap=tk.WORD, state=tk.DISABLED, height=10, font=("Consolas", 9))
         rds_887_scroll = ttk.Scrollbar(rds_887_frame, orient=tk.VERTICAL, command=self.rds_887_log_text.yview)
         self.rds_887_log_text.config(yscrollcommand=rds_887_scroll.set)
         rds_887_scroll.pack(side=tk.RIGHT, fill=tk.Y)
         self.rds_887_log_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-        intro_887_frame = ttk.Frame(log_notebook)
-        log_notebook.add(intro_887_frame, text="88.7 Intro Loader")
+        intro_887_frame = ttk.Frame(self.log_notebook)
+        self.log_notebook.add(intro_887_frame, text="88.7 Intro Loader")
         self.intro_887_log_text = tk.Text(intro_887_frame, wrap=tk.WORD, state=tk.DISABLED, height=10, font=("Consolas", 9))
         intro_887_scroll = ttk.Scrollbar(intro_887_frame, orient=tk.VERTICAL, command=self.intro_887_log_text.yview)
         self.intro_887_log_text.config(yscrollcommand=intro_887_scroll.set)
         intro_887_scroll.pack(side=tk.RIGHT, fill=tk.Y)
         self.intro_887_log_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-        ad_887_frame = ttk.Frame(log_notebook)
-        log_notebook.add(ad_887_frame, text="88.7 Ad Scheduler")
+        ad_887_frame = ttk.Frame(self.log_notebook)
+        self.log_notebook.add(ad_887_frame, text="88.7 Ad Scheduler")
         self.ad_887_log_text = tk.Text(ad_887_frame, wrap=tk.WORD, state=tk.DISABLED, height=10, font=("Consolas", 9))
         ad_887_scroll = ttk.Scrollbar(ad_887_frame, orient=tk.VERTICAL, command=self.ad_887_log_text.yview)
         self.ad_887_log_text.config(yscrollcommand=ad_887_scroll.set)
         ad_887_scroll.pack(side=tk.RIGHT, fill=tk.Y)
         self.ad_887_log_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-        # Add the notebook to the paned window
-        log_pane.add(log_notebook, weight=1)
-
         # Station Status - Consolidated boxes (one per station)
-        station_container = ttk.Frame(main_frame)
-        station_container.pack(fill=tk.X, pady=(10, 5))
+        self.station_container = ttk.Frame(main_frame)
+        self.station_container.pack(fill=tk.X, pady=(10, 5))
 
         # 104.7 FM - Consolidated frame
-        station_1047_frame = ttk.LabelFrame(station_container, text="104.7 FM", padding="5")
+        station_1047_frame = ttk.LabelFrame(self.station_container, text="104.7 FM", padding="5")
         station_1047_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
 
         # Message listbox with scrollbar
@@ -445,7 +455,7 @@ Enhanced with XML-Confirmed Ad Reporting
         ttk.Label(radioboss_1047_status_frame, text="Connection Status", font=("Segoe UI", 9, "bold")).pack(side=tk.LEFT, fill=tk.X, expand=True)
 
         # 88.7 FM - Consolidated frame
-        station_887_frame = ttk.LabelFrame(station_container, text="88.7 FM", padding="5")
+        station_887_frame = ttk.LabelFrame(self.station_container, text="88.7 FM", padding="5")
         station_887_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(5, 0))
 
         # Message listbox with scrollbar
@@ -729,6 +739,32 @@ Enhanced with XML-Confirmed Ad Reporting
         for widget in [self.rds_1047_log_text, self.intro_1047_log_text, self.ad_1047_log_text,
                        self.rds_887_log_text, self.intro_887_log_text, self.ad_887_log_text]:
             widget.see(tk.END)
+
+    def _toggle_logs(self):
+        """Toggle the visibility of the log area."""
+        if self.log_collapsed:
+            # Expand - pack before station container to maintain order
+            self.log_container.pack(fill=tk.BOTH, expand=True, before=self.station_container)
+            self.log_toggle_btn.config(text="▼ Logs")
+            self.log_collapsed = False
+            self.minsize(800, 600)  # Restore normal minsize
+            # Restore saved geometry
+            if self.log_expanded_height:
+                self.geometry(f"{self.log_expanded_width}x{self.log_expanded_height}")
+        else:
+            # Collapse - save current geometry first
+            self.log_expanded_width = self.winfo_width()
+            self.log_expanded_height = self.winfo_height()
+            self.log_container.pack_forget()
+            self.log_toggle_btn.config(text="▶ Logs")
+            self.log_collapsed = True
+            self.update_idletasks()
+            # Allow window to shrink and resize to fit
+            self.minsize(800, 1)
+            self.geometry(f"{self.log_expanded_width}x{self.winfo_reqheight()}")
+        # Persist state
+        self.config_manager.update_shared_setting("ui.logs_collapsed", self.log_collapsed)
+        self.config_manager.save_config()
 
 if __name__ == "__main__":
     app = MainApp()
