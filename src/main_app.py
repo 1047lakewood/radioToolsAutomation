@@ -353,6 +353,11 @@ Enhanced with XML-Confirmed Ad Reporting
         self.jump_to_bottom_btn = ttk.Button(toolbar, text="Jump to Bottom", command=self._jump_to_bottom)
         self.jump_to_bottom_btn.pack(side=tk.LEFT, padx=5)
 
+        # Search state tracking (floating search bar created later)
+        self._search_matches = []  # List of match positions
+        self._search_current_index = -1  # Current match index
+        self._search_pattern = None
+
         # Logs Section with 6 tabs (3 per station) - Collapsible
         self.log_container = ttk.Frame(main_frame)
         self.log_container.pack(fill=tk.BOTH, expand=True)
@@ -414,6 +419,38 @@ Enhanced with XML-Confirmed Ad Reporting
         self.ad_887_log_text.config(yscrollcommand=ad_887_scroll.set)
         ad_887_scroll.pack(side=tk.RIGHT, fill=tk.Y)
         self.ad_887_log_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
+
+        # Configure search highlight tag on all log widgets
+        for widget in [self.rds_1047_log_text, self.intro_1047_log_text, self.ad_1047_log_text,
+                       self.rds_887_log_text, self.intro_887_log_text, self.ad_887_log_text]:
+            widget.tag_config("search_highlight", background="yellow", foreground="black")
+            widget.tag_config("search_current", background="orange", foreground="black")
+
+        # Bind tab change to clear search highlights
+        self.log_notebook.bind("<<NotebookTabChanged>>", self._on_tab_changed)
+
+        # Floating search bar (VS Code style overlay)
+        self._search_visible = False
+        self._search_frame = ttk.Frame(self.log_content_frame, relief="solid", borderwidth=1)
+
+        # Search entry
+        self.search_entry = ttk.Entry(self._search_frame, width=30)
+        self.search_entry.pack(side=tk.LEFT, padx=(5, 2), pady=5)
+        self.search_entry.bind('<KeyRelease>', self._on_search_key)
+        self.search_entry.bind('<Return>', lambda e: self._next_match())
+        self.search_entry.bind('<Escape>', lambda e: self._hide_search())
+
+        # Match count label
+        self.search_match_label = ttk.Label(self._search_frame, text="", width=10)
+        self.search_match_label.pack(side=tk.LEFT, padx=2, pady=5)
+
+        # Close button
+        close_btn = ttk.Button(self._search_frame, text="×", width=2, command=self._hide_search)
+        close_btn.pack(side=tk.LEFT, padx=(2, 5), pady=5)
+
+        # Bind Ctrl+F to show search
+        self.bind('<Control-f>', lambda e: self._show_search())
+        self.bind('<Control-F>', lambda e: self._show_search())
 
         # Station Status - Consolidated boxes (one per station)
         self.station_container = ttk.Frame(main_frame)
@@ -760,9 +797,10 @@ Enhanced with XML-Confirmed Ad Reporting
             # Collapse - save current geometry first
             self.log_expanded_width = self.winfo_width()
             self.log_expanded_height = self.winfo_height()
-            # Hide scroll control buttons
+            # Hide scroll control buttons and floating search
             self.pause_scroll_btn.pack_forget()
             self.jump_to_bottom_btn.pack_forget()
+            self._hide_search()
             self.log_container.pack_forget()
             self.log_toggle_btn.config(text="▶ Logs")
             self.log_collapsed = True
@@ -773,6 +811,145 @@ Enhanced with XML-Confirmed Ad Reporting
         # Persist state
         self.config_manager.update_shared_setting("ui.logs_collapsed", self.log_collapsed)
         self.config_manager.save_config()
+
+    def _get_current_log_widget(self):
+        """Get the Text widget for the currently selected log tab."""
+        tab_index = self.log_notebook.index(self.log_notebook.select())
+        widgets = [
+            self.rds_1047_log_text,
+            self.intro_1047_log_text,
+            self.ad_1047_log_text,
+            self.rds_887_log_text,
+            self.intro_887_log_text,
+            self.ad_887_log_text
+        ]
+        return widgets[tab_index] if 0 <= tab_index < len(widgets) else None
+
+    def _show_search(self):
+        """Show the floating search bar."""
+        if self.log_collapsed:
+            return  # Don't show search when logs are collapsed
+        if not self._search_visible:
+            # Position at top-right of log content frame, below the tabs
+            self._search_frame.place(relx=1.0, y=30, anchor='ne', x=-25)
+            self._search_visible = True
+        self.search_entry.focus_set()
+        self.search_entry.select_range(0, tk.END)
+
+    def _hide_search(self):
+        """Hide the floating search bar and clear search."""
+        if self._search_visible:
+            self._search_frame.place_forget()
+            self._search_visible = False
+        self._clear_search_state()
+
+    def _on_search_key(self, event=None):
+        """Handle key release in search entry - live search."""
+        # Ignore modifier keys and navigation keys
+        if event and event.keysym in ('Shift_L', 'Shift_R', 'Control_L', 'Control_R',
+                                       'Alt_L', 'Alt_R', 'Escape', 'Return'):
+            return
+        self._do_search()
+
+    def _do_search(self):
+        """Perform search on the current tab's log widget."""
+        pattern = self.search_entry.get().strip()
+        if not pattern:
+            self._clear_search_state()
+            return
+
+        widget = self._get_current_log_widget()
+        if not widget:
+            return
+
+        # Pause auto-scroll when searching so user stays on the match
+        self.auto_scroll_enabled = False
+
+        # Clear previous highlights and search fresh
+        self._clear_search_highlights(widget)
+        self._search_pattern = pattern
+        self._search_matches = []
+        self._search_current_index = -1
+
+        # Search for all matches
+        start_pos = "1.0"
+        while True:
+            pos = widget.search(pattern, start_pos, stopindex=tk.END, nocase=True)
+            if not pos:
+                break
+            end_pos = f"{pos}+{len(pattern)}c"
+            self._search_matches.append((pos, end_pos))
+            widget.tag_add("search_highlight", pos, end_pos)
+            start_pos = end_pos
+
+        # Update match count
+        count = len(self._search_matches)
+        if count == 0:
+            self.search_match_label.config(text="No matches")
+        else:
+            # Go to first match
+            self._search_current_index = 0
+            self._highlight_current_match(widget)
+            widget.see(self._search_matches[0][0])
+            self.search_match_label.config(text=f"1/{count}")
+
+    def _next_match(self):
+        """Move to the next search match."""
+        if not self._search_matches:
+            return
+
+        widget = self._get_current_log_widget()
+        if not widget:
+            return
+
+        # Remove current highlight from previous match
+        if 0 <= self._search_current_index < len(self._search_matches):
+            pos, end_pos = self._search_matches[self._search_current_index]
+            widget.tag_remove("search_current", pos, end_pos)
+            widget.tag_add("search_highlight", pos, end_pos)
+
+        # Move to next match (wrap around)
+        self._search_current_index = (self._search_current_index + 1) % len(self._search_matches)
+        self._highlight_current_match(widget)
+
+        # Scroll to match
+        pos = self._search_matches[self._search_current_index][0]
+        widget.see(pos)
+
+        # Update label to show position
+        self.search_match_label.config(
+            text=f"{self._search_current_index + 1}/{len(self._search_matches)}"
+        )
+
+    def _highlight_current_match(self, widget):
+        """Highlight the current match with a different color."""
+        if 0 <= self._search_current_index < len(self._search_matches):
+            pos, end_pos = self._search_matches[self._search_current_index]
+            widget.tag_remove("search_highlight", pos, end_pos)
+            widget.tag_add("search_current", pos, end_pos)
+
+    def _clear_search_state(self):
+        """Clear search highlights and reset state (keeps entry text)."""
+        for widget in [self.rds_1047_log_text, self.intro_1047_log_text, self.ad_1047_log_text,
+                       self.rds_887_log_text, self.intro_887_log_text, self.ad_887_log_text]:
+            self._clear_search_highlights(widget)
+
+        self._search_matches = []
+        self._search_current_index = -1
+        self._search_pattern = None
+        self.search_match_label.config(text="")
+
+    def _clear_search_highlights(self, widget):
+        """Clear search highlight tags from a specific widget."""
+        widget.tag_remove("search_highlight", "1.0", tk.END)
+        widget.tag_remove("search_current", "1.0", tk.END)
+
+    def _on_tab_changed(self, event=None):
+        """Handle tab change - re-run search on new tab."""
+        # Clear highlights on all tabs, then re-search on new tab
+        self._clear_search_state()
+        if self._search_visible and self.search_entry.get().strip():
+            self._do_search()
 
 if __name__ == "__main__":
     app = MainApp()
