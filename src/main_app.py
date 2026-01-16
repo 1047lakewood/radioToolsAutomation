@@ -279,6 +279,7 @@ class MainApp(tk.Tk):
         tools_menu.add_command(label="Show Missing Artists", command=self.open_missing_artists_window)
         tools_menu.add_command(label="Options", command=self.open_options_window)
         tools_menu.add_command(label="Ad Statistics", command=self.open_ad_statistics_window)
+        tools_menu.add_command(label="Mini Playlist Editor", command=self.open_playlist_editor_window)
         menubar.add_cascade(label="Tools", menu=tools_menu)
 
         # Help menu
@@ -345,11 +346,12 @@ Enhanced with XML-Confirmed Ad Reporting
         self.log_expanded_height = None  # Store height when expanded
         self.log_toggle_btn = ttk.Button(toolbar, text="▼ Logs", width=8, command=self._toggle_logs)
         self.log_toggle_btn.pack(side=tk.LEFT, padx=5)
-        ttk.Button(toolbar, text="Configure Messages", command=self.open_config_window).pack(side=tk.LEFT, padx=5)
-        ttk.Button(toolbar, text="Mini Playlist Editor", command=self.open_playlist_editor_window).pack(side=tk.LEFT, padx=5)
-        ttk.Button(toolbar, text="Ad Inserter", command=self.open_ad_inserter_window).pack(side=tk.LEFT, padx=5)
-        ttk.Button(toolbar, text="Pause Scroll", command=self._pause_scroll).pack(side=tk.LEFT, padx=5)
-        ttk.Button(toolbar, text="Jump to Bottom", command=self._jump_to_bottom).pack(side=tk.LEFT, padx=5)
+        ttk.Button(toolbar, text="RDS Text", command=self.open_config_window).pack(side=tk.LEFT, padx=5)
+        ttk.Button(toolbar, text="Sponsorship Inserter", command=self.open_ad_inserter_window).pack(side=tk.LEFT, padx=5)
+        self.pause_scroll_btn = ttk.Button(toolbar, text="Pause Scroll", command=self._pause_scroll)
+        self.pause_scroll_btn.pack(side=tk.LEFT, padx=5)
+        self.jump_to_bottom_btn = ttk.Button(toolbar, text="Jump to Bottom", command=self._jump_to_bottom)
+        self.jump_to_bottom_btn.pack(side=tk.LEFT, padx=5)
 
         # Logs Section with 6 tabs (3 per station) - Collapsible
         self.log_container = ttk.Frame(main_frame)
@@ -748,6 +750,9 @@ Enhanced with XML-Confirmed Ad Reporting
             self.log_toggle_btn.config(text="▼ Logs")
             self.log_collapsed = False
             self.minsize(800, 600)  # Restore normal minsize
+            # Show scroll control buttons
+            self.pause_scroll_btn.pack(side=tk.LEFT, padx=5)
+            self.jump_to_bottom_btn.pack(side=tk.LEFT, padx=5)
             # Restore saved geometry
             if self.log_expanded_height:
                 self.geometry(f"{self.log_expanded_width}x{self.log_expanded_height}")
@@ -755,6 +760,9 @@ Enhanced with XML-Confirmed Ad Reporting
             # Collapse - save current geometry first
             self.log_expanded_width = self.winfo_width()
             self.log_expanded_height = self.winfo_height()
+            # Hide scroll control buttons
+            self.pause_scroll_btn.pack_forget()
+            self.jump_to_bottom_btn.pack_forget()
             self.log_container.pack_forget()
             self.log_toggle_btn.config(text="▶ Logs")
             self.log_collapsed = True
