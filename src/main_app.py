@@ -403,38 +403,25 @@ Enhanced with XML-Confirmed Ad Reporting
         # Add the notebook to the paned window
         log_pane.add(log_notebook, weight=1)
 
-        # Current RDS Messages Cycle - Side by Side
-        msg_container = ttk.Frame(main_frame)
-        msg_container.pack(fill=tk.X, pady=(10, 0))
+        # Station Status - Consolidated boxes (one per station)
+        station_container = ttk.Frame(main_frame)
+        station_container.pack(fill=tk.X, pady=(10, 5))
 
-        # 104.7 FM Messages
-        msg_1047_frame = ttk.LabelFrame(msg_container, text="104.7 FM - Current RDS Messages")
-        msg_1047_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
-        self.msg_1047_listbox = tk.Listbox(msg_1047_frame, height=4, font=("Segoe UI", 9))
-        msg_1047_scroll = ttk.Scrollbar(msg_1047_frame, orient=tk.VERTICAL, command=self.msg_1047_listbox.yview)
+        # 104.7 FM - Consolidated frame
+        station_1047_frame = ttk.LabelFrame(station_container, text="104.7 FM", padding="5")
+        station_1047_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
+
+        # Message listbox with scrollbar
+        msg_1047_container = ttk.Frame(station_1047_frame)
+        msg_1047_container.pack(fill=tk.BOTH, expand=True, pady=(0, 5))
+        self.msg_1047_listbox = tk.Listbox(msg_1047_container, height=4, font=("Segoe UI", 9))
+        msg_1047_scroll = ttk.Scrollbar(msg_1047_container, orient=tk.VERTICAL, command=self.msg_1047_listbox.yview)
         self.msg_1047_listbox.config(yscrollcommand=msg_1047_scroll.set)
         msg_1047_scroll.pack(side=tk.RIGHT, fill=tk.Y)
-        self.msg_1047_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
+        self.msg_1047_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        # 88.7 FM Messages
-        msg_887_frame = ttk.LabelFrame(msg_container, text="88.7 FM - Current RDS Messages")
-        msg_887_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(5, 0))
-        self.msg_887_listbox = tk.Listbox(msg_887_frame, height=4, font=("Segoe UI", 9))
-        msg_887_scroll = ttk.Scrollbar(msg_887_frame, orient=tk.VERTICAL, command=self.msg_887_listbox.yview)
-        self.msg_887_listbox.config(yscrollcommand=msg_887_scroll.set)
-        msg_887_scroll.pack(side=tk.RIGHT, fill=tk.Y)
-        self.msg_887_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
-
-        # Current RDS Message labels - Side by Side
-        rds_container = ttk.Frame(main_frame)
-        rds_container.pack(fill=tk.X, pady=5)
-
-        # 104.7 FM Current Message
-        rds_1047_frame = ttk.LabelFrame(rds_container, text="104.7 FM - Current RDS", padding="5")
-        rds_1047_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
-
-        # RDS Status indicator frame
-        rds_1047_status_frame = ttk.Frame(rds_1047_frame)
+        # RDS Status indicator row
+        rds_1047_status_frame = ttk.Frame(station_1047_frame)
         rds_1047_status_frame.pack(fill=tk.X, pady=(0, 2))
 
         self.rds_1047_status_canvas = tk.Canvas(rds_1047_status_frame, width=16, height=16, bg=self.cget('bg'), highlightthickness=0)
@@ -446,8 +433,8 @@ Enhanced with XML-Confirmed Ad Reporting
         rds_1047_label = ttk.Label(rds_1047_status_frame, textvariable=self.current_rds_1047_var, font=("Segoe UI", 10, "bold"), anchor=tk.W)
         rds_1047_label.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
-        # RadioBoss connectivity indicator frame
-        radioboss_1047_status_frame = ttk.Frame(rds_1047_frame)
+        # RadioBoss connectivity indicator row
+        radioboss_1047_status_frame = ttk.Frame(station_1047_frame)
         radioboss_1047_status_frame.pack(fill=tk.X, pady=(2, 0))
 
         self.radioboss_1047_status_canvas = tk.Canvas(radioboss_1047_status_frame, width=16, height=16, bg=self.cget('bg'), highlightthickness=0)
@@ -457,12 +444,21 @@ Enhanced with XML-Confirmed Ad Reporting
         ttk.Label(radioboss_1047_status_frame, text="RadioBoss:", font=("Segoe UI", 9)).pack(side=tk.LEFT)
         ttk.Label(radioboss_1047_status_frame, text="Connection Status", font=("Segoe UI", 9, "bold")).pack(side=tk.LEFT, fill=tk.X, expand=True)
 
-        # 88.7 FM Current Message
-        rds_887_frame = ttk.LabelFrame(rds_container, text="88.7 FM - Current RDS", padding="5")
-        rds_887_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(5, 0))
+        # 88.7 FM - Consolidated frame
+        station_887_frame = ttk.LabelFrame(station_container, text="88.7 FM", padding="5")
+        station_887_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(5, 0))
 
-        # RDS Status indicator frame
-        rds_887_status_frame = ttk.Frame(rds_887_frame)
+        # Message listbox with scrollbar
+        msg_887_container = ttk.Frame(station_887_frame)
+        msg_887_container.pack(fill=tk.BOTH, expand=True, pady=(0, 5))
+        self.msg_887_listbox = tk.Listbox(msg_887_container, height=4, font=("Segoe UI", 9))
+        msg_887_scroll = ttk.Scrollbar(msg_887_container, orient=tk.VERTICAL, command=self.msg_887_listbox.yview)
+        self.msg_887_listbox.config(yscrollcommand=msg_887_scroll.set)
+        msg_887_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        self.msg_887_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        # RDS Status indicator row
+        rds_887_status_frame = ttk.Frame(station_887_frame)
         rds_887_status_frame.pack(fill=tk.X, pady=(0, 2))
 
         self.rds_887_status_canvas = tk.Canvas(rds_887_status_frame, width=16, height=16, bg=self.cget('bg'), highlightthickness=0)
@@ -474,8 +470,8 @@ Enhanced with XML-Confirmed Ad Reporting
         rds_887_label = ttk.Label(rds_887_status_frame, textvariable=self.current_rds_887_var, font=("Segoe UI", 10, "bold"), anchor=tk.W)
         rds_887_label.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
-        # RadioBoss connectivity indicator frame
-        radioboss_887_status_frame = ttk.Frame(rds_887_frame)
+        # RadioBoss connectivity indicator row
+        radioboss_887_status_frame = ttk.Frame(station_887_frame)
         radioboss_887_status_frame.pack(fill=tk.X, pady=(2, 0))
 
         self.radioboss_887_status_canvas = tk.Canvas(radioboss_887_status_frame, width=16, height=16, bg=self.cget('bg'), highlightthickness=0)
