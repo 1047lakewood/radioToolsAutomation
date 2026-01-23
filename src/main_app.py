@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 import ttkthemes
+import ctypes
 import logging
 import os
 import threading
@@ -46,8 +47,20 @@ class MainApp(tk.Tk):
         self.title(f"radioToolsAutomation - v{get_version()}")
         self.geometry("900x700")
         self.minsize(800, 600)
+
+        # Disable maximize button (Windows-only)
+        self.update_idletasks()
+        GWL_STYLE = -16
+        WS_MAXIMIZEBOX = 0x00010000
+        hwnd = ctypes.windll.user32.GetParent(self.winfo_id())
+        style = ctypes.windll.user32.GetWindowLongW(hwnd, GWL_STYLE)
+        ctypes.windll.user32.SetWindowLongW(hwnd, GWL_STYLE, style & ~WS_MAXIMIZEBOX)
+
         self.themed_style = ttkthemes.ThemedStyle(self)
         self.themed_style.set_theme("arc")  # Modern theme; options: 'arc', 'equilux', etc.
+
+        # Register close handler
+        self.protocol("WM_DELETE_WINDOW", self.on_close)
 
         # Create menu bar
         self.create_menu_bar()
@@ -300,34 +313,19 @@ Enhanced with XML-Confirmed Ad Reporting
 
     def on_close(self):
         """Handle window close event."""
+        if not messagebox.askyesno("Confirm Exit", "Are you sure you want to close?"):
+            return
         try:
-            # Stop message update and connectivity threads
+            # Signal threads to stop (non-blocking - daemon threads will terminate on exit)
             self.message_update_running = False
-            if hasattr(self, 'message_update_thread') and self.message_update_thread.is_alive():
-                self.message_update_thread.join(timeout=2)
-            if hasattr(self, 'connectivity_thread') and self.connectivity_thread.is_alive():
-                self.connectivity_thread.join(timeout=2)
 
-            # Stop all handlers
-            handlers = [
-                ('rds_1047_handler', 'rds_1047_thread'),
-                ('intro_1047_handler', 'intro_1047_thread'),
-                ('ad_1047_handler', 'ad_1047_thread'),
-                ('rds_887_handler', 'rds_887_thread'),
-                ('intro_887_handler', 'intro_887_thread'),
-                ('ad_887_handler', 'ad_887_thread')
-            ]
-
-            for handler_name, thread_name in handlers:
+            # Signal all handlers to stop
+            for handler_name in ['rds_1047_handler', 'intro_1047_handler', 'ad_1047_handler',
+                                 'rds_887_handler', 'intro_887_handler', 'ad_887_handler']:
                 if hasattr(self, handler_name):
                     handler = getattr(self, handler_name)
                     if handler:
                         handler.stop()
-
-                if hasattr(self, thread_name):
-                    thread = getattr(self, thread_name)
-                    if thread and thread.is_alive():
-                        thread.join(timeout=2)
 
         except Exception as e:
             logging.error(f"Error stopping handlers: {e}")
