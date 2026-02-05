@@ -33,16 +33,16 @@ class LectureDetector:
         - has_next_track(): Check if there is a next track (False when playlist ends)
     """
 
-    def __init__(self, xml_path: str, config_manager=None, station_id: Optional[str] = None, 
+    def __init__(self, xml_path: str, config_manager=None, station_id: Optional[str] = None,
                  blacklist: Optional[List[str]] = None, whitelist: Optional[List[str]] = None):
         """Initialize the LectureDetector.
-        
+
         Args:
             xml_path: Path to the XML file containing track information
             config_manager: Configuration manager for blacklist/whitelist
             station_id: Station identifier for station-specific config
-            blacklist: List of artists to always classify as lectures
-            whitelist: List of artists to never classify as lectures
+            blacklist: List of artists to never classify as lectures (overrides 'R' detection)
+            whitelist: List of artists to always classify as lectures
         """
         self.xml_path = xml_path
         self.config_manager = config_manager
@@ -152,21 +152,21 @@ class LectureDetector:
         """
         if not artist:
             return False
-        
+
         artist_lower = artist.lower()
-            
-        # Whitelist takes precedence - never classify as lecture
-        if artist_lower in self.whitelist:
+
+        # Blacklist takes precedence - never classify as lecture (overrides 'R' detection)
+        if artist_lower in self.blacklist:
             return False
-            
+
+        # Whitelist - always classify as lecture
+        if artist_lower in self.whitelist:
+            return True
+
         # Check for lecture indicators (artist starts with 'r')
         if artist_lower.startswith('r'):
             return True
-            
-        # Blacklist - always classify as lecture
-        if artist_lower in self.blacklist:
-            return True
-            
+
         return False
 
     def _get_track_artist(self, xml_root: ET.Element, path_list: List[str]) -> str:
