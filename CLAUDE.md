@@ -171,10 +171,32 @@ If you need a specific version, just specify it: "update version to 2.6.0"
 **Workflow Rule:** When you say "deploy", automatically:
 
 1. Read stable path from `user_data/config.json` at `shared.migration.stable_path` (default: `../radioToolsAutomation - stable`)
-2. Copy `config.json` and `ad_plays_*.json` and `ad_failures_*.json` from stable's `user_data/` to active's `user_data/`
-3. Wipe stable folder and copy all files from active to stable (exclude `.git`, `.venv`, `__pycache__`, `*.pyc`, `*.log`)
-4. Kill python/pythonw processes: `powershell -Command "Get-Process python*, pythonw* -ErrorAction SilentlyContinue | Stop-Process -Force"`
-5. Start stable version hidden: `powershell -Command "Start-Process '{stable_path}\START RDS AND INTRO.bat' -WindowStyle Hidden -WorkingDirectory '{stable_path}'"`
 
-Use `src/migration_utils.py` for steps 2-3 (`MigrationUtils.copy_config_and_stats()` and `MigrationUtils.deploy_active_to_stable()`).
+2. Kill python/pythonw processes FIRST (before any file operations):
+   ```powershell
+   powershell -Command "Get-Process python*, pythonw* -ErrorAction SilentlyContinue | Stop-Process -Force"
+   ```
+
+3. Copy user data from stable to active (preserves stable's config during deployment):
+   ```bash
+   python -c "import sys; sys.path.insert(0, '{active_path}'); from src.migration_utils import MigrationUtils; MigrationUtils.copy_config_and_stats('{stable_path}', '{active_path}', backup=False)"
+   ```
+   Use `backup=False` to avoid creating excessive backup files.
+
+4. Deploy active to stable (wipes stable folder completely):
+   ```bash
+   python -c "import sys; sys.path.insert(0, '{active_path}'); from src.migration_utils import MigrationUtils; MigrationUtils.deploy_active_to_stable('{active_path}', '{stable_path}')"
+   ```
+
+5. Start stable version hidden:
+   ```bash
+   powershell -Command "Start-Process '{stable_path}\START RDS AND INTRO.bat' -WindowStyle Hidden -WorkingDirectory '{stable_path}'"
+   ```
+
+**Key points:**
+- Always kill processes BEFORE wiping stable folder to avoid permission errors
+- Use `backup=False` when copying - the data is preserved in the deployment anyway
+- The deployment excludes: `.git`, `.venv`, `__pycache__`, `*.pyc`, `*.log`, and other dev artifacts
+- Use `sys.path.insert(0, '{active_path}')` to import from the active codebase - do NOT use `cd` as it fails in this shell
+- Use forward slashes in paths (e.g., `G:/Misc/Dev/...`) for Python compatibility
 

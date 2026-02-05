@@ -1,7 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 import ttkthemes
-import ctypes
 import logging
 import os
 import threading
@@ -46,15 +45,7 @@ class MainApp(tk.Tk):
         super().__init__()
         self.title(f"radioToolsAutomation - v{get_version()}")
         self.geometry("900x700")
-        self.minsize(800, 600)
-
-        # Disable maximize button (Windows-only)
-        self.update_idletasks()
-        GWL_STYLE = -16
-        WS_MAXIMIZEBOX = 0x00010000
-        hwnd = ctypes.windll.user32.GetParent(self.winfo_id())
-        style = ctypes.windll.user32.GetWindowLongW(hwnd, GWL_STYLE)
-        ctypes.windll.user32.SetWindowLongW(hwnd, GWL_STYLE, style & ~WS_MAXIMIZEBOX)
+        self.resizable(False, False)
 
         self.themed_style = ttkthemes.ThemedStyle(self)
         self.themed_style.set_theme("arc")  # Modern theme; options: 'arc', 'equilux', etc.
@@ -784,7 +775,6 @@ Enhanced with XML-Confirmed Ad Reporting
             self.log_container.pack(fill=tk.BOTH, expand=True, before=self.station_container)
             self.log_toggle_btn.config(text="▼ Logs")
             self.log_collapsed = False
-            self.minsize(800, 600)  # Restore normal minsize
             # Show scroll control buttons
             self.pause_scroll_btn.pack(side=tk.LEFT, padx=5)
             self.jump_to_bottom_btn.pack(side=tk.LEFT, padx=5)
@@ -803,8 +793,7 @@ Enhanced with XML-Confirmed Ad Reporting
             self.log_toggle_btn.config(text="▶ Logs")
             self.log_collapsed = True
             self.update_idletasks()
-            # Allow window to shrink and resize to fit
-            self.minsize(800, 1)
+            # Resize to fit without logs
             self.geometry(f"{self.log_expanded_width}x{self.winfo_reqheight()}")
         # Persist state
         self.config_manager.update_shared_setting("ui.logs_collapsed", self.log_collapsed)
