@@ -47,6 +47,7 @@ class AutoPickerHandler:
         self.dynamic_a_remaining = 0
         self.recently_played = deque(maxlen=50)
         self.recently_played_artists = deque(maxlen=5)
+        self.recently_played_artists_b = deque(maxlen=5)
         self.pending_song = None
         self.pending_song_time = 0
         self.was_stopped = False
@@ -117,10 +118,10 @@ class AutoPickerHandler:
     def start_picking(self):
         """Start actively picking songs."""
         if not self.folder_a or not os.path.isdir(self.folder_a):
-            self.logger.warning("Cannot start: Folder A not configured or invalid.")
+            self.logger.warning("Cannot start: Song Folder not configured or invalid.")
             return False
         if not self.folder_b or not os.path.isdir(self.folder_b):
-            self.logger.warning("Cannot start: Folder B not configured or invalid.")
+            self.logger.warning("Cannot start: Shiur Folder not configured or invalid.")
             return False
         if not self.xml_path or not os.path.isfile(self.xml_path):
             self.logger.warning("Cannot start: XML file not configured or invalid.")
@@ -160,6 +161,7 @@ class AutoPickerHandler:
         self.pending_song = None
         self.scheduled_stop_active = False
         self.recently_played_artists.clear()
+        self.recently_played_artists_b.clear()
 
         # Save was_running state
         self.config_manager.update_station_setting(
@@ -178,7 +180,7 @@ class AutoPickerHandler:
         song, folder = self._get_next_song()
         if song:
             song_name = os.path.basename(song)
-            self.logger.info(f"[TEST] [Folder {folder}] {song_name}")
+            self.logger.info(f"[TEST] [{folder}] {song_name}")
         else:
             self.logger.warning("[TEST] No songs available to pick.")
 
@@ -196,7 +198,7 @@ class AutoPickerHandler:
             new_b = self._index_folder(self.folder_b) if self.folder_b else []
             self.folder_a_files = new_a
             self.folder_b_files = new_b
-            self.logger.info(f"Indexing complete: Folder A={len(new_a)} files, Folder B={len(new_b)} files")
+            self.logger.info(f"Indexing complete: Songs={len(new_a)}, Shiurim={len(new_b)}")
         except Exception as e:
             self.logger.error(f"Indexing error: {e}")
         finally:
@@ -300,30 +302,30 @@ class AutoPickerHandler:
         if success:
             self.pending_song = self._normalize_path(song)
             self.pending_song_time = time.time()
-            self.logger.info(f"[Queued] [Folder {folder}] {song_name}")
+            self.logger.info(f"[Queued] [{folder}] {song_name}")
         else:
             self.pending_song = None
-            self.logger.error(f"[FAILED] [Folder {folder}] {song_name}")
+            self.logger.error(f"[FAILED] [{folder}] {song_name}")
 
     def _get_next_song(self):
         """Get the next song based on dynamic A/B rotation."""
         if self.dynamic_a_remaining > 0:
-            song = self._pick_random_song_from_folder(self.folder_a, self.folder_a_files)
-            folder = "A"
+            song = self._pick_random_song_from_folder(self.folder_a, self.folder_a_files, self.recently_played_artists)
+            folder = "Song"
             if not song:
-                self.logger.error("No songs found in Folder A")
+                self.logger.error("No songs found in Song Folder")
                 return None, None
             self.dynamic_a_remaining -= 1
         else:
-            song = self._pick_random_song_from_folder(self.folder_b, self.folder_b_files)
-            folder = "B"
+            song = self._pick_random_song_from_folder(self.folder_b, self.folder_b_files, self.recently_played_artists_b)
+            folder = "Shiur"
             if not song:
-                self.logger.error("No songs found in Folder B")
+                self.logger.error("No songs found in Shiur Folder")
                 return None, None
             duration = self._get_song_duration(song)
             self.dynamic_a_remaining = self._duration_to_a_count(duration)
             dur_str = self._format_duration(duration)
-            self.logger.info(f"  ({dur_str} \u2192 {self.dynamic_a_remaining}\u00d7 Folder A next)")
+            self.logger.info(f"  ({dur_str} \u2192 {self.dynamic_a_remaining}\u00d7 Song next)")
 
         self.recently_played.append(song)
         self.song_cycle_position += 1
@@ -337,13 +339,13 @@ class AutoPickerHandler:
         remaining = self.dynamic_a_remaining
         parts = []
         for _ in range(remaining):
-            parts.append("A")
-        parts.append("B")
+            parts.append("Song")
+        parts.append("Shiur")
         if parts:
             parts[0] = f"[{parts[0]}]"
         return f"Next: {' '.join(parts)}"
 
-    def _pick_random_song_from_folder(self, folder_path, file_list):
+    def _pick_random_song_from_folder(self, folder_path, file_list, artist_deque):
         """Pick a random song using indexed file list with dedup."""
         if not folder_path or not os.path.isdir(folder_path):
             return None
@@ -355,11 +357,11 @@ class AutoPickerHandler:
         candidates = [f for f in file_list if f not in self.recently_played]
 
         # Filter out recently played artists
-        if self.recently_played_artists:
+        if artist_deque:
             artist_filtered = []
             for f in candidates:
                 artist = self._get_artist_from_song(f)
-                if artist is None or artist not in self.recently_played_artists:
+                if artist is None or artist not in artist_deque:
                     artist_filtered.append(f)
             if artist_filtered:
                 candidates = artist_filtered
@@ -375,7 +377,7 @@ class AutoPickerHandler:
                 if self._validate_audio_file(selected):
                     artist = self._get_artist_from_song(selected)
                     if artist:
-                        self.recently_played_artists.append(artist)
+                        artist_deque.append(artist)
                     return selected
                 self.logger.warning(f"Skipping corrupt file: {os.path.basename(selected)}")
                 candidates.remove(selected)
@@ -590,7 +592,7 @@ class AutoPickerHandler:
             return False
 
     def _duration_to_a_count(self, duration_seconds):
-        """Determine how many Folder A songs to play based on Folder B duration."""
+        """Determine how many Song picks to play based on Shiur duration."""
         if duration_seconds is None:
             return 2
         if duration_seconds < 240:

@@ -590,7 +590,9 @@ Enhanced with XML-Confirmed Ad Reporting
 
         ttk.Label(auto_picker_status_frame, text="Auto Picker:", font=("Segoe UI", 9)).pack(side=tk.LEFT)
         self.auto_picker_next_var = tk.StringVar(value="Stopped")
-        ttk.Label(auto_picker_status_frame, textvariable=self.auto_picker_next_var, font=("Segoe UI", 9, "bold")).pack(side=tk.LEFT, fill=tk.X, expand=True)
+        ttk.Label(auto_picker_status_frame, textvariable=self.auto_picker_next_var, font=("Segoe UI", 9, "bold")).pack(side=tk.LEFT, padx=(0, 8))
+        self.auto_picker_counts_var = tk.StringVar(value="")
+        ttk.Label(auto_picker_status_frame, textvariable=self.auto_picker_counts_var, font=("Segoe UI", 8)).pack(side=tk.LEFT, fill=tk.X, expand=True)
 
     def open_config_window(self):
         """Open the message configuration window."""
@@ -803,6 +805,12 @@ Enhanced with XML-Confirmed Ad Reporting
             ap_color = 'green' if ap_status['running'] else 'red'
             self.auto_picker_status_canvas.itemconfig(1, fill=ap_color)
             self.auto_picker_next_var.set(ap_status['next_cycle_text'])
+            song_count = ap_status['folder_a_count']
+            shiur_count = ap_status['folder_b_count']
+            if song_count or shiur_count:
+                self.auto_picker_counts_var.set(f"({song_count} songs, {shiur_count} shiurim)")
+            else:
+                self.auto_picker_counts_var.set("")
             # Sync the toggle button text
             if hasattr(self, 'auto_picker_toggle_btn'):
                 expected_text = "Stop" if ap_status['running'] else "Start"

@@ -573,8 +573,8 @@ class OptionsWindow(Toplevel):
 
         help_label = ttk.Label(
             parent_frame,
-            text="Configure the automatic song picker for 88.7 FM. Songs are picked from two folders "
-                 "with a dynamic A/B ratio based on Folder B song duration.",
+            text="Configure the automatic song picker for 88.7 FM. Picks alternate between the Song folder "
+                 "and Shiur folder, with the number of songs between shiurim based on shiur duration.",
             wraplength=700,
             foreground="gray"
         )
@@ -586,7 +586,7 @@ class OptionsWindow(Toplevel):
         folder_frame = ttk.Frame(parent_frame)
         folder_frame.pack(fill=tk.X, pady=5)
 
-        ttk.Label(folder_frame, text="Folder A:").grid(row=0, column=0, sticky=tk.W, padx=5)
+        ttk.Label(folder_frame, text="Song Folder:").grid(row=0, column=0, sticky=tk.W, padx=5)
         station_vars['ap_folder_a'] = tk.StringVar(
             value=self.config_manager.get_station_setting('station_887', 'auto_picker.folder_a', ''))
         ttk.Entry(folder_frame, textvariable=station_vars['ap_folder_a'], width=50).grid(row=0, column=1, sticky=tk.W, padx=5)
@@ -594,7 +594,7 @@ class OptionsWindow(Toplevel):
                    command=lambda: self.browse_directory(station_vars['ap_folder_a'])).grid(row=0, column=2, padx=5)
 
         # Folder B
-        ttk.Label(folder_frame, text="Folder B:").grid(row=1, column=0, sticky=tk.W, padx=5)
+        ttk.Label(folder_frame, text="Shiur Folder:").grid(row=1, column=0, sticky=tk.W, padx=5)
         station_vars['ap_folder_b'] = tk.StringVar(
             value=self.config_manager.get_station_setting('station_887', 'auto_picker.folder_b', ''))
         ttk.Entry(folder_frame, textvariable=station_vars['ap_folder_b'], width=50).grid(row=1, column=1, sticky=tk.W, padx=5)
