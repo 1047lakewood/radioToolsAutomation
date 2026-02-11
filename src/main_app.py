@@ -580,7 +580,7 @@ Enhanced with XML-Confirmed Ad Reporting
         ttk.Label(radioboss_887_status_frame, text="RadioBoss:", font=("Segoe UI", 9)).pack(side=tk.LEFT)
         ttk.Label(radioboss_887_status_frame, text="Connection Status", font=("Segoe UI", 9, "bold")).pack(side=tk.LEFT, fill=tk.X, expand=True)
 
-        # Auto Picker status indicator row
+        # Auto Picker status indicator row 1: sequence
         auto_picker_status_frame = ttk.Frame(station_887_frame)
         auto_picker_status_frame.pack(fill=tk.X, pady=(2, 0))
 
@@ -589,10 +589,14 @@ Enhanced with XML-Confirmed Ad Reporting
         self.auto_picker_status_canvas.create_oval(2, 2, 14, 14, fill='gray', outline='')
 
         ttk.Label(auto_picker_status_frame, text="Auto Picker:", font=("Segoe UI", 9)).pack(side=tk.LEFT)
-        self.auto_picker_next_var = tk.StringVar(value="Stopped")
-        ttk.Label(auto_picker_status_frame, textvariable=self.auto_picker_next_var, font=("Segoe UI", 9, "bold")).pack(side=tk.LEFT, padx=(0, 8))
+        self.auto_picker_seq_var = tk.StringVar(value="Stopped")
+        ttk.Label(auto_picker_status_frame, textvariable=self.auto_picker_seq_var, font=("Segoe UI", 9)).pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+        # Auto Picker status row 2: song/shiur counts
+        auto_picker_counts_frame = ttk.Frame(station_887_frame)
+        auto_picker_counts_frame.pack(fill=tk.X, pady=(0, 0))
         self.auto_picker_counts_var = tk.StringVar(value="")
-        ttk.Label(auto_picker_status_frame, textvariable=self.auto_picker_counts_var, font=("Segoe UI", 8)).pack(side=tk.LEFT, fill=tk.X, expand=True)
+        ttk.Label(auto_picker_counts_frame, textvariable=self.auto_picker_counts_var, font=("Segoe UI", 8)).pack(side=tk.LEFT, padx=(21, 0))
 
     def open_config_window(self):
         """Open the message configuration window."""
@@ -804,7 +808,18 @@ Enhanced with XML-Confirmed Ad Reporting
             ap_status = self.auto_picker_handler.get_status()
             ap_color = 'green' if ap_status['running'] else 'red'
             self.auto_picker_status_canvas.itemconfig(1, fill=ap_color)
-            self.auto_picker_next_var.set(ap_status['next_cycle_text'])
+            # Build sequence: [Picked] upcoming...
+            picked_folder = ap_status.get('last_picked_folder')
+            next_text = ap_status['next_cycle_text']
+            if not ap_status['running']:
+                self.auto_picker_seq_var.set("Stopped")
+            elif picked_folder:
+                seq = f"[{picked_folder}] {next_text}" if next_text else f"[{picked_folder}]"
+                self.auto_picker_seq_var.set(seq)
+            elif next_text:
+                self.auto_picker_seq_var.set(next_text)
+            else:
+                self.auto_picker_seq_var.set("")
             song_count = ap_status['folder_a_count']
             shiur_count = ap_status['folder_b_count']
             if song_count or shiur_count:

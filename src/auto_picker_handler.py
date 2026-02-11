@@ -50,6 +50,8 @@ class AutoPickerHandler:
         self.recently_played_artists_b = deque(maxlen=5)
         self.pending_song = None
         self.pending_song_time = 0
+        self.last_picked_name = None   # e.g. "song.mp3"
+        self.last_picked_folder = None # e.g. "Song" or "Shiur"
         self.was_stopped = False
         self.last_known_track = None
         self.last_trigger_time = 0
@@ -209,6 +211,8 @@ class AutoPickerHandler:
         return {
             'running': self.picking,
             'next_cycle_text': self._get_cycle_text(),
+            'last_picked_name': self.last_picked_name,
+            'last_picked_folder': self.last_picked_folder,
             'folder_a_count': len(self.folder_a_files),
             'folder_b_count': len(self.folder_b_files),
         }
@@ -302,6 +306,8 @@ class AutoPickerHandler:
         if success:
             self.pending_song = self._normalize_path(song)
             self.pending_song_time = time.time()
+            self.last_picked_name = song_name
+            self.last_picked_folder = folder
             self.logger.info(f"[Queued] [{folder}] {song_name}")
         else:
             self.pending_song = None
@@ -332,18 +338,16 @@ class AutoPickerHandler:
         return song, folder
 
     def _get_cycle_text(self):
-        """Return string showing dynamic cycle state like 'Next: [A] A B'."""
+        """Return string showing dynamic cycle state like 'Song Song Shiur'."""
         if not self.picking:
-            return "Stopped"
+            return ""
 
         remaining = self.dynamic_a_remaining
         parts = []
         for _ in range(remaining):
             parts.append("Song")
         parts.append("Shiur")
-        if parts:
-            parts[0] = f"[{parts[0]}]"
-        return f"Next: {' '.join(parts)}"
+        return ' '.join(parts)
 
     def _pick_random_song_from_folder(self, folder_path, file_list, artist_deque):
         """Pick a random song using indexed file list with dedup."""
