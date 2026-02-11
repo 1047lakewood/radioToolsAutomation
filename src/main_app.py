@@ -27,6 +27,7 @@ from config_manager import ConfigManager
 from auto_rds_handler import AutoRDSHandler
 from intro_loader_handler import IntroLoaderHandler
 from ad_scheduler_handler import AdSchedulerHandler
+from auto_picker_handler import AutoPickerHandler
 from ui_config_window import ConfigWindow
 from ui_missing_artists_window import MissingArtistsWindow
 from ui_options_window import OptionsWindow
@@ -44,7 +45,7 @@ class MainApp(tk.Tk):
 
         super().__init__()
         self.title(f"radioToolsAutomation - v{get_version()}")
-        self.geometry("900x700")
+        self.geometry("700x700")
         self.resizable(False, False)
 
         self.themed_style = ttkthemes.ThemedStyle(self)
@@ -83,6 +84,7 @@ class MainApp(tk.Tk):
         self.rds_887_queue = Queue()
         self.intro_887_queue = Queue()
         self.ad_887_queue = Queue()
+        self.auto_picker_queue = Queue()
 
         # Setup logging for all handlers
         formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
@@ -133,6 +135,13 @@ class MainApp(tk.Tk):
         ad_887_logger.propagate = False
         ad_887_logger.addHandler(ad_887_qh)
 
+        auto_picker_qh = QueueHandler(self.auto_picker_queue)
+        auto_picker_qh.setFormatter(formatter)
+        auto_picker_logger = logging.getLogger('AutoPicker_887')
+        auto_picker_logger.setLevel(log_level)
+        auto_picker_logger.propagate = False
+        auto_picker_logger.addHandler(auto_picker_qh)
+
         # Initialize handlers for both stations
         try:
             # Station 1047 handlers
@@ -154,6 +163,9 @@ class MainApp(tk.Tk):
             
             self.ad_887_handler = AdSchedulerHandler(self.ad_887_queue, self.config_manager, station_id='station_887')
             logging.info("Station 88.7 FM AdSchedulerHandler initialized successfully.")
+
+            self.auto_picker_handler = AutoPickerHandler(self.auto_picker_queue, self.config_manager, station_id='station_887')
+            logging.info("Station 88.7 FM AutoPickerHandler initialized successfully.")
 
             # Register all handlers as config observers for automatic reload on config changes
             self._register_config_observers()
@@ -184,12 +196,19 @@ class MainApp(tk.Tk):
             self.intro_887_thread = threading.Thread(target=self.intro_887_handler.run, daemon=True, name="Intro_887")
             self.ad_887_thread = threading.Thread(target=self.ad_887_handler.run, daemon=True, name="Ad_887")
             
+            self.auto_picker_thread = threading.Thread(target=self.auto_picker_handler.run, daemon=True, name="AutoPicker_887")
+
             self.rds_1047_thread.start()
             self.intro_1047_thread.start()
             self.ad_1047_thread.start()
             self.rds_887_thread.start()
             self.intro_887_thread.start()
             self.ad_887_thread.start()
+            self.auto_picker_thread.start()
+
+            # Auto-start picking if was_running
+            if self.config_manager.get_station_setting('station_887', 'auto_picker.was_running', False):
+                self.auto_picker_handler.start_picking()
 
             logging.info("All handler threads started successfully.")
             logging.info("RDS 104.7 thread alive: " + str(self.rds_1047_thread.is_alive()))
@@ -267,7 +286,14 @@ class MainApp(tk.Tk):
                     logging.debug(f"{name} handler configuration reloaded.")
                 except Exception as e:
                     logging.error(f"Failed to reload {name} handler: {e}")
-            
+
+            # Reload Auto Picker handler
+            try:
+                self.auto_picker_handler.reload_configuration()
+                logging.debug("Auto Picker 88.7 handler configuration reloaded.")
+            except Exception as e:
+                logging.error(f"Failed to reload Auto Picker handler: {e}")
+
             logging.info("All handler configurations reloaded successfully.")
         
         # Register the combined reload function as a config observer
@@ -310,9 +336,16 @@ Enhanced with XML-Confirmed Ad Reporting
             # Signal threads to stop (non-blocking - daemon threads will terminate on exit)
             self.message_update_running = False
 
+            # Save auto picker was_running state
+            if hasattr(self, 'auto_picker_handler') and self.auto_picker_handler:
+                self.config_manager.update_station_setting(
+                    'station_887', 'auto_picker.was_running', self.auto_picker_handler.picking)
+                self.config_manager.save_config(notify_observers=False)
+
             # Signal all handlers to stop
             for handler_name in ['rds_1047_handler', 'intro_1047_handler', 'ad_1047_handler',
-                                 'rds_887_handler', 'intro_887_handler', 'ad_887_handler']:
+                                 'rds_887_handler', 'intro_887_handler', 'ad_887_handler',
+                                 'auto_picker_handler']:
                 if hasattr(self, handler_name):
                     handler = getattr(self, handler_name)
                     if handler:
@@ -409,9 +442,37 @@ Enhanced with XML-Confirmed Ad Reporting
         ad_887_scroll.pack(side=tk.RIGHT, fill=tk.Y)
         self.ad_887_log_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
 
+        # 88.7 Auto Picker Log Tab with button bar
+        auto_picker_outer_frame = ttk.Frame(self.log_notebook)
+        self.log_notebook.add(auto_picker_outer_frame, text="88.7 Auto Picker")
+
+        # Button bar
+        auto_picker_btn_frame = ttk.Frame(auto_picker_outer_frame)
+        auto_picker_btn_frame.pack(fill=tk.X, padx=5, pady=(5, 0))
+
+        self.auto_picker_toggle_btn = ttk.Button(auto_picker_btn_frame, text="Start", width=8,
+                                                  command=self._toggle_auto_picker)
+        self.auto_picker_toggle_btn.pack(side=tk.LEFT, padx=(0, 5))
+
+        ttk.Button(auto_picker_btn_frame, text="Test Pick", width=10,
+                   command=self._auto_picker_test_pick).pack(side=tk.LEFT, padx=5)
+
+        ttk.Button(auto_picker_btn_frame, text="Reindex", width=10,
+                   command=self._auto_picker_reindex).pack(side=tk.LEFT, padx=5)
+
+        # Log text widget
+        auto_picker_log_frame = ttk.Frame(auto_picker_outer_frame)
+        auto_picker_log_frame.pack(fill=tk.BOTH, expand=True)
+        self.auto_picker_log_text = tk.Text(auto_picker_log_frame, wrap=tk.WORD, state=tk.DISABLED, height=10, font=("Consolas", 9))
+        auto_picker_scroll = ttk.Scrollbar(auto_picker_log_frame, orient=tk.VERTICAL, command=self.auto_picker_log_text.yview)
+        self.auto_picker_log_text.config(yscrollcommand=auto_picker_scroll.set)
+        auto_picker_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        self.auto_picker_log_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
+
         # Configure search highlight tag on all log widgets
         for widget in [self.rds_1047_log_text, self.intro_1047_log_text, self.ad_1047_log_text,
-                       self.rds_887_log_text, self.intro_887_log_text, self.ad_887_log_text]:
+                       self.rds_887_log_text, self.intro_887_log_text, self.ad_887_log_text,
+                       self.auto_picker_log_text]:
             widget.tag_config("search_highlight", background="yellow", foreground="black")
             widget.tag_config("search_current", background="orange", foreground="black")
 
@@ -519,6 +580,18 @@ Enhanced with XML-Confirmed Ad Reporting
         ttk.Label(radioboss_887_status_frame, text="RadioBoss:", font=("Segoe UI", 9)).pack(side=tk.LEFT)
         ttk.Label(radioboss_887_status_frame, text="Connection Status", font=("Segoe UI", 9, "bold")).pack(side=tk.LEFT, fill=tk.X, expand=True)
 
+        # Auto Picker status indicator row
+        auto_picker_status_frame = ttk.Frame(station_887_frame)
+        auto_picker_status_frame.pack(fill=tk.X, pady=(2, 0))
+
+        self.auto_picker_status_canvas = tk.Canvas(auto_picker_status_frame, width=16, height=16, bg=self.cget('bg'), highlightthickness=0)
+        self.auto_picker_status_canvas.pack(side=tk.LEFT, padx=(0, 5))
+        self.auto_picker_status_canvas.create_oval(2, 2, 14, 14, fill='gray', outline='')
+
+        ttk.Label(auto_picker_status_frame, text="Auto Picker:", font=("Segoe UI", 9)).pack(side=tk.LEFT)
+        self.auto_picker_next_var = tk.StringVar(value="Stopped")
+        ttk.Label(auto_picker_status_frame, textvariable=self.auto_picker_next_var, font=("Segoe UI", 9, "bold")).pack(side=tk.LEFT, fill=tk.X, expand=True)
+
     def open_config_window(self):
         """Open the message configuration window."""
         ConfigWindow(self, self.config_manager)
@@ -530,7 +603,8 @@ Enhanced with XML-Confirmed Ad Reporting
         OptionsWindow(self, self.config_manager,
                      self.intro_1047_handler, self.intro_887_handler,
                      self.rds_1047_handler, self.rds_887_handler,
-                     self.ad_1047_handler, self.ad_887_handler)
+                     self.ad_1047_handler, self.ad_887_handler,
+                     auto_picker_handler=self.auto_picker_handler)
 
     def open_playlist_editor_window(self):
         PlaylistEditorWindow(self, self.config_manager)
@@ -553,7 +627,8 @@ Enhanced with XML-Confirmed Ad Reporting
             self.ad_1047_log_text: [],
             self.rds_887_log_text: [],
             self.intro_887_log_text: [],
-            self.ad_887_log_text: []
+            self.ad_887_log_text: [],
+            self.auto_picker_log_text: []
         }
 
         updated = False
@@ -590,6 +665,11 @@ Enhanced with XML-Confirmed Ad Reporting
             log_batches[self.ad_887_log_text].append(message)
             updated = True
 
+        while not self.auto_picker_queue.empty():
+            message = self.auto_picker_queue.get()
+            log_batches[self.auto_picker_log_text].append(message)
+            updated = True
+
         # Batch update all log widgets
         if updated:
             for widget, messages in log_batches.items():
@@ -599,7 +679,8 @@ Enhanced with XML-Confirmed Ad Reporting
             # Only auto-scroll if enabled (not paused by user scrolling)
             if self.auto_scroll_enabled:
                 for widget in [self.rds_1047_log_text, self.intro_1047_log_text, self.ad_1047_log_text,
-                               self.rds_887_log_text, self.intro_887_log_text, self.ad_887_log_text]:
+                               self.rds_887_log_text, self.intro_887_log_text, self.ad_887_log_text,
+                               self.auto_picker_log_text]:
                     widget.see(tk.END)
 
         self.after(500, self.process_queues)
@@ -716,6 +797,21 @@ Enhanced with XML-Confirmed Ad Reporting
             self.radioboss_887_status_canvas.itemconfig(1, fill='gray')
             logging.error(f"Error updating RadioBoss 887 connectivity indicator: {e}")
 
+        # Auto Picker status
+        try:
+            ap_status = self.auto_picker_handler.get_status()
+            ap_color = 'green' if ap_status['running'] else 'red'
+            self.auto_picker_status_canvas.itemconfig(1, fill=ap_color)
+            self.auto_picker_next_var.set(ap_status['next_cycle_text'])
+            # Sync the toggle button text
+            if hasattr(self, 'auto_picker_toggle_btn'):
+                expected_text = "Stop" if ap_status['running'] else "Start"
+                if self.auto_picker_toggle_btn.cget('text') != expected_text:
+                    self.auto_picker_toggle_btn.config(text=expected_text)
+        except Exception as e:
+            self.auto_picker_status_canvas.itemconfig(1, fill='gray')
+            logging.error(f"Error updating Auto Picker indicator: {e}")
+
     def _update_message_lists(self, messages_1047, messages_887):
         """Update the message listboxes on the main thread."""
         try:
@@ -765,7 +861,8 @@ Enhanced with XML-Confirmed Ad Reporting
         """Scroll all log widgets to the bottom and re-enable auto-scroll."""
         self.auto_scroll_enabled = True
         for widget in [self.rds_1047_log_text, self.intro_1047_log_text, self.ad_1047_log_text,
-                       self.rds_887_log_text, self.intro_887_log_text, self.ad_887_log_text]:
+                       self.rds_887_log_text, self.intro_887_log_text, self.ad_887_log_text,
+                       self.auto_picker_log_text]:
             widget.see(tk.END)
 
     def _toggle_logs(self):
@@ -808,7 +905,8 @@ Enhanced with XML-Confirmed Ad Reporting
             self.ad_1047_log_text,
             self.rds_887_log_text,
             self.intro_887_log_text,
-            self.ad_887_log_text
+            self.ad_887_log_text,
+            self.auto_picker_log_text
         ]
         return widgets[tab_index] if 0 <= tab_index < len(widgets) else None
 
@@ -918,7 +1016,8 @@ Enhanced with XML-Confirmed Ad Reporting
     def _clear_search_state(self):
         """Clear search highlights and reset state (keeps entry text)."""
         for widget in [self.rds_1047_log_text, self.intro_1047_log_text, self.ad_1047_log_text,
-                       self.rds_887_log_text, self.intro_887_log_text, self.ad_887_log_text]:
+                       self.rds_887_log_text, self.intro_887_log_text, self.ad_887_log_text,
+                       self.auto_picker_log_text]:
             self._clear_search_highlights(widget)
 
         self._search_matches = []
@@ -930,6 +1029,25 @@ Enhanced with XML-Confirmed Ad Reporting
         """Clear search highlight tags from a specific widget."""
         widget.tag_remove("search_highlight", "1.0", tk.END)
         widget.tag_remove("search_current", "1.0", tk.END)
+
+    def _toggle_auto_picker(self):
+        """Toggle auto picker start/stop."""
+        if self.auto_picker_handler.picking:
+            self.auto_picker_handler.stop_picking()
+            self.auto_picker_toggle_btn.config(text="Start")
+        else:
+            def start_in_thread():
+                self.auto_picker_handler.start_picking()
+            threading.Thread(target=start_in_thread, daemon=True).start()
+            self.auto_picker_toggle_btn.config(text="Stop")
+
+    def _auto_picker_test_pick(self):
+        """Run test pick in background thread."""
+        threading.Thread(target=self.auto_picker_handler.test_pick, daemon=True).start()
+
+    def _auto_picker_reindex(self):
+        """Run reindex in background thread."""
+        threading.Thread(target=self.auto_picker_handler.reindex, daemon=True).start()
 
     def _on_tab_changed(self, event=None):
         """Handle tab change - re-run search on new tab."""

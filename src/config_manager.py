@@ -273,6 +273,25 @@ class ConfigManager:
                             except (IndexError, AttributeError):
                                 logging.warning(f"Could not extract event ID from instant URL for {station_id}: {ad_inserter.get('instant_url', '')}")
 
+            # Add auto_picker section if missing (for existing configs)
+            for station_id, station_data in config['stations'].items():
+                if 'settings' in station_data:
+                    settings = station_data['settings']
+                    if 'auto_picker' not in settings:
+                        settings['auto_picker'] = {
+                            "folder_a": "",
+                            "folder_b": "",
+                            "trigger_delay_seconds": 3.0,
+                            "scheduled_stop": {
+                                "enabled": False,
+                                "day": "Friday",
+                                "time": "17:00"
+                            },
+                            "was_running": False
+                        }
+                        migrated = True
+                        logging.info(f"Added auto_picker config for {station_id}")
+
         if migrated:
             logging.info("Configuration migration completed. Saving migrated config.")
             # Save the migrated config
@@ -348,6 +367,17 @@ class ConfigManager:
                             "insertion_event_id": "INSERT",
                             "instant_event_id": "PLAY",
                             "output_mp3": r"G:\Ads\adRoll_887.mp3"
+                        },
+                        "auto_picker": {
+                            "folder_a": "",
+                            "folder_b": "",
+                            "trigger_delay_seconds": 3.0,
+                            "scheduled_stop": {
+                                "enabled": False,
+                                "day": "Friday",
+                                "time": "17:00"
+                            },
+                            "was_running": False
                         }
                     }
                 }

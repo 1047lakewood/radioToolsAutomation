@@ -18,7 +18,8 @@ class OptionsWindow(Toplevel):
     """Window for application options (Whitelist, Blacklist, Debug)."""
     def __init__(self, parent, config_manager, intro_loader_handler_1047, intro_loader_handler_887,
                  auto_rds_handler_1047=None, auto_rds_handler_887=None,
-                 ad_scheduler_handler_1047=None, ad_scheduler_handler_887=None):
+                 ad_scheduler_handler_1047=None, ad_scheduler_handler_887=None,
+                 auto_picker_handler=None):
         """
         Initialize the Options window.
 
@@ -45,6 +46,7 @@ class OptionsWindow(Toplevel):
         self.rds_887_handler = auto_rds_handler_887
         self.ad_1047_handler = ad_scheduler_handler_1047
         self.ad_887_handler = ad_scheduler_handler_887
+        self.auto_picker_handler = auto_picker_handler
 
         # Store initial lists to detect changes (shared across stations)
         self.initial_whitelist = self.config_manager.get_shared_whitelist().copy()
@@ -121,6 +123,11 @@ class OptionsWindow(Toplevel):
         station_887_frame = ttk.Frame(notebook, padding="10")
         notebook.add(station_887_frame, text="Station 88.7 FM")
         self.create_station_settings_tab(station_887_frame, "station_887")
+
+        # --- Auto Picker Tab ---
+        auto_picker_frame = ttk.Frame(notebook, padding="10")
+        notebook.add(auto_picker_frame, text="Auto Picker")
+        self.create_auto_picker_tab(auto_picker_frame)
 
         # --- mAirList Schedule Tab ---
         mairlist_frame = ttk.Frame(notebook, padding="10")
@@ -514,6 +521,16 @@ class OptionsWindow(Toplevel):
             self.config_manager.update_station_setting(station_id, "ad_inserter.station_id_enabled", station_vars['station_id_enabled'].get())
             self.config_manager.update_station_setting(station_id, "ad_inserter.station_id_file", station_vars['station_id_file'].get())
 
+        # Save Auto Picker settings
+        station_vars_887 = self.station_vars['station_887']
+        if 'ap_folder_a' in station_vars_887:
+            self.config_manager.update_station_setting('station_887', 'auto_picker.folder_a', station_vars_887['ap_folder_a'].get())
+            self.config_manager.update_station_setting('station_887', 'auto_picker.folder_b', station_vars_887['ap_folder_b'].get())
+            self.config_manager.update_station_setting('station_887', 'auto_picker.trigger_delay_seconds', station_vars_887['ap_trigger_delay'].get())
+            self.config_manager.update_station_setting('station_887', 'auto_picker.scheduled_stop.enabled', station_vars_887['ap_sched_enabled'].get())
+            self.config_manager.update_station_setting('station_887', 'auto_picker.scheduled_stop.day', station_vars_887['ap_sched_day'].get())
+            self.config_manager.update_station_setting('station_887', 'auto_picker.scheduled_stop.time', station_vars_887['ap_sched_time'].get())
+
         # Save shared volume settings
         self.config_manager.update_shared_setting("intro_loader.volume.intro_db", self.volume_vars['intro_db'].get())
         self.config_manager.update_shared_setting("intro_loader.volume.overlay_db", self.volume_vars['overlay_db'].get())
@@ -548,6 +565,76 @@ class OptionsWindow(Toplevel):
             # else: Cancel, do nothing
         else:
             self.destroy() # No changes, just close
+
+    def create_auto_picker_tab(self, parent_frame):
+        """Create the Auto Picker settings tab."""
+        title_label = ttk.Label(parent_frame, text="Auto Picker Settings (88.7 FM)", font=("Segoe UI", 12, "bold"))
+        title_label.pack(pady=(0, 10))
+
+        help_label = ttk.Label(
+            parent_frame,
+            text="Configure the automatic song picker for 88.7 FM. Songs are picked from two folders "
+                 "with a dynamic A/B ratio based on Folder B song duration.",
+            wraplength=700,
+            foreground="gray"
+        )
+        help_label.pack(pady=(0, 10))
+
+        station_vars = self.station_vars['station_887']
+
+        # Folder A
+        folder_frame = ttk.Frame(parent_frame)
+        folder_frame.pack(fill=tk.X, pady=5)
+
+        ttk.Label(folder_frame, text="Folder A:").grid(row=0, column=0, sticky=tk.W, padx=5)
+        station_vars['ap_folder_a'] = tk.StringVar(
+            value=self.config_manager.get_station_setting('station_887', 'auto_picker.folder_a', ''))
+        ttk.Entry(folder_frame, textvariable=station_vars['ap_folder_a'], width=50).grid(row=0, column=1, sticky=tk.W, padx=5)
+        ttk.Button(folder_frame, text="Browse",
+                   command=lambda: self.browse_directory(station_vars['ap_folder_a'])).grid(row=0, column=2, padx=5)
+
+        # Folder B
+        ttk.Label(folder_frame, text="Folder B:").grid(row=1, column=0, sticky=tk.W, padx=5)
+        station_vars['ap_folder_b'] = tk.StringVar(
+            value=self.config_manager.get_station_setting('station_887', 'auto_picker.folder_b', ''))
+        ttk.Entry(folder_frame, textvariable=station_vars['ap_folder_b'], width=50).grid(row=1, column=1, sticky=tk.W, padx=5)
+        ttk.Button(folder_frame, text="Browse",
+                   command=lambda: self.browse_directory(station_vars['ap_folder_b'])).grid(row=1, column=2, padx=5)
+
+        # Trigger Delay
+        delay_frame = ttk.Frame(parent_frame)
+        delay_frame.pack(fill=tk.X, pady=10)
+
+        ttk.Label(delay_frame, text="Trigger Delay (seconds):").pack(side=tk.LEFT, padx=5)
+        station_vars['ap_trigger_delay'] = tk.DoubleVar(
+            value=self.config_manager.get_station_setting('station_887', 'auto_picker.trigger_delay_seconds', 3.0))
+        ttk.Spinbox(delay_frame, from_=1, to=30, textvariable=station_vars['ap_trigger_delay'],
+                    width=5, increment=0.5).pack(side=tk.LEFT, padx=5)
+        ttk.Label(delay_frame, text="(prevents rapid triggering)", foreground="gray").pack(side=tk.LEFT, padx=5)
+
+        # Scheduled Stop
+        sched_frame = ttk.LabelFrame(parent_frame, text="Scheduled Stop", padding="5")
+        sched_frame.pack(fill=tk.X, pady=10)
+
+        station_vars['ap_sched_enabled'] = tk.BooleanVar(
+            value=self.config_manager.get_station_setting('station_887', 'auto_picker.scheduled_stop.enabled', False))
+        ttk.Checkbutton(sched_frame, text="Enable Scheduled Stop",
+                       variable=station_vars['ap_sched_enabled']).pack(anchor=tk.W)
+
+        sched_row = ttk.Frame(sched_frame)
+        sched_row.pack(fill=tk.X, pady=5)
+
+        ttk.Label(sched_row, text="Day:").pack(side=tk.LEFT, padx=5)
+        days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        station_vars['ap_sched_day'] = tk.StringVar(
+            value=self.config_manager.get_station_setting('station_887', 'auto_picker.scheduled_stop.day', 'Friday'))
+        ttk.Combobox(sched_row, textvariable=station_vars['ap_sched_day'],
+                    values=days, state="readonly", width=12).pack(side=tk.LEFT, padx=5)
+
+        ttk.Label(sched_row, text="Time (HH:MM):").pack(side=tk.LEFT, padx=(15, 5))
+        station_vars['ap_sched_time'] = tk.StringVar(
+            value=self.config_manager.get_station_setting('station_887', 'auto_picker.scheduled_stop.time', '17:00'))
+        ttk.Entry(sched_row, textvariable=station_vars['ap_sched_time'], width=8).pack(side=tk.LEFT, padx=5)
 
     def create_mairlist_tab(self, parent_frame):
         """Create the mAirList schedule events tab."""
