@@ -248,6 +248,16 @@ class AutoPickerHandler:
                 self._submit_next_song()
                 return
 
+        # If scheduled stop is active, check if playback resumed externally
+        if self.scheduled_stop_active:
+            current_filename = self._get_current_track_filename()
+            if current_filename:
+                self.scheduled_stop_active = False
+                self.was_stopped = False
+                self.logger.info("Playback resumed after scheduled stop")
+                self._submit_next_song()
+            return
+
         # If no pending song, bootstrap by submitting the first pick
         if self.pending_song is None:
             self._submit_next_song()

@@ -2,9 +2,9 @@
 Version information for radioToolsAutomation.
 """
 
-__version__ = "2.6.9"
-__version_info__ = (2, 6, 9)
-__release_date__ = "February 10, 2026"
+__version__ = "2.6.10"
+__version_info__ = (2, 6, 10)
+__release_date__ = "February 14, 2026"
 
 # Version metadata
 VERSION_NAME = "radioToolsAutomation"
